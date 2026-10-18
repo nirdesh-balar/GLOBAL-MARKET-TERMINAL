@@ -1,0 +1,43 @@
+name: Approved owner-only draft release
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact approved source SHA
+        type: string
+        required: true
+      acceptance_artifact_run:
+        description: Approved native acceptance run containing verified release assets and acceptance.json
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  draft:
+    if: github.repository == 'nirdesh-balar/GLOBAL-MARKET-TERMINAL' && github.actor == 'nirdesh-balar'
+    environment: public-release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require an exact source SHA
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: node -e "if(!/^[a-f0-9]{40}$/.test(process.env.SOURCE_REF))process.exit(1)"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.19.0
+      - name: Download exact reviewed native evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.acceptance_artifact_run }}
+        run: |
+          case "$RUN_ID" in *[!0-9]*|'') exit 1 ;; esac
+          gh run download "$RUN_ID" --repo nirdesh-balar/GLOBAL-MARKET-TERMINAL --name approved-native-release --dir approved-native-release
+      - name: Verify and upload approved draft only
+        env:
+          GH_TOKEN: ${{ secrets.OWNER_RELEASE_TOKEN }}
+        run: node scripts/release-gate.mjs --upload-draft approved-native-release/acceptance.json

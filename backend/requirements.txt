@@ -1,0 +1,16 @@
+fastapi==0.135.1
+uvicorn==0.42.0
+pydantic==2.12.5
+numpy==2.4.2
+pandas==3.0.1
+websockets==15.0.1
+httpx==0.28.1
+pytest==9.0.2
+pyinstaller==6.19.0
+yfinance==1.7.0
+
+exchange_calendars==4.13.2
+pyluach==2.3.0
+toolz==1.2.0
+korean-lunar-calendar==0.4.0
+tzdata==2026.5

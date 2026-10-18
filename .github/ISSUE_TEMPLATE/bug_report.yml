@@ -1,0 +1,16 @@
+name: Bug report
+description: Report a reproducible problem without private data
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Application version and OS
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction, expected result and actual result
+      description: Use a temporary profile. Do not include tokens, private databases or personal watchlists.
+    validations:
+      required: true

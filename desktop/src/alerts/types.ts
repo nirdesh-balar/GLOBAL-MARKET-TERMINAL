@@ -1,0 +1,9 @@
+import type {SymbolEntry,Timeframe} from '../types';import type {Group} from '../screener/types';
+export interface AlertDefinition {version:1;name:string;instrument:string;interval:Timeframe;conditions:Group;message:string;repeat:'once'|'candle'|'crossing';expires_at:number|null;enabled:boolean;completed:boolean;adjusted:boolean;evaluation?:'candles'|'live_price'}
+export interface AlertRow {instrument?:SymbolEntry;monitoring?:string;data_connection?:string;data_error?:string|null;id:string;revision:number;definition:AlertDefinition;runtime:{status:string;last_attempt:number|null;last_evaluated_candle:number|null;last_state:boolean|null;last_successful_data:number|null;last_fetched_at:number|null;last_triggered:number|null;error:string|null;source?:string;timezone?:string;connection?:string;received_at?:number;last_price_time?:number;market_type?:string};created_at:number;updated_at:number}
+export interface AlertSettings {version:1;paused:boolean;poll_seconds:number;quiet_enabled:boolean;quiet_start:string;quiet_end:string;timezone:string;sound:string}
+export interface AlertEvent {id:string;alert_id:string|null;kind:string;created_at:number;delivery:string;delivery_detail:string;payload:{instrument:SymbolEntry;interval:Timeframe;title:string;message:string;candle_time:number|null;market_time?:number;event_type?:string;timezone:string;source:string}}
+export interface NotificationStatus {supported:boolean;authorization:string;alerts:string;sounds:string;notification_center:string;error:string;last?:unknown}
+export interface AlertSeed {instrument:SymbolEntry;interval:Timeframe;price?:number;conditions?:Group}
+export interface AlertStatus {active:number;total:number;paused:boolean;running:boolean;last_round:number|null;cooldown_seconds:number;error:string|null;stream_error?:string|null}
+export const dateLabel=(value:number|null|undefined)=>value==null?'—':new Date(value*1000).toLocaleString('en-GB');

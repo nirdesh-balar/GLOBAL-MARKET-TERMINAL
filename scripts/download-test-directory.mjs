@@ -1,0 +1,6 @@
+import{mkdir,writeFile}from'node:fs/promises';
+// Test/build preparation only. These ignored provider files are never exported
+// as public source or copied into the public installer resources.
+const files=[['EQUITY_L.csv','https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv'],['SME_EQUITY_L.csv','https://nsearchives.nseindia.com/emerge/corporates/content/SME_EQUITY_L.csv']];
+await mkdir('backend/resources',{recursive:true});
+for(const[name,url]of files){const r=await fetch(url,{signal:AbortSignal.timeout(25000),headers:{'User-Agent':'GlobalMarketTerminal/1.0 personal-analysis'}});if(!r.ok)throw Error('Official directory unavailable: '+r.status+'; no bypass or fabricated fallback');const length=Number(r.headers.get('content-length')||0);if(length>5000000)throw Error('Directory size limit');const chunks=[];let bytes=0;for await(const chunk of r.body){bytes+=chunk.length;if(bytes>5000000)throw Error('Directory size limit');chunks.push(chunk);}const data=Buffer.concat(chunks);if(!data.toString('utf8',0,500).toUpperCase().includes('SYMBOL'))throw Error('Official directory schema missing');await writeFile('backend/resources/'+name,data);console.log('Prepared ignored test directory '+name+' ('+bytes+' bytes)');}

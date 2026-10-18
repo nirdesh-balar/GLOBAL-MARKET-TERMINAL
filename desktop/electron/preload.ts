@@ -1,0 +1,21 @@
+import { contextBridge, ipcRenderer } from 'electron';
+contextBridge.exposeInMainWorld('terminal',{
+  platform:process.platform,
+  updateControl:(action:'status'|'check'|'preferences'|'restart',value?:boolean)=>ipcRenderer.invoke('application-updates',action,value),
+  onUpdateState:(callback:(state:unknown)=>void)=>{const listener=(_event:unknown,state:unknown)=>callback(state);ipcRenderer.on('application-update-state',listener);return()=>ipcRenderer.removeListener('application-update-state',listener);},
+  onMarketStream:(callback:(value:unknown)=>void)=>{const listener=(_event:unknown,value:unknown)=>callback(value);ipcRenderer.on('market-stream',listener);return()=>ipcRenderer.removeListener('market-stream',listener);},
+  onLifecycle:(callback:(state:'suspend'|'resume')=>void)=>{const listener=(_event:unknown,state:unknown)=>{if(state==='suspend'||state==='resume')callback(state);};ipcRenderer.on('app-lifecycle',listener);return()=>ipcRenderer.removeListener('app-lifecycle',listener);},
+  notificationControl:(action:string,value?:unknown)=>ipcRenderer.invoke('alert-notifications',action,value),
+  onAlertNavigation:(callback:(id:string)=>void)=>{const listener=(_event:Electron.IpcRendererEvent,id:string)=>{if(typeof id==='string'&&/^[a-f0-9]{32}$/.test(id))callback(id);};ipcRenderer.on('alert-navigation',listener);return()=>ipcRenderer.removeListener('alert-navigation',listener);},
+  request:async(path:string,method='GET',body?:unknown,requestId?:string,structured=false)=>{const result=await ipcRenderer.invoke('api',path,method,body,requestId);if(result?.__terminal_error&&!structured){const {message,...details}=result.__terminal_error;throw Object.assign(new Error(message),details);}return result;},
+  selectDrawingImage:()=>ipcRenderer.invoke('select-drawing-image'),
+  windowControl:(action:unknown)=>ipcRenderer.invoke('window-control',action),
+  onWindowState:(callback:(state:{fullscreen:boolean;transitioning:boolean})=>void)=>{const handler=(_event:unknown,state:{fullscreen:boolean;transitioning:boolean})=>{if(state&&typeof state.fullscreen==='boolean'&&typeof state.transitioning==='boolean')callback(state);};ipcRenderer.on('window-state',handler);return()=>ipcRenderer.removeListener('window-state',handler);},
+  watchlistFile:(action:'import'|'export',id?:string)=>ipcRenderer.invoke('watchlist-file',action,id),
+  drawingFile:(action:'import'|'export',data?:string)=>ipcRenderer.invoke('drawing-file',action,data),
+  cancel:(requestId:string)=>ipcRenderer.send('cancel',requestId),
+  selectFiles:(kind:string,symbol?:string)=>ipcRenderer.invoke('select-files',kind,symbol),
+  exportScreenerCSV:(data:unknown)=>ipcRenderer.invoke('screener-csv',data),
+  exportScreenshot:(data:string,name:string)=>ipcRenderer.invoke('save-chart-image',data,name),
+  openExternal:(url:string)=>ipcRenderer.invoke('external',url),
+});

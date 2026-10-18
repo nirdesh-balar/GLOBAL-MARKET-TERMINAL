@@ -1,0 +1,2 @@
+import{execFileSync}from'node:child_process';import{resolve}from'node:path';
+export function windowsResources(pid){if(!Number.isSafeInteger(pid)||pid<=0)throw Error('An exact owned parent PID is required');return JSON.parse(execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-File',resolve('scripts/windows-process-info.ps1'),'-OwnedParent',String(pid)],{encoding:'utf8',windowsHide:true,shell:false,timeout:20000}));}

@@ -1,0 +1,23 @@
+// Two visible Yahoo histories only; packaged launcher must never enable fixtures.
+import {extractFile} from '@electron/asar';
+import {_electron as electron,expect} from './isolated-electron.mjs';import assert from 'node:assert/strict';import {mkdtemp,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';
+let page;const errors=[];const profile=await mkdtemp(join(tmpdir(),'imt-stage2-package-'));let app;
+try{
+ app=await electron.launch({executablePath:resolve('release-stage2/mac-arm64/Indian Market Terminal.app/Contents/MacOS/Indian Market Terminal'),args:[],env:{...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1'},timeout:60000});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));
+ await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:60000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:90000});
+ const manifest=JSON.parse(extractFile(resolve('release-stage2/mac-arm64/Indian Market Terminal.app/Contents/Resources/app.asar'),'package.json').toString());assert.equal(manifest.drawingPreview,'phase6-stage2');
+ const health=await page.evaluate(()=>window.terminal.request('/health'));assert.equal(health.provider.source,'YAHOO FINANCE');assert.equal(health.provider.provider_requests,2);
+ await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel('Layout 1',{exact:true}).click();const canvas=await page.getByTestId('pane-0').locator('.chart-canvas').boundingBox();
+ for(const [kind,points] of [['fib_retracement',[[200,160],[350,350]]],['fib_extension',[[240,350],[410,270],[320,360]]],['date_price_range',[[450,240],[650,160]]]]){
+  await page.getByTestId('drawing-category-'+(kind==='date_price_range'?'forecast':'fibonacci')).click();await page.getByTestId('drawing-tool-'+kind).click();for(const [x,y] of points)await page.mouse.click(canvas.x+x,canvas.y+y);
+  await page.getByLabel('Cursor / crosshair',{exact:true}).click();await page.screenshot({path:'test-results/stage2-packaged-'+(kind==='fib_retracement'?'fibonacci':kind==='fib_extension'?'extension':'measurement')+'.png'});if(kind!=='date_price_range'){await page.getByLabel('Edit selected drawing pane 0',{exact:true}).click();await page.getByLabel('Drawing visible',{exact:true}).uncheck();await page.getByRole('button',{name:'Done',exact:true}).click();}
+  if(kind==='text'){await page.getByLabel('Annotation text',{exact:true}).fill('Local drawing preview · real Yahoo history');await page.getByRole('button',{name:'Done',exact:true}).click();}
+ }
+ await expect.poll(async()=>{const w=await page.evaluate(()=>window.terminal.request('/workspace'));return Object.values(w.panes[0].drawing_sets).flat().length;}).toBe(3);
+ assert.equal((await page.evaluate(()=>window.terminal.request('/api/history/status'))).provider_requests,2,'Drawing tools reuse fetched data');assert.equal(await page.locator('.symbol-details,[data-testid="stock-details"]').count(),0);assert.deepEqual(errors,[]);
+ await page.getByLabel('Cursor / crosshair',{exact:true}).click();await page.screenshot({path:'test-results/stage2-packaged-fibonacci-measurement.png'});await page.getByTestId('drawing-category-fibonacci').click();await page.screenshot({path:'test-results/stage2-packaged-fibonacci-menu.png'});await page.keyboard.press('Escape');await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();
+
+ const saved=await page.evaluate(()=>window.terminal.request('/workspace'));await app.close();app=await electron.launch({executablePath:resolve('release-stage2/mac-arm64/Indian Market Terminal.app/Contents/MacOS/Indian Market Terminal'),args:[],env:{...process.env,IMT_TEST_DATA_DIR:profile},timeout:60000});page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:60000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:90000});assert.deepEqual(await page.evaluate(()=>window.terminal.request('/workspace')),saved);assert.deepEqual(errors,[]);
+ await writeFile('test-results/stage2-packaged-verification.json',JSON.stringify({production_source:health.provider.source,provider_requests:2,tools:['fib_retracement','fib_extension','date_price_range'],preview_marker:manifest.drawingPreview,profile,renderer_errors:errors,restart:true,stock_details_absent:true,history_requests_added_by_drawings:0},null,2));
+ console.log('PASS: isolated arm64 Stage 2 package, production Yahoo data, two visible histories, real-data retracement/extension/measurement drawings, no details card and zero renderer errors.');
+}finally{await app?.close();}

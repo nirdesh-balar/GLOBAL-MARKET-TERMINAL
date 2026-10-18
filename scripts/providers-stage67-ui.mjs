@@ -1,0 +1,31 @@
+import {_electron as electron,expect} from './isolated-electron.mjs';
+import assert from 'node:assert/strict';
+import {mkdtemp,writeFile,mkdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+const profile=await mkdtemp(join(tmpdir(),'imt-stage67a-ui-'));let app,page;const errors=[];
+const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/dist/Electron.app/Contents/MacOS/Electron'),args:['.'],env:{...process.env,IMT_UI_FIXTURE:'1',IMT_OFFLINE:'1',IMT_FAST_SCREENER_UI:'1',IMT_TEST_DATA_DIR:profile},timeout:60000});
+const request=(p,m='GET',b)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[p,m,b]);
+const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:45000});};
+try{
+ await mkdir('test-results',{recursive:true});app=await launch();await load();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect.poll(async()=>(await request('/api/quotes/status?watchlist=stocks')).pending,{timeout:30000}).toBe(0);
+ const w=await request('/workspace'),crypto=w.watchlists.find(r=>r.id==='crypto').items.find(r=>r.symbol==='BTC-USD');
+ w.panes[0]={...w.panes[0],...crypto,drawing_sets:{[crypto.canonical_id+'/1d']:[{id:'archived-test',kind:'horizontal',version:2,anchors:[{time:1700000000,price:30000}],color:'#86aaf9',width:2,params:{}}]}};await request('/workspace','PUT',w);await page.reload();await load();const baseline=await request('/workspace');
+ await expect(page.getByTestId('pane-0').locator('.chart-overlay')).toContainText('Hyperliquid');
+ await page.getByLabel('Active watchlist',{exact:true}).selectOption('crypto');await expect.poll(async()=>(await request('/api/quotes/status?watchlist=crypto')).pending).toBe(0);
+ await expect(page.locator('.watch-row')).toHaveCount(4);await expect(page.getByTestId('watchlist-symbol-BTC-USD').locator('..')).toContainText('Migration required');
+ await expect.poll(async()=>(await request('/api/history/status')).active).toBe(0);const before=await request('/api/history/status');
+ await page.getByTestId('provider-status').click();await expect(page.getByRole('dialog',{name:'Market data providers',exact:true})).toBeVisible();assert.equal(await page.getByRole('dialog',{name:'Market data providers',exact:true}).evaluate(el=>el.closest('.titlebar')===null),true,'Provider dialog must live outside the titlebar/drag region');await expect(page.getByTestId('provider-policy')).toContainText('Yahoo Finance — Non-Crypto');await expect(page.getByTestId('crypto-provider-pending')).toContainText('pending');
+ const p=await request('/api/crypto-migration/preview');assert.equal(p.entries.length,4);assert.ok(p.entries.every(r=>!r.candidates.length));
+ await expect(page.getByLabel('Replacement for BTC-USD',{exact:true})).toBeDisabled();await page.getByTestId('migration-confirm').check();await expect(page.getByTestId('migration-commit')).toBeDisabled();
+ await page.screenshot({path:'test-results/stage67a-provider-migration-fixture.png'});
+ await page.getByTestId('migration-postpone').click();await expect(page.getByRole('dialog',{name:'Market data providers',exact:true}).getByRole('status')).toContainText('Migration postponed');await page.getByLabel('Close providers',{exact:true}).click();
+ const after=await request('/api/history/status');assert.equal(after.provider_requests,before.provider_requests);assert.equal(after.quote_provider_requests,before.quote_provider_requests);
+ const retained=await request('/workspace');assert.deepEqual(retained.panes[0].drawing_sets,baseline.panes[0].drawing_sets);assert.deepEqual(retained.panes[0].indicators,baseline.panes[0].indicators);
+ const csv=await request('/api/watchlists/import/preview','POST',{content:'symbol,provider,asset_type\nBTC-USD,yahoo,crypto\nAAPL,yahoo,equity\n'});assert.equal(csv.counts.failed,1);assert.equal(csv.counts.valid,1);
+ await page.getByTestId('pane-0').locator('.pane-symbol').click();await page.getByLabel('Search market').selectOption('crypto');await expect(page.locator('.search-results')).toContainText('Hyperliquid discovery pending');await page.getByLabel('Close search',{exact:true}).click();
+ await page.getByLabel('Active watchlist',{exact:true}).selectOption('stocks');await page.getByTestId('watchlist-symbol-SBIN-EQ').click();await expect(page.getByTestId('pane-0').locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect(page.getByTestId('pane-0').locator('.ohlc')).toBeVisible();
+ await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();const saved=await request('/workspace');await app.close();app=await launch();await load();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});assert.deepEqual(await request('/workspace'),saved);assert.equal((await request('/api/crypto-migration/preview')).postponed,true);
+ assert.equal(await page.locator('[data-testid="stock-details"],.symbol-details').count(),0);assert.deepEqual(errors,[]);
+ await writeFile('test-results/stage67a-ui-verification.json',JSON.stringify({profile,strict_crypto_pending:true,no_yahoo_crypto_requests:true,verified_candidates_absent:true,commit_disabled_without_metadata:true,postpone_preserves_references:true,drawings_indicators_retained:true,csv_routing:true,crypto_discovery_no_yahoo:true,noncrypto_chart_ohlc:true,restart:true,stock_details_absent:true,renderer_errors:errors},null,2));console.log('PASS: Milestone A routing/pending UI, migration preview/postpone/confirmation guard, archived drawing and indicator preservation, CSV policy, non-crypto chart and restart.');
+}catch(e){if(page&&!page.isClosed())await page.screenshot({path:'test-results/stage67a-ui-failure.png'});throw e;}finally{await app?.close();}

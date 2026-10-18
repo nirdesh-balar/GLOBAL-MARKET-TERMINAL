@@ -1,0 +1,10 @@
+import type {QuoteRow} from './hooks';
+import {quoteTime} from './hooks';
+import {price} from '../services/api';
+export function QuoteCells({row,migrationRequired=false}:{row:QuoteRow|undefined;migrationRequired?:boolean}){
+  const value=row?.value,pending=row?.state==='pending'||row?.state==='loading';
+  const state=migrationRequired?'Migration required':row?.stream_state?row.stream_state:pending?'Loading…':row?.error?.includes('Hyperliquid')?'Crypto pending':row?.error?'Unavailable':row?.stale?'Stale':row?.state==='cancelled'?'Paused':'Not fetched';
+  const title=value?`${value.source} · ${value.notice}\nData: ${value.timestamp_kind==='trading_date'?'trading date ':''}${quoteTime(value)} · ${value.timezone}\nReceived/retrieved: ${new Date((value.received_at||value.fetched_at)*1000).toLocaleString()}\nSession: ${value.session.state} (${value.session.basis})\nPrevious close: ${value.previous_close??'unavailable'}\nLast confirmed completed bar: ${value.last_completed_bar_time?new Date(value.last_completed_bar_time*1000).toISOString().slice(0,10):'unconfirmed'}${row?.error?'\n'+row.error:''}`:row?.error||'Latest available historical prices load independently of charts.';
+  const color=value?.change!==null&&value?.change!==undefined?(value.change>0?'positive':value.change<0?'negative':''):'';
+  return <><span className={`quote ${row?.stale||row?.error?'stale-quote':''}`} title={title}><strong><b className="quote-number">{value?price(value.price,value.precision):'—'}</b>{value&&<em className="quote-currency"> {value.currency||'unit ?'}</em>}</strong><small>{value?`${row?.stream_state?row.stream_state+' · ':row?.stale||row?.error?'Stale · ':''}${pending?'Loading · ':''}${quoteTime(value)}`:state}</small></span><span className={`watch-change ${color}`} title={title}><strong>{value?.change!==null&&value?.change!==undefined?(value.change>0?'+':'')+value.change.toFixed(2)+'%':'—'}</strong><small>{value?.absolute_change!==null&&value?.absolute_change!==undefined?(value.absolute_change>0?'+':'')+price(value.absolute_change,value.precision):'No comparable close'}</small></span></>;
+}

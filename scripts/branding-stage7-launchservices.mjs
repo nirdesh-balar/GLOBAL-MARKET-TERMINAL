@@ -1,0 +1,12 @@
+// LaunchServices launch of the exact stable app, with an isolated native lease.
+import {validateLaunch} from './isolated-electron.mjs';import {session} from './stability-stage7-session.mjs';
+import {mkdtemp,writeFile,readFile,unlink,access} from 'node:fs/promises';import{tmpdir,homedir}from'node:os';import{join}from'node:path';import{spawnSync,execFileSync}from'node:child_process';import assert from'node:assert/strict';
+const t=await session(),checked=await validateLaunch({executablePath:t.executable,args:[],env:t.env}),lock=join(t.profile,'.imt-test-owner.json');await writeFile(lock,JSON.stringify({pid:process.pid,token:checked.env.IMT_TEST_LEASE}),{flag:'wx'});
+const ownedEnv=Object.entries(checked.env).filter(([k])=>k.startsWith('IMT_')||k.startsWith('GMT_')).flatMap(([k,v])=>['--env',k+'='+v]);
+const progress='test-results/stage7-launchservices-progress.json',done='test-results/stage7-launchservices-done.json';let completed=false;
+try{try{await access(done);throw Error('Old native visual completion file must be preserved before another attempt')}catch(e){if(e.code!=='ENOENT')throw e;}
+ const p=spawnSync('/usr/bin/open',['-n','-a',t.applicationRoot,...ownedEnv],{encoding:'utf8'});assert.equal(p.status,0,p.stderr);await writeFile(progress,JSON.stringify({state:'awaiting-visual-inspection-and-native-quit',application:t.applicationRoot,profile:t.profile,launchservices_exit:p.status},null,2));console.log('Native LaunchServices app open: '+t.applicationRoot);
+ const until=Date.now()+900000;while(Date.now()<until){try{const value=JSON.parse(await readFile(done,'utf8'));assert.equal(value.native_menu_about_dock_verified,true);assert.equal(value.native_quit,true);completed=true;break;}catch(e){if(e.code!=='ENOENT')throw e;}await new Promise(r=>setTimeout(r,1000));}assert.ok(completed,'Native visual verification did not complete');
+ let normal=false;try{await access(join(homedir(),'Library/Application Support/GLOBAL MARKET TERMINAL'));normal=true}catch{}assert.equal(normal,false);
+ await writeFile('test-results/stage7-launchservices.json',JSON.stringify({exact_application:t.applicationRoot,profile:t.profile,launchservices_launch:true,normal_stable_profile_absent:true,lease_verified_before_profile_write:true,...JSON.parse(await readFile(done,'utf8'))},null,2));console.log('PASS exact native LaunchServices launch, visual branding and native quit');
+}finally{if(completed){await unlink(checked.lease);await unlink(lock);}}

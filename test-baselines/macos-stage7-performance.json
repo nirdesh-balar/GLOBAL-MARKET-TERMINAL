@@ -1,0 +1,186 @@
+{
+  "provenance": "Actual macOS v0.7.0 Stage7 run; never counted as Windows execution",
+  "original_evidence_sha256": "b5511dbc7377d4f8a236d325d62da4874b161854241fe9a3192cc112c75e49ac",
+  "samples": [
+    {
+      "layout": 1,
+      "cache": "cold RAM cache (fresh provider retrieval; discovery already cached)",
+      "duration_ms": 1132.0367499999702,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 58.2,
+          "rss_mib": 161.203125
+        },
+        "renderer": [
+          {
+            "rss_mib": 269.1875,
+            "cpu_percent": 0
+          }
+        ]
+      }
+    },
+    {
+      "layout": 1,
+      "cache": "warm RAM",
+      "duration_ms": 437.94029199995566,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 75.6,
+          "rss_mib": 117.1875
+        },
+        "renderer": [
+          {
+            "rss_mib": 297.109375,
+            "cpu_percent": 8.158185606701641
+          }
+        ]
+      }
+    },
+    {
+      "layout": 2,
+      "cache": "cold RAM cache (fresh provider retrieval; discovery already cached)",
+      "duration_ms": 2701.3480839999393,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 63.7,
+          "rss_mib": 165.84375
+        },
+        "renderer": [
+          {
+            "rss_mib": 360.828125,
+            "cpu_percent": 3.6982619749565373
+          }
+        ]
+      }
+    },
+    {
+      "layout": 2,
+      "cache": "warm RAM",
+      "duration_ms": 501.6032079999568,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 86.1,
+          "rss_mib": 165.890625
+        },
+        "renderer": [
+          {
+            "rss_mib": 417.875,
+            "cpu_percent": 10.090942438929199
+          }
+        ]
+      }
+    },
+    {
+      "layout": 4,
+      "cache": "cold RAM cache (fresh provider retrieval; discovery already cached)",
+      "duration_ms": 6179.731083000079,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 24.2,
+          "rss_mib": 172.09375
+        },
+        "renderer": [
+          {
+            "rss_mib": 562.90625,
+            "cpu_percent": 4.497801242672236
+          }
+        ]
+      }
+    },
+    {
+      "layout": 4,
+      "cache": "warm RAM",
+      "duration_ms": 1275.8301669999491,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 19.3,
+          "rss_mib": 170.609375
+        },
+        "renderer": [
+          {
+            "rss_mib": 633.15625,
+            "cpu_percent": 7.329410291724051
+          }
+        ]
+      }
+    },
+    {
+      "layout": 6,
+      "cache": "cold RAM cache (fresh provider retrieval; discovery already cached)",
+      "duration_ms": 9250.696374999941,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 18.3,
+          "rss_mib": 162.71875
+        },
+        "renderer": [
+          {
+            "rss_mib": 736.84375,
+            "cpu_percent": 4.594233924594898
+          }
+        ]
+      }
+    },
+    {
+      "layout": 6,
+      "cache": "warm RAM",
+      "duration_ms": 1189.4270829999587,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 45.3,
+          "rss_mib": 130.0625
+        },
+        "renderer": [
+          {
+            "rss_mib": 735.078125,
+            "cpu_percent": 10.63471223533333
+          }
+        ]
+      }
+    },
+    {
+      "layout": 8,
+      "cache": "cold RAM cache (fresh provider retrieval; discovery already cached)",
+      "duration_ms": 10480.772124999901,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 26.1,
+          "rss_mib": 157.703125
+        },
+        "renderer": [
+          {
+            "rss_mib": 624.1875,
+            "cpu_percent": 3.181868565770461
+          }
+        ]
+      }
+    },
+    {
+      "layout": 8,
+      "cache": "warm RAM",
+      "duration_ms": 1514.4288749999832,
+      "resources": {
+        "backend": {
+          "pid": 45372,
+          "cpu_percent": 28.5,
+          "rss_mib": 171.578125
+        },
+        "renderer": [
+          {
+            "rss_mib": 760.875,
+            "cpu_percent": 11.609958605276537
+          }
+        ]
+      }
+    }
+  ]
+}

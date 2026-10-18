@@ -1,0 +1,7 @@
+import {useEffect,useRef,type ReactNode} from 'react';
+import {X} from 'lucide-react';
+export function WatchlistDialog({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}){
+ const ref=useRef<HTMLDivElement>(null),close=useRef(onClose);close.current=onClose;
+ useEffect(()=>{const previous=document.activeElement as HTMLElement|null;ref.current?.focus();const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close.current();}if(e.key==='Tab'){const nodes=Array.from(ref.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),[tabindex="0"]')||[]);if(!nodes.length)return;const first=nodes[0],last=nodes.at(-1)!;if(e.shiftKey&&(document.activeElement===first||document.activeElement===ref.current)){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===ref.current)){e.preventDefault();first.focus();}}};window.addEventListener('keydown',key,true);return()=>{window.removeEventListener('keydown',key,true);previous?.focus();};},[]);
+ return <div className="modal-backdrop watchlist-backdrop"><div className="watchlist-dialog" ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title}><header><h2>{title}</h2><button aria-label="Close watchlist dialog" onClick={onClose}><X size={17}/></button></header>{children}</div></div>;
+}

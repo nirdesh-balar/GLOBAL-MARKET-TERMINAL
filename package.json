@@ -1,0 +1,155 @@
+{
+  "name": "global-market-terminal",
+  "productName": "GLOBAL MARKET TERMINAL",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal global market analysis terminal with Yahoo Finance and public Hyperliquid data",
+  "author": "GLOBAL MARKET TERMINAL",
+  "main": "desktop/dist-electron/main.cjs",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit -p desktop/tsconfig.json && tsc --noEmit -p desktop/tsconfig.electron.json && vite build --config desktop/vite.config.ts && node scripts/build-electron.mjs && node scripts/build-notification-native.mjs",
+    "test": "node scripts/test.mjs",
+    "test:ui": "node scripts/smoke.mjs && node scripts/watchlist-ui.mjs",
+    "package:mac": "npm run build && node scripts/package.mjs",
+    "refresh:instruments": "node scripts/refresh-instruments.mjs",
+    "test:internet": "node scripts/packaged-smoke.mjs",
+    "test:terminal": "node scripts/terminal-ui.mjs",
+    "test:watchlist": "node scripts/watchlist-ui.mjs",
+    "test:watchlist:packaged": "node scripts/watchlist-ui.mjs --packaged",
+    "test:global": "node scripts/global-ui.mjs",
+    "test:global:internet": "node scripts/global-live.mjs",
+    "test:drawings": "node scripts/drawing-math.mjs && node scripts/drawing-stage1-ui.mjs",
+    "package:stage1": "npm run build && node scripts/package.mjs --stage1",
+    "test:drawings:packaged": "node scripts/drawing-stage1-packaged.mjs",
+    "package:stage2": "npm run build && node scripts/package.mjs --stage2",
+    "test:stage2": "node scripts/drawing-math.mjs && node scripts/drawing-stage2-math.mjs && node scripts/drawing-stage2-ui.mjs",
+    "test:stage2:packaged": "node scripts/drawing-stage2-packaged.mjs",
+    "test:stage3": "node scripts/drawing-math.mjs && node scripts/drawing-stage3-math.mjs && node scripts/drawing-stage3-ui.mjs",
+    "package:stage3": "npm run build && node scripts/package.mjs --stage3",
+    "test:stage3:packaged": "node scripts/drawing-stage3-packaged.mjs",
+    "test:stage4": "node scripts/drawing-math.mjs && node scripts/drawing-stage4-math.mjs && node scripts/drawing-stage4-ui.mjs",
+    "package:stage4": "npm run build && node scripts/package.mjs --stage4",
+    "test:stage4:packaged": "node scripts/drawing-stage4-packaged.mjs",
+    "test:screener": "node scripts/screener-stage5-math.mjs && node scripts/screener-stage5-ui.mjs",
+    "package:stage5": "npm run build && node scripts/package.mjs --stage5",
+    "test:stage5:packaged": "node scripts/screener-stage5-packaged.mjs",
+    "package:stage6": "npm run build && node scripts/package.mjs --stage6",
+    "test:alerts": "node scripts/alerts-stage6-ui.mjs",
+    "test:stage6:packaged": "node scripts/alerts-stage6-packaged.mjs",
+    "package:stage65": "npm run build && node scripts/package.mjs --stage65",
+    "test:stage65": "node scripts/watchlists-stage65-files.mjs && node scripts/watchlists-stage65-ui.mjs",
+    "package:stage66": "npm run build && node scripts/package.mjs --stage66",
+    "test:stage66": "node scripts/refresh-stage66-math.mjs && node scripts/refresh-stage66-ui.mjs",
+    "package:stage67a": "npm run build && node scripts/package.mjs --stage67a",
+    "test:stage67a": "node scripts/providers-stage67-ui.mjs",
+    "package:stage67b": "npm run build && node scripts/package.mjs --stage67b",
+    "test:stage67b": "node scripts/hyperliquid-stage67b-ui.mjs",
+    "package:stage67c": "npm run build && node scripts/package.mjs --stage67c",
+    "test:stage67c": "node scripts/streams-stage67c-math.mjs && node scripts/streams-stage67c-ui.mjs",
+    "package:stage67d": "npm run build && node scripts/package.mjs --stage67d",
+    "test:stage67d": "node scripts/analysis-stage67d-ui.mjs",
+    "package:stage67e1": "npm run build && node scripts/package.mjs --stage67e1",
+    "test:stage67e1": "node scripts/trend-stage67e1-math.mjs && node scripts/trend-stage67e1-ui.mjs",
+    "package:stage67e11": "npm run build && node scripts/package.mjs --stage67e11",
+    "package:stage67e2": "npm run build && node scripts/package.mjs --stage67e2",
+    "test:stage67e2": "node scripts/momentum-stage67e2-math.mjs && node scripts/momentum-stage67e2-ui.mjs",
+    "package:stage67e3a": "npm run build && node scripts/package.mjs --stage67e3a",
+    "test:stage67e3a": "node scripts/volume-stage67e3a-math.mjs && node scripts/volume-stage67e3a-ui.mjs",
+    "package:stage67f": "npm run build && node scripts/package.mjs --stage67f",
+    "package:stage67e3b": "npm run build && node scripts/package.mjs --stage67e3b",
+    "test:stage67e3b": "node scripts/custom-stage67e3b-math.mjs && node scripts/custom-stage67e3b-ui.mjs",
+    "package:stage67g": "npm run build && node scripts/package.mjs --stage67g",
+    "package:stage67g1": "npm run build && node scripts/package.mjs --stage67g1",
+    "package:stable": "npm run build && node scripts/package.mjs --stable",
+    "package:windows": "node scripts/package-windows.mjs",
+    "test:platform": "node scripts/windows-platform-tests.mjs",
+    "test:windows": "node scripts/verify-windows.mjs",
+    "test:windows:packaged": "node scripts/windows-packaged.mjs",
+    "setup:windows": "node scripts/setup-windows.mjs",
+    "package:public:mac": "npm run build && node scripts/package-public-mac.mjs",
+    "test:release": "node scripts/release-unit.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.10",
+    "lightweight-charts": "5.2.1",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "44.7.2",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.28.0",
+    "playwright": "^1.56.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0",
+    "vite": "8.3.4"
+  },
+  "build": {
+    "appId": "local.globalmarket.terminal",
+    "productName": "GLOBAL MARKET TERMINAL",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/dist/**/*",
+      "desktop/dist-electron/**/*",
+      "package.json",
+      "NOTICE"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist/imt-backend",
+        "to": "backend"
+      }
+    ],
+    "asar": true,
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.finance",
+      "identity": null,
+      "icon": "desktop/assets/icon.icns",
+      "extendInfo": {
+        "CFBundleDisplayName": "GLOBAL MARKET TERMINAL",
+        "CFBundleName": "GLOBAL MARKET TERMINAL"
+      }
+    },
+    "npmRebuild": false,
+    "asarUnpack": [
+      "desktop/dist-electron/*.node"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "nirdesh-balar",
+        "repo": "GLOBAL-MARKET-TERMINAL",
+        "releaseType": "draft",
+        "private": false
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL.git"
+  },
+  "homepage": "https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL",
+  "bugs": {
+    "url": "https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/issues"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,14 @@
+TradingView Lightweight Charts™
+Copyright (с) 2025 TradingView, Inc. https://www.tradingview.com/
+
+Lightweight Charts is licensed under Apache License 2.0.
+Source: https://github.com/tradingview/lightweight-charts/tree/v5.2.1
+
+Historical data client: yfinance 1.7.0 (Apache License 2.0).
+https://github.com/ranaroussi/yfinance
+NSE directory files: official NSE Securities Available for Trading reference data.
+Yahoo and NSE market data retain their providers' terms and attribution.
+
+Exchange session calendars: exchange_calendars 4.13.2 (Apache License 2.0).
+https://github.com/gerrymanoim/exchange_calendars
+IANA timezone data: tzdata 2026.5, https://www.iana.org/time-zones

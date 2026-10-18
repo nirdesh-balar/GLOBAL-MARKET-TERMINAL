@@ -1,0 +1,227 @@
+{
+  "stage65_before": [
+    {
+      "requested": {
+        "name": "1280x800",
+        "width": 1280,
+        "height": 800
+      },
+      "native": {
+        "outer": [
+          1280,
+          800
+        ],
+        "work_area": {
+          "width": 1470,
+          "height": 834
+        }
+      },
+      "geometry": {
+        "window": [
+          1280,
+          800
+        ],
+        "sidebar": {
+          "x": 960,
+          "y": 72,
+          "width": 320,
+          "height": 704,
+          "bottom": 776
+        },
+        "rows": {
+          "x": 961,
+          "y": 210,
+          "width": 319,
+          "height": 477,
+          "bottom": 687
+        },
+        "header": {
+          "x": 961,
+          "y": 72,
+          "width": 319,
+          "height": 41,
+          "bottom": 113
+        },
+        "add": {
+          "x": 973,
+          "y": 695,
+          "width": 295,
+          "height": 31,
+          "bottom": 726
+        },
+        "overflow": "auto",
+        "flex": "1",
+        "details": 0,
+        "header_buttons_fit": true
+      }
+    },
+    {
+      "requested": {
+        "name": "1440x900",
+        "width": 1440,
+        "height": 900
+      },
+      "native": {
+        "outer": [
+          1440,
+          834
+        ],
+        "work_area": {
+          "width": 1470,
+          "height": 834
+        }
+      },
+      "geometry": {
+        "window": [
+          1440,
+          834
+        ],
+        "sidebar": {
+          "x": 1120,
+          "y": 72,
+          "width": 320,
+          "height": 738,
+          "bottom": 810
+        },
+        "rows": {
+          "x": 1121,
+          "y": 210,
+          "width": 319,
+          "height": 511,
+          "bottom": 721
+        },
+        "header": {
+          "x": 1121,
+          "y": 72,
+          "width": 319,
+          "height": 41,
+          "bottom": 113
+        },
+        "add": {
+          "x": 1133,
+          "y": 729,
+          "width": 295,
+          "height": 31,
+          "bottom": 760
+        },
+        "overflow": "auto",
+        "flex": "1",
+        "details": 0,
+        "header_buttons_fit": true
+      }
+    },
+    {
+      "requested": {
+        "name": "13-inch-Air-1440x820",
+        "width": 1440,
+        "height": 820
+      },
+      "native": {
+        "outer": [
+          1440,
+          820
+        ],
+        "work_area": {
+          "width": 1470,
+          "height": 834
+        }
+      },
+      "geometry": {
+        "window": [
+          1440,
+          820
+        ],
+        "sidebar": {
+          "x": 1120,
+          "y": 72,
+          "width": 320,
+          "height": 724,
+          "bottom": 796
+        },
+        "rows": {
+          "x": 1121,
+          "y": 210,
+          "width": 319,
+          "height": 497,
+          "bottom": 707
+        },
+        "header": {
+          "x": 1121,
+          "y": 72,
+          "width": 319,
+          "height": 41,
+          "bottom": 113
+        },
+        "add": {
+          "x": 1133,
+          "y": 715,
+          "width": 295,
+          "height": 31,
+          "bottom": 746
+        },
+        "overflow": "auto",
+        "flex": "1",
+        "details": 0,
+        "header_buttons_fit": true
+      }
+    },
+    {
+      "requested": {
+        "name": "1440x900-exact-renderer",
+        "width": 1440,
+        "height": 900,
+        "rendererViewport": true
+      },
+      "native": {
+        "outer": [
+          1440,
+          834
+        ],
+        "work_area": {
+          "width": 1470,
+          "height": 834
+        }
+      },
+      "geometry": {
+        "window": [
+          1440,
+          900
+        ],
+        "sidebar": {
+          "x": 1120,
+          "y": 72,
+          "width": 320,
+          "height": 804,
+          "bottom": 876
+        },
+        "rows": {
+          "x": 1121,
+          "y": 210,
+          "width": 319,
+          "height": 577,
+          "bottom": 787
+        },
+        "header": {
+          "x": 1121,
+          "y": 72,
+          "width": 319,
+          "height": 41,
+          "bottom": 113
+        },
+        "add": {
+          "x": 1133,
+          "y": 795,
+          "width": 295,
+          "height": 31,
+          "bottom": 826
+        },
+        "overflow": "auto",
+        "flex": "1",
+        "details": 0,
+        "header_buttons_fit": true
+      }
+    }
+  ],
+  "original_evidence_sha256": "8f23204609a31ded357f841ad71680980cface968c5fd4b849e0bc72c98769bf",
+  "provenance": "Recorded Mac sidebar geometry only; no older app launched"
+}

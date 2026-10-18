@@ -1,0 +1,354 @@
+{
+  "provenance": "Verified macOS v0.7.0 Stage7 release; historical comparison only",
+  "original_evidence_sha256": "29c1a391b7607a70870d17d3d29ae54756cbe684abd82ee57164e2e8b8b99ec8",
+  "registry": [
+    {
+      "kind": "SMA",
+      "name": "SMA",
+      "category": "Moving averages"
+    },
+    {
+      "kind": "EMA",
+      "name": "EMA",
+      "category": "Moving averages"
+    },
+    {
+      "kind": "WMA",
+      "name": "WMA",
+      "category": "Moving averages"
+    },
+    {
+      "kind": "VWMA",
+      "name": "VWMA",
+      "category": "Moving averages"
+    },
+    {
+      "kind": "RSI",
+      "name": "RSI",
+      "category": "Momentum"
+    },
+    {
+      "kind": "MACD",
+      "name": "MACD",
+      "category": "Momentum"
+    },
+    {
+      "kind": "STOCHRSI",
+      "name": "Stochastic RSI",
+      "category": "Momentum"
+    },
+    {
+      "kind": "BB",
+      "name": "Bollinger Bands",
+      "category": "Volatility"
+    },
+    {
+      "kind": "ATR",
+      "name": "ATR",
+      "category": "Volatility"
+    },
+    {
+      "kind": "SUPERTREND",
+      "name": "Supertrend",
+      "category": "Volatility"
+    },
+    {
+      "kind": "VWAP",
+      "name": "VWAP",
+      "category": "Volume"
+    },
+    {
+      "kind": "HMA",
+      "name": "Hull Moving Average (HMA)",
+      "category": "Trend"
+    },
+    {
+      "kind": "ICHIMOKU",
+      "name": "Ichimoku Cloud (ICHIMOKU)",
+      "category": "Trend"
+    },
+    {
+      "kind": "SAR",
+      "name": "Parabolic SAR (SAR)",
+      "category": "Trend"
+    },
+    {
+      "kind": "ADX",
+      "name": "Average Directional Index (ADX)",
+      "category": "Trend"
+    },
+    {
+      "kind": "ZIGZAG",
+      "name": "Zig Zag (ZIGZAG)",
+      "category": "Trend"
+    },
+    {
+      "kind": "AROON",
+      "name": "Aroon Up / Down / Oscillator (AROON)",
+      "category": "Trend"
+    },
+    {
+      "kind": "LINREG",
+      "name": "Linear Regression Line (LINREG)",
+      "category": "Trend"
+    },
+    {
+      "kind": "CMO",
+      "name": "Chande Momentum Oscillator (CMO)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "DPO",
+      "name": "Detrended Price Oscillator (DPO)",
+      "category": "Trend"
+    },
+    {
+      "kind": "KAMA",
+      "name": "Kaufman\u2019s Adaptive Moving Average (KAMA)",
+      "category": "Trend"
+    },
+    {
+      "kind": "LSMA",
+      "name": "Least Squares Moving Average (LSMA)",
+      "category": "Trend"
+    },
+    {
+      "kind": "MCGINLEY",
+      "name": "McGinley Dynamic (MCGINLEY)",
+      "category": "Trend"
+    },
+    {
+      "kind": "SMMA",
+      "name": "Smoothed Moving Average (SMMA)",
+      "category": "Trend"
+    },
+    {
+      "kind": "TEMA",
+      "name": "Triple Exponential Moving Average (TEMA)",
+      "category": "Trend"
+    },
+    {
+      "kind": "DEMA",
+      "name": "Double Exponential Moving Average (DEMA)",
+      "category": "Trend"
+    },
+    {
+      "kind": "VORTEX",
+      "name": "Vortex Indicator (VORTEX)",
+      "category": "Trend"
+    },
+    {
+      "kind": "STOCH",
+      "name": "Stochastic Oscillator (STOCH)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "CCI",
+      "name": "Commodity Channel Index (CCI)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "ROC",
+      "name": "Rate of Change (ROC)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "AO",
+      "name": "Awesome Oscillator (AO)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "MOM",
+      "name": "Momentum (MOM)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "WILLR",
+      "name": "Williams %R (WILLR)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "ULTOSC",
+      "name": "Ultimate Oscillator (ULTOSC)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "TSI",
+      "name": "True Strength Index (TSI)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "FISHER",
+      "name": "Fisher Transform (FISHER)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "PPO",
+      "name": "Percentage Price Oscillator (PPO)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "KST",
+      "name": "Know Sure Thing (KST)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "COPPOCK",
+      "name": "Coppock Curve (COPPOCK)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "CKS",
+      "name": "Chande Kroll Stop (CKS)",
+      "category": "Momentum"
+    },
+    {
+      "kind": "KC",
+      "name": "Keltner Channels (KC)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "DC",
+      "name": "Donchian Channels (DC)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "STDDEV",
+      "name": "Standard Deviation (STDDEV)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "HV",
+      "name": "Historical Volatility (HV)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "CHAIKIN_VOL",
+      "name": "Chaikin Volatility (CHAIKIN_VOL)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "CHOP",
+      "name": "Choppiness Index (CHOP)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "MASS",
+      "name": "Mass Index (MASS)",
+      "category": "Volatility"
+    },
+    {
+      "kind": "OBV",
+      "name": "On-Balance Volume (OBV)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "CMF",
+      "name": "Chaikin Money Flow (CMF)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "MFI",
+      "name": "Money Flow Index (MFI)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "ADL",
+      "name": "Accumulation/Distribution Line (ADL)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "VO",
+      "name": "Volume Oscillator (VO)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "EOM",
+      "name": "Ease of Movement (EOM)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "NVI",
+      "name": "Negative Volume Index (NVI)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "PVI",
+      "name": "Positive Volume Index (PVI)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "PVT",
+      "name": "Price Volume Trend (PVT)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "TMF",
+      "name": "Twiggs Money Flow (TMF)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "VROC",
+      "name": "Volume Rate of Change (VROC)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "PIVOT",
+      "name": "Pivot Points Standard",
+      "category": "Pivots & Sessions"
+    },
+    {
+      "kind": "SWING_PIVOT",
+      "name": "Pivot Points High/Low (confirmed swings)",
+      "category": "Pivots & Sessions"
+    },
+    {
+      "kind": "CPR",
+      "name": "Central Pivot Range",
+      "category": "Pivots & Sessions"
+    },
+    {
+      "kind": "CPR_MTF",
+      "name": "Advanced CPR \u2014 Multi-Timeframe",
+      "category": "Pivots & Sessions"
+    },
+    {
+      "kind": "ORB",
+      "name": "Opening Range Breakout (analysis)",
+      "category": "Pivots & Sessions"
+    },
+    {
+      "kind": "PREV_OHLC",
+      "name": "Previous Session OHLC",
+      "category": "Pivots & Sessions"
+    },
+    {
+      "kind": "ALPHATREND",
+      "name": "AlphaTrend \u2014 public variant",
+      "category": "Advanced studies"
+    },
+    {
+      "kind": "HALFTREND",
+      "name": "HalfTrend \u2014 public variant",
+      "category": "Advanced studies"
+    },
+    {
+      "kind": "RELATIVE_STRENGTH",
+      "name": "Comparative Relative Strength",
+      "category": "Advanced studies"
+    },
+    {
+      "kind": "VRVP",
+      "name": "Estimated Visible Range Volume Profile (OHLCV-based)",
+      "category": "Volume & Liquidity"
+    },
+    {
+      "kind": "INDIA_VIX",
+      "name": "India VIX \u2014 Yahoo reference",
+      "category": "Advanced studies"
+    }
+  ],
+  "indicators": 69,
+  "drawings": 86,
+  "screener_conditions": 59
+}

@@ -1,0 +1,41 @@
+name: macOS arm64 development candidate
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Exact reviewed source SHA
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  mac:
+    if: github.repository == 'nirdesh-balar/GLOBAL-MARKET-TERMINAL'
+    runs-on: macos-15
+    env:
+      SOURCE_REF: ${{ inputs.source_ref }}
+      GMT_MAC_OUTPUT: release-v1.0.0-global-market-terminal/mac-candidate
+    steps:
+      - name: Require an exact revision
+        run: node -e "if(!/^[a-f0-9]{40}$/.test(process.env.SOURCE_REF))process.exit(1)"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.19.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: 3.11.13
+      - run: npm ci
+      - run: python -m venv backend/.venv
+      - run: backend/.venv/bin/python -m pip install -r backend/requirements-lock.txt
+      - run: node scripts/download-test-directory.mjs
+      - run: backend/.venv/bin/python -m pytest backend/tests -q
+      - run: npm run package:public:mac
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: GMT-v1.0.0-mac-arm64-DEVELOPMENT-ONLY
+          path: release-v1.0.0-global-market-terminal/
+          retention-days: 14

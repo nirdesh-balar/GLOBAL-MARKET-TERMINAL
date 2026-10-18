@@ -1,0 +1,2 @@
+import type {Instrument} from '../types';
+export function IndexWatchlist({indices,symbol}:{indices:Instrument[];symbol:string}){const row=indices.find(i=>i.symbol===symbol);return <small className={row?.status==='verified'?'positive':'gold'} title={row?.verified_at?`Yahoo daily history checked ${new Date(row.verified_at*1000).toLocaleString()}; timeframe availability can differ.`:row?.error||'Select the index to check current Yahoo history.'}>{row?.status==='verified'?'Yahoo verified':row?.status==='unavailable'?'Yahoo unavailable':'Not verified'}</small>;}

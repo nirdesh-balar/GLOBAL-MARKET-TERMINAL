@@ -1,0 +1,42 @@
+[
+  {
+    "name": "NIFTY 50",
+    "ticker": "^NSEI",
+    "status": "verified",
+    "verified_at": 1791973398.88582,
+    "first": 1189987200,
+    "last": 1791936000,
+    "count": 4680,
+    "volume_available": true
+  },
+  {
+    "name": "NIFTY BANK",
+    "ticker": "^NSEBANK",
+    "status": "verified",
+    "verified_at": 1791973402.648693,
+    "first": 1189987200,
+    "last": 1791936000,
+    "count": 4695,
+    "volume_available": true
+  },
+  {
+    "name": "NIFTY 500",
+    "ticker": "^CRSLDX",
+    "status": "verified",
+    "verified_at": 1791973405.6664152,
+    "first": 1127692800,
+    "last": 1791936000,
+    "count": 5177,
+    "volume_available": true
+  },
+  {
+    "name": "SENSEX",
+    "ticker": "^BSESN",
+    "status": "verified",
+    "verified_at": 1791973409.012557,
+    "first": 867715200,
+    "last": 1791936000,
+    "count": 7215,
+    "volume_available": true
+  }
+]

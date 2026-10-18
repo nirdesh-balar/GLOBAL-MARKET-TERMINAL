@@ -1,0 +1,549 @@
+[
+  {
+    "name": "Pygments",
+    "version": "2.21.0",
+    "license": "BSD-2-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/Pygments/pygments-2.21.0.dist-info__licenses__AUTHORS",
+      "THIRD_PARTY_NOTICES/python/Pygments/pygments-2.21.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "altgraph",
+    "version": "0.17.5",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/altgraph/altgraph-0.17.5.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-doc",
+    "version": "0.0.5",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/annotated-doc/annotated_doc-0.0.5.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-types",
+    "version": "0.8.0",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/annotated-types/annotated_types-0.8.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "anyio",
+    "version": "4.15.1",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/anyio/anyio-4.15.1.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "beautifulsoup4",
+    "version": "4.15.0",
+    "license": "MIT License",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/beautifulsoup4/beautifulsoup4-4.15.0.dist-info__licenses__AUTHORS",
+      "THIRD_PARTY_NOTICES/python/beautifulsoup4/beautifulsoup4-4.15.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "certifi",
+    "version": "2026.7.22",
+    "license": "MPL-2.0",
+    "classifiers": [
+      "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/certifi/certifi-2026.7.22.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "cffi",
+    "version": "2.1.1",
+    "license": "MIT-0",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/cffi/cffi-2.1.1.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.5.2",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/charset-normalizer/charset_normalizer-3.5.2.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "click",
+    "version": "8.5.0",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/click/click-8.5.0.dist-info__licenses__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "curl_cffi",
+    "version": "0.16.3",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/curl_cffi/curl_cffi-0.16.3.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "exchange_calendars",
+    "version": "4.13.2",
+    "license": "Apache-2.0",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/exchange_calendars/exchange_calendars-4.13.2.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "fastapi",
+    "version": "0.135.1",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/fastapi/fastapi-0.135.1.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "h11",
+    "version": "0.16.0",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/h11/h11-0.16.0.dist-info__licenses__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "httpcore",
+    "version": "1.0.9",
+    "license": "BSD-3-Clause",
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/httpcore/httpcore-1.0.9.dist-info__licenses__LICENSE.md"
+    ]
+  },
+  {
+    "name": "httpx",
+    "version": "0.28.1",
+    "license": "BSD-3-Clause",
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/httpx/httpx-0.28.1.dist-info__licenses__LICENSE.md"
+    ]
+  },
+  {
+    "name": "idna",
+    "version": "3.20",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/idna/idna-3.20.dist-info__licenses__LICENSE.md"
+    ]
+  },
+  {
+    "name": "iniconfig",
+    "version": "2.3.1",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/iniconfig/iniconfig-2.3.1.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "korean_lunar_calendar",
+    "version": "0.4.0",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/korean_lunar_calendar/korean_lunar_calendar-0.4.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "lxml",
+    "version": "6.1.3",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/lxml/lxml-6.1.3.dist-info__licenses__LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/lxml/lxml-6.1.3.dist-info__licenses__LICENSES.txt"
+    ]
+  },
+  {
+    "name": "macholib",
+    "version": "1.16.4",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/macholib/macholib-1.16.4.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "multitasking",
+    "version": "0.0.13",
+    "license": "Apache",
+    "classifiers": [
+      "License :: OSI Approved :: Apache Software License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/multitasking/multitasking-0.0.13.dist-info__licenses__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "numpy",
+    "version": "2.4.2",
+    "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy___core__include__numpy__libdivide__LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy___core__src__common__pythoncapi-compat__COPYING",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy___core__src__highway__LICENSE",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy___core__src__multiarray__dragon4_LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy___core__src__npysort__x86-simd-sort__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy___core__src__umath__svml__LICENSE",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__fft__pocketfft__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__linalg__lapack_lite__LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__ma__LICENSE",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__src__distributions__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__src__mt19937__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__src__pcg64__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__src__philox__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__src__sfc64__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy-2.4.2.dist-info__licenses__numpy__random__src__splitmix64__LICENSE.md",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy___core__include__numpy__random__LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy__ma__LICENSE",
+      "THIRD_PARTY_NOTICES/python/numpy/numpy__random__LICENSE.md"
+    ]
+  },
+  {
+    "name": "packaging",
+    "version": "26.3",
+    "license": "Apache-2.0 OR BSD-2-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/packaging/packaging-26.3.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/packaging/packaging-26.3.dist-info__licenses__LICENSE.APACHE",
+      "THIRD_PARTY_NOTICES/python/packaging/packaging-26.3.dist-info__licenses__LICENSE.BSD"
+    ]
+  },
+  {
+    "name": "pandas",
+    "version": "3.0.1",
+    "license": "BSD 3-Clause License\n\n Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development",
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pandas/pandas-3.0.1.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "peewee",
+    "version": "4.5.3",
+    "license": "",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/peewee/peewee-4.5.3.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "platformdirs",
+    "version": "4.13.0",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/platformdirs/platformdirs-4.13.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "pluggy",
+    "version": "1.6.0",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pluggy/pluggy-1.6.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "protobuf",
+    "version": "7.36.2",
+    "license": "3-Clause BSD License",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/protobuf/protobuf-7.36.2.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "pycparser",
+    "version": "3.11",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pycparser/pycparser-3.11.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic",
+    "version": "2.12.5",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pydantic/pydantic-2.12.5.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic_core",
+    "version": "2.41.5",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pydantic_core/pydantic_core-2.41.5.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "pyinstaller",
+    "version": "6.19.0",
+    "license": "GPLv2-or-later with a special exception which allows to use PyInstaller to build and distribute non-free programs (inclu",
+    "classifiers": [
+      "License :: OSI Approved :: GNU General Public License v2 (GPLv2)"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pyinstaller/pyinstaller-6.19.0.dist-info__licenses__COPYING.txt"
+    ]
+  },
+  {
+    "name": "pyinstaller-hooks-contrib",
+    "version": "2026.8",
+    "license": "",
+    "classifiers": [
+      "License :: OSI Approved :: Apache Software License",
+      "License :: OSI Approved :: GNU General Public License v2 (GPLv2)"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pyinstaller-hooks-contrib/pyinstaller_hooks_contrib-2026.8.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "pyluach",
+    "version": "2.3.0",
+    "license": "MIT (PyPI metadata; supplemental current upstream text)",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pyluach/LICENSE-upstream"
+    ]
+  },
+  {
+    "name": "pytest",
+    "version": "9.0.2",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pytest/pytest-9.0.2.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "python-dateutil",
+    "version": "2.9.0.post0",
+    "license": "Dual License",
+    "classifiers": [
+      "License :: OSI Approved :: BSD License",
+      "License :: OSI Approved :: Apache Software License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/python-dateutil/python_dateutil-2.9.0.post0.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "pytz",
+    "version": "2026.5",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/pytz/pytz-2026.5.dist-info__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "requests",
+    "version": "2.34.2",
+    "license": "Apache-2.0",
+    "classifiers": [
+      "License :: OSI Approved :: Apache Software License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/requests/requests-2.34.2.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/requests/requests-2.34.2.dist-info__licenses__NOTICE"
+    ]
+  },
+  {
+    "name": "setuptools",
+    "version": "84.0.0",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools-84.0.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__autocommand-2.2.2.dist-info__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__backports.tarfile-1.2.0.dist-info__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__importlib_metadata-8.7.1.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__jaraco.text-4.0.0.dist-info__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__jaraco_context-6.1.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__jaraco_functools-4.4.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__more_itertools-10.8.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__packaging-26.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__packaging-26.0.dist-info__licenses__LICENSE.APACHE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__packaging-26.0.dist-info__licenses__LICENSE.BSD",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__platformdirs-4.4.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__tomli-2.4.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__wheel-0.46.3.dist-info__licenses__LICENSE.txt",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools___vendor__zipp-3.23.0.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools__config__NOTICE",
+      "THIRD_PARTY_NOTICES/python/setuptools/setuptools__config___validate_pyproject__NOTICE"
+    ]
+  },
+  {
+    "name": "six",
+    "version": "1.17.0",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/six/six-1.17.0.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "soupsieve",
+    "version": "3.0.3",
+    "license": "MIT",
+    "classifiers": [
+      "License :: OSI Approved :: MIT License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/soupsieve/soupsieve-3.0.3.dist-info__licenses__LICENSE.md"
+    ]
+  },
+  {
+    "name": "starlette",
+    "version": "1.8.0",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/starlette/starlette-1.8.0.dist-info__licenses__LICENSE.md"
+    ]
+  },
+  {
+    "name": "toolz",
+    "version": "1.2.0",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/toolz/toolz-1.2.0.dist-info__licenses__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "typing-inspection",
+    "version": "0.4.4",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/typing-inspection/typing_inspection-0.4.4.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.16.0",
+    "license": "PSF-2.0",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/typing_extensions/typing_extensions-4.16.0.dist-info__licenses__LICENSE"
+    ]
+  },
+  {
+    "name": "tzdata",
+    "version": "2026.5",
+    "license": "Apache-2.0",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/tzdata/tzdata-2026.5.dist-info__licenses__LICENSE",
+      "THIRD_PARTY_NOTICES/python/tzdata/tzdata-2026.5.dist-info__licenses__licenses__LICENSE_APACHE"
+    ]
+  },
+  {
+    "name": "urllib3",
+    "version": "2.8.0",
+    "license": "MIT",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/urllib3/urllib3-2.8.0.dist-info__licenses__LICENSE.txt"
+    ]
+  },
+  {
+    "name": "uvicorn",
+    "version": "0.42.0",
+    "license": "BSD-3-Clause",
+    "classifiers": [],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/uvicorn/uvicorn-0.42.0.dist-info__licenses__LICENSE.md"
+    ]
+  },
+  {
+    "name": "websockets",
+    "version": "15.0.1",
+    "license": "BSD-3-Clause",
+    "classifiers": [
+      "License :: OSI Approved :: BSD License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/websockets/websockets-15.0.1.dist-info__LICENSE"
+    ]
+  },
+  {
+    "name": "yfinance",
+    "version": "1.7.0",
+    "license": "Apache-2.0",
+    "classifiers": [
+      "License :: OSI Approved :: Apache Software License"
+    ],
+    "notices": [
+      "THIRD_PARTY_NOTICES/python/yfinance/yfinance-1.7.0.dist-info__licenses__LICENSE.txt"
+    ]
+  }
+]
