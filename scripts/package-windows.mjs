@@ -1,10 +1,11 @@
 import{spawnSync}from'node:child_process';import{existsSync,mkdirSync,statfsSync,readFileSync,writeFileSync,copyFileSync}from'node:fs';import{resolve,delimiter}from'node:path';import{createRequire}from'node:module';import{peArchitecture,peInfo,artifactManifest,tree}from'./windows-artifacts.mjs';
+import {WINDOWS_PYTHON, WINDOWS_PYTHON_CHECK} from './windows-python.mjs';
 if(process.platform!=='win32'||process.arch!=='x64')throw Error('Windows packaging requires a native Windows x64 build environment. No Mac binary can be reused.');
 const output=resolve(process.env.GMT_WINDOWS_OUTPUT||'release-v1.0.0-global-market-terminal-windows/build');if(existsSync(output))throw Error('Windows build output exists. Preserve it and choose a NEW GMT_WINDOWS_OUTPUT.');
 const disk=statfsSync('.');if(disk.bavail*disk.bsize<6*1024**3)throw Error('At least6GiB free is required; no old release will be removed.');
 const run=(c,a)=>{const r=spawnSync(c,a,{stdio:'inherit',shell:false,windowsHide:true,env:{...process.env,CSC_IDENTITY_AUTO_DISCOVERY:'false',PYINSTALLER_CONFIG_DIR:resolve('.runtime/pyinstaller-windows')}});if(r.status!==0)throw Error('Windows build failed: '+c+' (exit '+r.status+')');};
-const python=resolve('backend/.venv/Scripts/python.exe');if(!existsSync(python))throw Error('Run npm run setup:windows using Python3.11 x64 first.');
-run(python,['-c','import sys,struct; assert sys.version_info[:2] == (3,11) and struct.calcsize("P")==8']);
+const python=resolve('backend/.venv/Scripts/python.exe');if(!existsSync(python))throw Error('Run npm run setup:windows using Python '+WINDOWS_PYTHON+' x64 first.');
+run(python,['-c',WINDOWS_PYTHON_CHECK]);
 run(process.execPath,['node_modules/typescript/bin/tsc','--noEmit','-p','desktop/tsconfig.json']);run(process.execPath,['node_modules/typescript/bin/tsc','--noEmit','-p','desktop/tsconfig.electron.json']);run(process.execPath,['node_modules/vite/bin/vite.js','build','--config','desktop/vite.config.ts']);run(process.execPath,['scripts/build-electron.mjs']);run(process.execPath,['scripts/build-windows-native.mjs']);
 mkdirSync('.runtime/public-resources',{recursive:true});copyFileSync('backend/resources/index-verification.json','.runtime/public-resources/index-verification.json');
 run(python,['-m','PyInstaller','--noconfirm','--clean','--noupx','--onedir','--name','imt-backend','--distpath','backend/dist-windows','--workpath','backend/build-windows','--specpath','.runtime','--paths','backend','--add-data',resolve('.runtime/public-resources')+delimiter+'resources','--collect-submodules','uvicorn',...['yfinance','curl_cffi','certifi','exchange_calendars','tzdata','websockets'].flatMap(p=>['--collect-all',p]),'backend/launcher.py']);

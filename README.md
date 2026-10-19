@@ -28,7 +28,7 @@ Application Updates in Settings supports background stable checks, download prog
 
 See [build instructions](docs/BUILD.md), [testing](docs/TESTING.md), [release gates](docs/RELEASING.md), [storage policy](docs/STORAGE.md), [data and third-party terms](docs/LICENSE-AUDIT.md) and [contribution instructions](CONTRIBUTING.md).
 
-Use Node 22.19.0 and native Python 3.11 for the host platform. Run `npm ci`, then `npm run setup` on macOS or `npm run setup:windows` on Windows. Build with `npm run build`. Native Windows builds must run on Windows.
+Use Node 22.19.0, native Python 3.11 on macOS and standard CPython 3.13.16 x64 on Windows (see [Windows runtime review](docs/WINDOWS-CI-RUNTIME.md)). Run `npm ci`, then `npm run setup` on macOS or `npm run setup:windows` on Windows. Build with `npm run build`. Native Windows builds must run on Windows.
 
 Market data rights are separate from the application's proposed MIT license. The app fetches NSE directory metadata directly or lets users select permitted official files; provider directory CSV snapshots and historical candles are not part of the public source or public installer payload. Coverage, delays, rate limits and market availability vary. This application is for read-only personal analysis and does not place orders or guarantee live exchange quotes.
 
