@@ -58,10 +58,10 @@ jobs:
         run: node scripts/windows-ci-run.mjs directory node scripts/download-test-directory.mjs
       - id: privacy_tests
         name: Evidence privacy guard tests (built-ins only)
-        run: node scripts/windows-ci-run.mjs privacy_tests node --test scripts/windows-ci-public.test.mjs
+        run: node scripts/windows-ci-run.mjs privacy_tests node scripts/windows-ci-preflight-run.mjs privacy_tests
       - id: reporting_tests
         name: Failure-reporting and passive observer tests
-        run: node scripts/windows-ci-run.mjs reporting_tests node --test scripts/windows-ci-report.test.mjs scripts/windows-ci-diagnostics.test.mjs
+        run: node scripts/windows-ci-run.mjs reporting_tests node scripts/windows-ci-preflight-run.mjs reporting_tests
       - id: python_tests
         name: Full Python regression suite (actual Windows execution)
         run: node scripts/windows-ci-run.mjs python_tests backend/.venv/Scripts/python.exe scripts/windows_pytest_diagnostics.py backend/tests -q --junitxml=test-results/windows-python.xml

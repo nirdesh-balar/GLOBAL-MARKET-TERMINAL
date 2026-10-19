@@ -8,7 +8,7 @@ const EXCEPTIONS=['AssertionError','ValueError','TypeError','RuntimeError','OSEr
 const CODES=['OTHER_FAILURE','ENV_VAR_LENGTH_LIMIT','ACCESS_DENIED','FILE_NOT_FOUND','FILE_LOCKED','ENCODING_ERROR','SQLITE_OPERATIONAL_ERROR','ASSERTION_FAILED'];
 const integer=x=>Number.isSafeInteger(x)&&x>=0&&x<=1000000;
 function keys(x,names){if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).sort().join('|')!==names.sort().join('|'))throw Error('Diagnostic schema rejected');}
-export function assertDiagnostics(d){
+export function assertDiagnostics(d,reviewed=catalog){
   if(d===null)return;
   keys(d,['schema_version','status','runtime','exit_code','counts','rejected_identifiers','omitted_failures','environment','failures']);
   if(d.schema_version!==1||!['RECORDED','INTERNAL_ERROR'].includes(d.status)||!integer(d.exit_code)||d.exit_code>255)throw Error('Invalid diagnostic status');
@@ -22,7 +22,7 @@ export function assertDiagnostics(d){
   const unique=new Set();
   for(const row of d.failures){
     keys(row,['test','case_index','node_sha256','node_id','phase','outcome','exception','code']);
-    if(typeof row.test!=='string'||!BASE.test(row.test)||!integer(row.case_index)||catalog.nodes[row.test]?.[row.case_index]!==row.node_sha256)throw Error('Test absent from reviewed public collection');
+    if(typeof row.test!=='string'||!BASE.test(row.test)||!integer(row.case_index)||reviewed.nodes[row.test]?.[row.case_index]!==row.node_sha256)throw Error('Test absent from reviewed public collection');
     if(row.node_id!==null&&(typeof row.node_id!=='string'||row.node_id.length>512||/[^\x20-\x7e]/.test(row.node_id)||row.node_id.split('[',1)[0]!==row.test||hash(row.node_id)!==row.node_sha256))throw Error('Unreviewed node ID rejected');
     if(!['setup','call','teardown'].includes(row.phase)||row.outcome!==(row.phase==='call'?'failed':'error')||!EXCEPTIONS.includes(row.exception)||!CODES.includes(row.code))throw Error('Uncontrolled failure classification');
     if(row.code==='ENV_VAR_LENGTH_LIMIT'&&row.exception!=='ValueError')throw Error('Invalid environment diagnostic');

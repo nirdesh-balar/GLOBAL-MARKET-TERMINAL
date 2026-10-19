@@ -28,6 +28,8 @@ async function fixture({binary=true,summary=privateSummary()}={}){
     await writeFile(join(cwd,'test-results/windows-python-diagnostics.json'),JSON.stringify({schema_version:1,status:'RECORDED',runtime:{platform:'win32',architecture:'x64',python:'3.13.16',windows_version:'10.0.20348'},exit_code:0,
       counts:{passed:summary.executed_windows_python.tests,failed:0,error:0,skipped:0},rejected_identifiers:0,omitted_failures:0,
       environment:{any_value_over_limit:false,path_over_limit:false,pytest_current_test_over_limit:false,current_test_assignment_over_limit:false},failures:[]}));
+    for(const stage of ['privacy_tests','reporting_tests'])await writeFile(join(cwd,'test-results/windows-preflight-'+stage+'.json'),JSON.stringify({
+      schema_version:1,stage,status:'RECORDED',exit_code:0,wrapper_exit_code:0,counts:{tests:1,passed:1,failed:0,cancelled:0,skipped:0,todo:0},summary_success:true,failures:[],omitted_failures:0}));
   }
   if(binary){await mkdir(join(cwd,PRIVATE,'build'));await writeFile(join(cwd,PRIVATE,'build',INSTALLER),syntheticPE());}
   return cwd;
@@ -69,6 +71,10 @@ test('missing EXE is NOT BUILT even when private JSON claims success',async()=>{
 test('missing observer results prevent READY even when the old aggregate summary claims success',()=>{
   const model=projectSummary(privateSummary(),{...opts,installer:{sha256:'b'.repeat(64),bytes:256}});
   assert.equal(model.decision,'BLOCKED');assert.equal(model.python_diagnostics,null);
+});
+test('missing preflight evidence blocks READY despite passing Python and synthetic build checks',async()=>{
+  const cwd=await fixture();await unlink(join(cwd,'test-results/windows-preflight-reporting_tests.json'));
+  const {model}=await prepareEvidence(cwd,opts);assert.equal(model.python.status,'PASSED');assert.equal(model.preflight.reporting_tests,null);assert.equal(model.decision,'BLOCKED');
 });
 test('partial build has checksum-only evidence and cannot become READY',async()=>{
   const s=privateSummary();s.stages.package.status='BUILD FAILURE';s.installer_status='PARTIAL BUILD';const cwd=await fixture({summary:s});const {model}=await prepareEvidence(cwd,opts);assert.equal(model.installer.status,'PARTIAL BUILD');assert.equal(model.decision,'BLOCKED');assert.ok(model.installer.sha256);

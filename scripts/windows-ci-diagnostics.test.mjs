@@ -56,7 +56,7 @@ test('private observer unit checks',()=>{
   const r=spawnSync(py,['scripts/test_windows_pytest_diagnostics.py'],{encoding:'utf8',shell:false});
   assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/OK/);
 });
-test('real pytest observer integration preserves failures, teardown errors and exit status without exporting secrets',async()=>{
+async function probeObserver(simulateWindowsLimit){
   const dir=await mkdtemp(join(tmpdir(),'gmt-pytest-diagnostics-'));
   await mkdir(join(dir,'scripts'));await mkdir(join(dir,'backend/tests'),{recursive:true});
   await copyFile('scripts/windows_pytest_diagnostics.py',join(dir,'scripts/windows_pytest_diagnostics.py'));
@@ -71,21 +71,46 @@ def test_teardown(fixture_error): assert True
 @pytest.mark.parametrize('x', ['a'*40000])
 def test_long(x): assert False, 'PRIVATE_SENTINEL_123'
 `);
+  if(simulateWindowsLimit)await writeFile(join(dir,'backend/tests/conftest.py'),`# Test-only emulation in this disposable child, never the Mac parent environment.
+import _pytest.runner as runner
+original = runner._update_current_test_var
+def bounded_current_test(item, when):
+    value = (item.nodeid + ' (' + when + ')').replace('\\0', '(null)') if when else ''
+    if len(value.encode('utf-16-le')) // 2 >= 32767:
+        raise ValueError('the environment variable is longer than 32767 characters')
+    return original(item, when)
+runner._update_current_test_var = bounded_current_test
+`);
   const run=(cmd,args)=>{const r=spawnSync(cmd,args,{cwd:dir,encoding:'utf8',shell:false});return r;};
   assert.equal(run('git',['init','--quiet']).status,0);
-  assert.equal(run('git',['add','backend/tests/test_probe.py']).status,0);
+  assert.equal(run('git',['add','backend/tests']).status,0);
   const collect=run(py,['scripts/windows_pytest_diagnostics.py','--catalog']);assert.equal(collect.status,0,collect.stderr);
   const r=run(py,['scripts/windows_pytest_diagnostics.py','backend/tests','-q','--junitxml=test-results/windows-python.xml']);
   assert.equal(r.status,1);const raw=await readFile(join(dir,'test-results/windows-python-diagnostics.json'),'utf8'),d=JSON.parse(raw);
   assert.ok(!raw.includes('PRIVATE_SENTINEL_123'));assert.ok(!raw.includes('a'.repeat(1000)));
-  assert.deepEqual(d.counts,{passed:1,failed:2,error:1,skipped:0});assert.equal(d.exit_code,1);
-  assert.ok(d.failures.some(r=>r.code==='ENV_VAR_LENGTH_LIMIT'));
-  assert.ok(d.failures.some(r=>r.phase==='teardown'&&r.code==='ACCESS_DENIED'));
-  assert.equal(d.failures.find(r=>r.test.endsWith('test_long')).node_id,null);
+  const windowsLimit=simulateWindowsLimit||process.platform==='win32';
+  assert.ok(['win32','darwin','linux'].includes(process.platform));
+  assert.equal(d.status,'RECORDED');assert.equal(d.exit_code,1);
+  assert.deepEqual(d.counts,windowsLimit?{passed:1,failed:1,error:2,skipped:0}:{passed:1,failed:2,error:1,skipped:0});
+  assert.equal(Object.values(d.counts).reduce((a,b)=>a+b,0),4);
+  const phases=d.failures.map(r=>[r.test.split('::').at(-1),r.phase,r.outcome,r.exception,r.code]).sort();
+  const expected=[['test_env','call','failed','ValueError','ENV_VAR_LENGTH_LIMIT'],['test_teardown','teardown','error','PermissionError','ACCESS_DENIED'],
+    ...(windowsLimit?[['test_long','setup','error','ValueError','ENV_VAR_LENGTH_LIMIT'],['test_long','teardown','error','ValueError','ENV_VAR_LENGTH_LIMIT']]:[['test_long','call','failed','AssertionError','ASSERTION_FAILED']])].sort();
+  assert.deepEqual(phases,expected);
+  assert.equal(d.rejected_identifiers,0);assert.equal(d.omitted_failures,0);
+  const probeCatalog=JSON.parse(await readFile(join(dir,'scripts/windows-pytest-nodes.json'),'utf8'));
+  assertDiagnostics(d,probeCatalog);
+  for(const row of d.failures.filter(r=>r.test.endsWith('test_long')))assert.equal(row.node_id,null);
   assert.equal(d.environment.current_test_assignment_over_limit,true);
   await writeFile(join(dir,'backend/tests/test_probe.py'),'def test_changed(): assert True\n');
   const stale=run(py,['scripts/windows_pytest_diagnostics.py','backend/tests','-q']);
   assert.equal(stale.status,1);assert.match(stale.stderr,/Reviewed test catalogue differs/);
+}
+test('real pytest observer integration preserves failures, teardown errors and exit status without exporting secrets',async()=>{
+  await probeObserver(false);
+});
+test('child-only Windows environment limit simulation verifies exact setup and teardown errors',async()=>{
+  await probeObserver(true);
 });
 test('four-report staging includes only validated structured diagnostics and consistent checksums',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'gmt-diagnostic-evidence-')),sha='a'.repeat(40);

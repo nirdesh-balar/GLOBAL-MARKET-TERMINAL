@@ -5,6 +5,9 @@ For the separately reviewed diagnostic extension after e36aa63, see
 [Windows failure diagnostics](WINDOWS-FAILURE-DIAGNOSTICS.md). It retains this exact
 four-file upload policy and limits, adds source-catalogue-validated failure identifiers
 and controlled codes in schema v2, and keeps original traces runner-local.
+The subsequent local [preflight correction](WINDOWS-PREFLIGHT-FIX.md) adds
+source-location-validated Node subtest evidence in schema v3, with these same four
+files and unchanged upload/size controls. It requires separate source/CI approval.
 This is an infrastructure patch. Publishing it and dispatching it require separate
 owner approval. No binary download, release or stable tag is authorized.
 

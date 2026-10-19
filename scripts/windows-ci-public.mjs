@@ -8,6 +8,7 @@ import {REQUIRED_STAGES} from './windows-ci-report.mjs';
 import {WINDOWS_PYTHON} from './windows-python.mjs';
 import {peInfo} from './windows-artifacts.mjs';
 import {assertDiagnostics,projectDiagnostics,diagnosticMarkdown} from './windows-ci-diagnostics.mjs';
+import {PREFLIGHTS,assertPreflight,preflightMarkdown} from './windows-ci-preflight.mjs';
 
 export const STAGING='ci-evidence-public';
 export const INSTALLER='GLOBAL-MARKET-TERMINAL-win-x64-Setup.exe';
@@ -82,7 +83,8 @@ function suiteRows(raw,max) {
     invalid:raw.filter(r=>!integer(r?.exit_code,65535)).length};
 }
 function ready(m){
-  return m.python_diagnostics?.status==='RECORDED'&&m.python_diagnostics.exit_code===0&&
+  return Object.values(m.preflight).every(p=>p?.status==='RECORDED'&&p.wrapper_exit_code===0)&&
+    m.python_diagnostics?.status==='RECORDED'&&m.python_diagnostics.exit_code===0&&
     m.python_diagnostics.runtime.platform==='win32'&&m.python_diagnostics.runtime.architecture==='x64'&&m.python_diagnostics.runtime.python===WINDOWS_PYTHON&&
     m.python_diagnostics.counts.passed===m.python.tests&&m.python_diagnostics.counts.failed===0&&m.python_diagnostics.counts.error===0&&m.python_diagnostics.counts.skipped===0&&
     m.private_report_outcome==='success'&&m.source_revision===m.expected_source_revision&&
@@ -93,7 +95,7 @@ function ready(m){
     m.packaged.recorded===5&&m.packaged.passed===5&&m.packaged.invalid===0&&
     m.installer.status==='BUILT'&&sha(m.installer.sha256,64)&&m.installer.bytes>0;
 }
-export function projectSummary(s,{expectedSha,privateReportOutcome='unknown',installer=null,diagnostics=null}={}){
+export function projectSummary(s,{expectedSha,privateReportOutcome='unknown',installer=null,diagnostics=null,preflight={}}={}){
   if(!s||typeof s!=='object'||Array.isArray(s)||!sha(expectedSha,40))throw Error('Invalid private evidence or expected source SHA');
   const stages=Object.fromEntries(Object.keys(REQUIRED_STAGES).map(id=>{
     const raw=s.stages?.[id],status=oneOf(raw?.status,STATUSES,'NOT EXECUTED'),c=raw?.command;
@@ -112,12 +114,13 @@ export function projectSummary(s,{expectedSha,privateReportOutcome='unknown',ins
   const checks=Object.fromEntries(CHECKS.map(k=>[k,s.checks?.[k]===true]));
   if(s.source_error!=null)checks.source=false;
   if(!installer)checks.build=false;
-  const m={schema_version:2,product:'GLOBAL MARKET TERMINAL',version:'1.0.0',
+  const m={schema_version:3,product:'GLOBAL MARKET TERMINAL',version:'1.0.0',
     expected_source_revision:expectedSha,source_revision:sha(s.source_revision,40)?s.source_revision:null,
     host_platform:oneOf(s.host_platform,['win32','darwin','linux'],'unknown'),
     host_architecture:oneOf(s.architecture,['x64','arm64','ia32'],'unknown'),
     requested_python:WINDOWS_PYTHON,private_report_outcome:oneOf(privateReportOutcome,['success','failure','cancelled'],'unknown'),
     decision:'BLOCKED',stable:false,stages,checks,python:py,python_diagnostics:projectDiagnostics(diagnostics),
+    preflight:Object.fromEntries(Object.keys(PREFLIGHTS).map(stage=>{const p=preflight[stage]??null;assertPreflight(p,stage,undefined,expectedSha);return [stage,structuredClone(p)];})),
     regressions:suiteRows(s.regressions?.results,49),packaged:suiteRows(s.packaged?.results,5),
     installer:{status:!installer?'NOT BUILT':s.installer_status==='BUILT'&&checks.build&&stages.package.status==='COMPLETED'?'BUILT':'PARTIAL BUILD',
       sha256:installer?.sha256??null,bytes:installer?.bytes??null,
@@ -131,7 +134,7 @@ const rowsShape={recorded:counter,passed:counter,failed:counter,invalid:counter}
 const stageShape={status:enumeration(STATUSES),exit_code:nullable(v=>integer(v,65535)),
   elapsed_ms:nullable(v=>integer(v,7200000)),diagnostic_codes:v=>Array.isArray(v)&&v.length<=DIAGNOSTICS.length&&new Set(v).size===v.length&&v.every(x=>DIAGNOSTICS.includes(x))};
 const MODEL={
-  schema_version:literal(2),product:literal('GLOBAL MARKET TERMINAL'),version:literal('1.0.0'),
+  schema_version:literal(3),product:literal('GLOBAL MARKET TERMINAL'),version:literal('1.0.0'),
   expected_source_revision:v=>sha(v,40),source_revision:nullable(v=>sha(v,40)),
   host_platform:enumeration(['win32','darwin','linux','unknown']),host_architecture:enumeration(['x64','arm64','ia32','unknown']),
   requested_python:literal(WINDOWS_PYTHON),private_report_outcome:enumeration(['success','failure','cancelled','unknown']),
@@ -141,6 +144,7 @@ const MODEL={
   python:{status:enumeration(['NOT EXECUTED','INCOMPLETE OR FAILED','PASSED']),
     tests:nullable(counter),failures:nullable(counter),errors:nullable(counter),skipped:nullable(counter)},
   python_diagnostics:v=>{assertDiagnostics(v);return true;},
+  preflight:Object.fromEntries(Object.keys(PREFLIGHTS).map(stage=>[stage,v=>{assertPreflight(v,stage);return true;}])),
   regressions:rowsShape,packaged:rowsShape,
   installer:{status:enumeration(['NOT BUILT','PARTIAL BUILD','BUILT']),sha256:nullable(v=>sha(v,64)),
     bytes:nullable(v=>integer(v,2*1024**3)),authenticode:enumeration(signatures)},
@@ -154,8 +158,10 @@ function shape(v,s){
 export function assertModel(m){
   shape(m,MODEL);
   const d=m.python_diagnostics;
+  for(const [stage,p]of Object.entries(m.preflight))assertPreflight(p,stage,undefined,m.expected_source_revision);
   if(d&&m.stages.python_tests.exit_code!==null&&d.exit_code!==m.stages.python_tests.exit_code)throw Error('Python exit status mismatch');
   if(d&&m.python.status==='PASSED'&&(d.status!=='RECORDED'||d.exit_code!==0||d.counts.failed||d.counts.error||d.rejected_identifiers||d.omitted_failures))throw Error('Contradictory Python evidence');
+  for(const [stage,p]of Object.entries(m.preflight))if(p&&m.stages[stage].exit_code!==null&&p.wrapper_exit_code!==m.stages[stage].exit_code)throw Error('Preflight exit status mismatch');
   for(const r of [m.regressions,m.packaged])if(r.passed+r.failed+r.invalid!==r.recorded)throw Error('Inconsistent regression counts');
   if(m.regressions.recorded>49||m.packaged.recorded>5)throw Error('Unexpected suite size');
   if(m.installer.status==='NOT BUILT'&&(m.installer.sha256!==null||m.installer.bytes!==null))throw Error('Missing installer cannot have a checksum');
@@ -170,6 +176,7 @@ export function reportFiles(m){
     'Host: '+m.host_platform+' '+m.host_architecture+'. Requested Python: '+m.requested_python+'.',
     'Python: '+m.python.status+'. Tests: '+(m.python.tests??'NOT EXECUTED')+'.',
     ...diagnosticMarkdown(m.python_diagnostics),
+    ...Object.entries(m.preflight).flatMap(([stage,p])=>preflightMarkdown(p,stage)),
     'Regressions: '+m.regressions.passed+'/'+m.regressions.recorded+' reported passing.',
     'Packaged checks: '+m.packaged.passed+'/'+m.packaged.recorded+' reported passing.',
     'Installer: '+m.installer.status+'. Authenticode: '+m.installer.authenticode+'.','',
@@ -210,7 +217,12 @@ export async function prepareEvidence(cwd,{expectedSha,privateReportOutcome='unk
   let diagnostics=null;
   try{diagnostics=JSON.parse(textBytes(await safeRead(root,'test-results/windows-python-diagnostics.json',65536)));}
   catch(e){if(e.code!=='ENOENT')throw e;}
-  const m=projectSummary(s,{expectedSha,privateReportOutcome,installer,diagnostics}),files=reportFiles(m);
+  const preflight={};
+  for(const stage of Object.keys(PREFLIGHTS)){
+    try{preflight[stage]=JSON.parse(textBytes(await safeRead(root,'test-results/windows-preflight-'+stage+'.json',65536)));}
+    catch(e){if(e.code!=='ENOENT')throw e;}
+  }
+  const m=projectSummary(s,{expectedSha,privateReportOutcome,installer,diagnostics,preflight}),files=reportFiles(m);
   // Refuse an existing directory, including injected files/junctions. Never delete to make it pass.
   await mkdir(join(root,STAGING),{recursive:false,mode:0o700});
   for(const [name,contents] of Object.entries(files)){
