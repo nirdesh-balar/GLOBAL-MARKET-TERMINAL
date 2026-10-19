@@ -4,10 +4,12 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {ROOT,PREFLIGHTS,assertPreflight,unavailable} from './windows-ci-preflight.mjs';
+// Custom reporters are ESM specifiers; raw Windows drive paths are not file URLs.
+export const REPORTER_URL=pathToFileURL(resolve(ROOT,'scripts/windows-ci-preflight-reporter.mjs')).href;
 export async function runPreflight(stage){
   if(!Object.hasOwn(PREFLIGHTS,stage))throw Error('Unknown preflight stage');
   await mkdir(resolve(ROOT,'test-results'),{recursive:true});
-  const result=spawnSync(process.execPath,['--test','--test-reporter='+resolve(ROOT,'scripts/windows-ci-preflight-reporter.mjs'),...PREFLIGHTS[stage]],
+  const result=spawnSync(process.execPath,['--test','--test-reporter='+REPORTER_URL,...PREFLIGHTS[stage]],
     {cwd:ROOT,shell:false,windowsHide:true,encoding:'utf8',maxBuffer:1024*1024,env:{...process.env,GMT_PREFLIGHT_STAGE:stage}});
   const exit=Number.isInteger(result.status)&&result.status>=0?result.status:null;
   let report;
@@ -16,7 +18,12 @@ export async function runPreflight(stage){
     report={...JSON.parse(result.stdout),exit_code:exit,wrapper_exit_code:exit??1};
     if(exit===0&&(report.status!=='RECORDED'||report.summary_success!==true||report.counts?.tests===0||report.counts?.skipped||report.counts?.todo))report.wrapper_exit_code=1;
     assertPreflight(report,stage);
-  }catch{report=unavailable(stage,exit);}
+  }catch{
+    // Absence of reporter output is observable; its underlying exception is not.
+    // Never classify by, or copy, arbitrary child stderr (including forged codes).
+    const code=!result.error&&exit!==null&&exit!==0&&typeof result.stdout==='string'&&result.stdout.trim()===''?'REPORTER_NO_OUTPUT':'REPORT_UNAVAILABLE';
+    report=unavailable(stage,exit,code);
+  }
   const prefix=resolve(ROOT,'test-results/windows-preflight-'+stage);
   // Private raw child output is never written to the four-file staging directory.
   await writeFile(prefix+'.log',(result.stdout??'')+'\n'+(result.stderr??''),{flag:'wx',mode:0o600});

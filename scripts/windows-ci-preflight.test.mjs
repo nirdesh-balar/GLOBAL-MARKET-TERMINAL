@@ -4,6 +4,8 @@ import {mkdtemp,mkdir,writeFile,copyFile,readFile,readdir,symlink} from 'node:fs
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync,execFileSync} from 'node:child_process';
+import {pathToFileURL,fileURLToPath} from 'node:url';
+import {REPORTER_URL} from './windows-ci-preflight-run.mjs';
 import {PREFLIGHTS,ROOT,PreflightObserver,sourceLocation,assertPreflight,unavailable,preflightMarkdown} from './windows-ci-preflight.mjs';
 import {prepareEvidence,verifyEvidence,ALLOWLIST,STAGING,projectSummary} from './windows-ci-public.mjs';
 const stage='reporting_tests',file=PREFLIGHTS[stage][0],SHA=execFileSync('git',['rev-parse','HEAD'],{cwd:ROOT,encoding:'utf8'}).trim();
@@ -115,4 +117,90 @@ test('real Node assertion and beforeEach afterEach hooks preserve exact counts a
 test('real Node file startup failure withholds its runtime identifier',async()=>{
   const {dir,p}=await fixture(true);assertPreflight(p,stage,dir);assert.equal(p.exit_code,1);
   assert.ok(p.failures.some(r=>r.identifier==='WITHHELD'&&r.phase==='INFRASTRUCTURE'));
+});
+test('the actual reporter argument is a file URL for the fixed original module',async()=>{
+  assert.equal(new URL(REPORTER_URL).protocol,'file:');
+  assert.equal(fileURLToPath(REPORTER_URL),resolve(ROOT,'scripts/windows-ci-preflight-reporter.mjs'));
+  const launcher=await readFile(resolve(ROOT,'scripts/windows-ci-preflight-run.mjs'),'utf8');
+  assert.match(launcher,/'--test-reporter='\+REPORTER_URL/);
+  assert.match(launcher,/pathToFileURL\(resolve\(ROOT,'scripts\/windows-ci-preflight-reporter\.mjs'\)\)\.href/);
+});
+test('Windows drive paths require file URL specifiers, including spaces and Unicode',async()=>{
+  // Node URL conversion and ESM rejection on this host, not native Windows execution.
+  const path='C:\\GMT workspace\\\u65e5\u672c\\reporter.mjs',url=pathToFileURL(path,{windows:true}).href;
+  assert.equal(url,'file:///C:/GMT%20workspace/%E6%97%A5%E6%9C%AC/reporter.mjs');
+  assert.equal(fileURLToPath(url,{windows:true}),path);
+  assert.equal(new URL(path).protocol,'c:');
+  await assert.rejects(import(path),{code:'ERR_UNSUPPORTED_ESM_URL_SCHEME'});
+});
+test('macOS file URLs preserve spaces, Unicode and URL-significant characters',()=>{
+  const path='/tmp/GMT workspace/\u65e5\u672c/#reporter%.mjs',url=pathToFileURL(path,{windows:false}).href;
+  assert.equal(url,'file:///tmp/GMT%20workspace/%E6%97%A5%E6%9C%AC/%23reporter%25.mjs');
+  assert.equal(fileURLToPath(url,{windows:false}),path);
+});
+async function reporterFixture(mode){
+  const parent=await mkdtemp(join(tmpdir(),'gmt-reporter-')),dir=join(parent,'space \u65e5\u672c');
+  await mkdir(join(dir,'scripts'),{recursive:true});
+  for(const f of ['windows-ci-preflight.mjs','windows-ci-preflight-run.mjs','windows-ci-preflight-reporter.mjs']){
+    if(mode==='missing'&&f==='windows-ci-preflight-reporter.mjs')continue;
+    await copyFile(resolve(ROOT,'scripts',f),join(dir,'scripts',f));
+  }
+  if(mode==='throws')await writeFile(join(dir,'scripts/windows-ci-preflight-reporter.mjs'),"throw Error(process.env.GMT_PRIVATE_BOOTSTRAP_SENTINEL+' ghp_PRIVATE_SENTINEL C:/Users/PRIVATE_SENTINEL');\n");
+  if(mode==='silent7')await writeFile(join(dir,'scripts/windows-ci-preflight-reporter.mjs'),"process.stderr.write(process.env.GMT_PRIVATE_BOOTSTRAP_SENTINEL+' ERR_MODULE_NOT_FOUND');process.exit(7);\n");
+  if(mode==='malformed')await writeFile(join(dir,'scripts/windows-ci-preflight-reporter.mjs'),"export default async function* reporter(events){for await(const event of events){}yield 'PRIVATE_SENTINEL';}\n");
+  await writeFile(join(dir,'scripts/windows-ci-public.test.mjs'),"import test from 'node:test';test('controlled pass',()=>console.log('PRIVATE_SENTINEL'));\n");
+  const env={...process.env,GMT_PREFLIGHT_STAGE:'privacy_tests',GMT_PRIVATE_BOOTSTRAP_SENTINEL:'PRIVATE_SENTINEL_ENV'};delete env.NODE_TEST_CONTEXT;delete env.SOURCE_REF;
+  const args=['--test','--test-reporter='+pathToFileURL(join(dir,'scripts/windows-ci-preflight-reporter.mjs')).href,'scripts/windows-ci-public.test.mjs'];
+  const direct=spawnSync(process.execPath,args,{cwd:dir,shell:false,encoding:'utf8',env});
+  const wrapped=spawnSync(process.execPath,[join(dir,'scripts/windows-ci-preflight-run.mjs'),'privacy_tests'],{cwd:dir,shell:false,encoding:'utf8',env});
+  assert.ok(!(wrapped.stdout+wrapped.stderr).includes('PRIVATE_SENTINEL'));
+  assert.ok(!(wrapped.stdout+wrapped.stderr).includes(dir));
+  const raw=await readFile(join(dir,'test-results/windows-preflight-privacy_tests.json'),'utf8'),p=JSON.parse(raw);
+  assertPreflight(p,'privacy_tests',dir);
+  assert.ok(!raw.includes('PRIVATE_SENTINEL'));assert.ok(!raw.includes(dir));assert.ok(!raw.includes('ERR_MODULE_NOT_FOUND'));
+  return {dir,direct,wrapped,p};
+}
+test('Node loads the actual custom reporter through a file URL from a Unicode space path',async()=>{
+  const {direct,wrapped,p}=await reporterFixture('actual');
+  assert.equal(direct.status,0);assert.equal(wrapped.status,0);assert.equal(p.exit_code,0);
+  assert.deepEqual(p.counts,{tests:1,passed:1,failed:0,cancelled:0,skipped:0,todo:0});
+  assert.equal(p.status,'RECORDED');assert.equal(p.summary_success,true);
+});
+for(const mode of ['missing','throws','silent7'])test('reporter bootstrap '+mode+' preserves the real nonzero exit and withholds private output',async()=>{
+  const {direct,wrapped,p}=await reporterFixture(mode);
+  assert.ok(Number.isInteger(direct.status)&&direct.status>0);
+  assert.equal(wrapped.status,direct.status);assert.equal(p.exit_code,direct.status);assert.equal(p.wrapper_exit_code,direct.status);
+  if(mode==='silent7')assert.equal(p.exit_code,7);
+  assert.equal(p.status,'UNAVAILABLE');assert.equal(p.counts,null);
+  assert.deepEqual(p.failures,[{identifier:'WITHHELD',file:null,line:null,column:null,case_index:null,source_sha256:null,name:null,phase:'INFRASTRUCTURE',code:'REPORTER_NO_OUTPUT'}]);
+});
+test('malformed reporter output remains unavailable and cannot pass even if Node exits zero',async()=>{
+  const {direct,wrapped,p}=await reporterFixture('malformed');
+  assert.equal(direct.status,0);assert.equal(p.exit_code,0);assert.equal(wrapped.status,1);assert.equal(p.wrapper_exit_code,1);
+  assert.equal(p.failures[0].code,'REPORT_UNAVAILABLE');assert.equal(p.counts,null);
+});
+test('reporter no-output code rejects success, source identity and a fabricated completed report',()=>{
+  const p=unavailable('privacy_tests',7,'REPORTER_NO_OUTPUT');assertPreflight(p,'privacy_tests');
+  for(const change of [q=>q.exit_code=0,q=>q.exit_code=null,q=>q.wrapper_exit_code=0,q=>q.failures[0].phase='ASSERTION',q=>q.failures[0].identifier='SOURCE',q=>q.status='RECORDED']){
+    const q=structuredClone(p);change(q);assert.throws(()=>assertPreflight(q,'privacy_tests'));
+  }
+});
+test('bootstrap evidence stays canonical, private and blocked in exactly four bounded text files',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'gmt-bootstrap-evidence-'));await mkdir(join(dir,'test-results'));await mkdir(join(dir,'release-v1.0.0-global-market-terminal-windows'));
+  const p=unavailable('privacy_tests',7,'REPORTER_NO_OUTPUT');
+  const s={source_revision:SHA,host_platform:'win32',architecture:'x64',decision:'READY FOR WINDOWS VALIDATION',stages:{privacy_tests:{status:'TEST FAILURE',command:{exit_code:7}}}};
+  await writeFile(join(dir,'release-v1.0.0-global-market-terminal-windows/WINDOWS-VERIFICATION.json'),JSON.stringify(s));
+  await writeFile(join(dir,'test-results/windows-preflight-privacy_tests.json'),JSON.stringify(p));
+  // Neither raw local diagnostics nor environment values are enumerated by staging.
+  await writeFile(join(dir,'test-results/windows-preflight-privacy_tests.log'),'PRIVATE_SENTINEL Error: stack trace C:/Users/PRIVATE_SENTINEL ghp_PRIVATE_SENTINEL');
+  const r=await prepareEvidence(dir,{expectedSha:SHA,privateReportOutcome:'failure'});
+  assert.equal(r.model.decision,'BLOCKED');assert.equal(r.model.preflight.privacy_tests.exit_code,7);
+  assert.equal(r.model.preflight.privacy_tests.failures[0].code,'REPORTER_NO_OUTPUT');
+  assert.equal(r.model.python.status,'NOT EXECUTED');assert.equal(r.model.preflight.reporting_tests,null);
+  assert.deepEqual((await readdir(join(dir,STAGING))).sort(),Object.keys(ALLOWLIST).sort());
+  for(const [name,{maxBytes}]of Object.entries(ALLOWLIST)){
+    const data=await readFile(join(dir,STAGING,name));assert.ok(data.length<=maxBytes);assert.ok(!data.toString().includes('PRIVATE_SENTINEL'));
+  }
+  await verifyEvidence(dir,{expectedSha:SHA});
+  assert.equal(projectSummary(s,{expectedSha:SHA,privateReportOutcome:'success'}).decision,'BLOCKED');
 });

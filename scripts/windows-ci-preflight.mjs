@@ -10,7 +10,7 @@ export const PREFLIGHTS=Object.freeze({
   reporting_tests:['scripts/windows-ci-report.test.mjs','scripts/windows-ci-diagnostics.test.mjs','scripts/windows-ci-preflight.test.mjs'],
 });
 const PHASES=['ASSERTION','SETUP','TEARDOWN','TEST','INFRASTRUCTURE','UNKNOWN'];
-const CODES=['ASSERTION_FAILED','HOOK_FAILED','TEST_ERROR','TIMEOUT','CANCELLED','RUNNER_FAILURE','REPORT_UNAVAILABLE'];
+const CODES=['ASSERTION_FAILED','HOOK_FAILED','TEST_ERROR','TIMEOUT','CANCELLED','RUNNER_FAILURE','REPORT_UNAVAILABLE','REPORTER_NO_OUTPUT'];
 const integer=x=>Number.isSafeInteger(x)&&x>=0&&x<=1000000;
 const hash=x=>createHash('sha256').update(x).digest('hex');
 function keys(x,names){if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).sort().join('|')!==names.sort().join('|'))throw Error('Preflight fields rejected');}
@@ -84,8 +84,9 @@ export function assertPreflight(p,stage,root=ROOT,revision=root===ROOT?process.e
   for(const r of p.failures){
     keys(r,['identifier','file','line','column','case_index','source_sha256','name','phase','code']);
     if(!PHASES.includes(r.phase)||!CODES.includes(r.code))throw Error('Uncontrolled preflight failure');
-    const phases={ASSERTION_FAILED:['ASSERTION'],HOOK_FAILED:['SETUP','TEARDOWN','UNKNOWN'],TEST_ERROR:['TEST'],TIMEOUT:['UNKNOWN'],CANCELLED:['UNKNOWN'],RUNNER_FAILURE:['INFRASTRUCTURE'],REPORT_UNAVAILABLE:['INFRASTRUCTURE']};
+    const phases={ASSERTION_FAILED:['ASSERTION'],HOOK_FAILED:['SETUP','TEARDOWN','UNKNOWN'],TEST_ERROR:['TEST'],TIMEOUT:['UNKNOWN'],CANCELLED:['UNKNOWN'],RUNNER_FAILURE:['INFRASTRUCTURE'],REPORT_UNAVAILABLE:['INFRASTRUCTURE'],REPORTER_NO_OUTPUT:['INFRASTRUCTURE']};
     if(!phases[r.code].includes(r.phase))throw Error('Contradictory preflight classification');
+    if(r.code==='REPORTER_NO_OUTPUT'&&(p.status!=='UNAVAILABLE'||p.exit_code===null||p.exit_code===0||r.identifier!=='WITHHELD'))throw Error('Contradictory reporter bootstrap classification');
     if(r.identifier==='SOURCE'){
       if(!PREFLIGHTS[stage].includes(r.file)||!integer(r.case_index))throw Error('Unknown preflight identifier');
       const loc=sourceLocation(stage,resolve(root,r.file),r.line,r.column,root,revision);
