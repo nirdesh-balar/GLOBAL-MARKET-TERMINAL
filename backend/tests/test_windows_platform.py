@@ -48,6 +48,7 @@ def test_private_profile_directory(tmp_path):
         from app.profile_security import windows_dacl,windows_user_sid
         for p in [path,child]:
             dacl=windows_dacl(p);trustees=re.findall(r'\(A;[^)]*;;;([^;)]+)\)',dacl)
-            assert trustees and set(trustees)<={'SY','BA',windows_user_sid()},dacl
+            assert trustees, 'PROFILE_DACL_PRESENT'
+            assert set(trustees)<={'SY','BA',windows_user_sid()}, 'PROFILE_DACL_TRUSTEES'
     else:
-        assert path.stat().st_mode&0o777==0o700
+        assert path.stat().st_mode&0o777==0o700, 'PROFILE_POSIX_MODE'

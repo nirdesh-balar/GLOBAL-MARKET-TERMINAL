@@ -52,6 +52,47 @@ test('oversize IDs use a reviewed hash and source selector, not parameter text',
 test('missing diagnostics are explicitly NOT RECORDED',()=>{
   assert.equal(projectDiagnostics(null),null);assert.match(diagnosticMarkdown(null)[0],/NOT RECORDED/);
 });
+test('source-reviewed assertion checkpoint v2 is canonical while legacy diagnostics remain valid',()=>{
+  const d=diagnostic();d.schema_version=2;Object.assign(d.failures[0],{exception:'AssertionError',code:'ASSERTION_FAILED',checkpoint:'PROFILE_DACL_PRESENT'});
+  assertDiagnostics(d);assert.deepEqual(projectDiagnostics(d),d);assert.match(diagnosticMarkdown(d).join('\n'),/checkpoint PROFILE_DACL_PRESENT/);
+  assertDiagnostics(diagnostic());
+  for(const change of [
+    r=>r.checkpoint='PRIVATE_SENTINEL',r=>r.checkpoint='MIGRATION_DACL_PRESENT',r=>r.checkpoint=['PROFILE_DACL_PRESENT'],
+    r=>r.exception='ValueError',r=>r.code='OTHER_FAILURE',r=>{r.phase='setup';r.outcome='error';},r=>r.runtime_value='PRIVATE_SENTINEL',
+  ]){const bad=structuredClone(d);change(bad.failures[0]);assert.throws(()=>assertDiagnostics(bad));}
+  const legacy=diagnostic();legacy.failures[0].checkpoint=null;assert.throws(()=>assertDiagnostics(legacy));
+});
+test('checkpoint diagnostics survive canonical four-file privacy staging without raw values',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'gmt-checkpoint-evidence-')),sha='a'.repeat(40);
+  await mkdir(join(dir,'release-v1.0.0-global-market-terminal-windows'));await mkdir(join(dir,'test-results'));
+  const raw={source_revision:sha,host_platform:'win32',architecture:'x64',executed_windows_python:{tests:3,failures:1,errors:0,skipped:0},stages:{python_tests:{status:'TEST FAILURE',command:{exit_code:1}}}};
+  const d=diagnostic();d.schema_version=2;Object.assign(d.failures[0],{exception:'AssertionError',code:'ASSERTION_FAILED',checkpoint:'PROFILE_DACL_PRESENT'});
+  await writeFile(join(dir,'release-v1.0.0-global-market-terminal-windows/WINDOWS-VERIFICATION.json'),JSON.stringify(raw));
+  await writeFile(join(dir,'test-results/windows-python-diagnostics.json'),JSON.stringify(d));
+  await writeFile(join(dir,'test-results/private.log'),'PRIVATE_SENTINEL raw ACL SID environment traceback');
+  const result=await prepareEvidence(dir,{expectedSha:sha,privateReportOutcome:'failure'});
+  assert.equal(result.model.decision,'BLOCKED');assert.equal(result.model.python_diagnostics.failures[0].checkpoint,'PROFILE_DACL_PRESENT');
+  assert.deepEqual(result.files.sort(),Object.keys(ALLOWLIST).sort());
+  for(const name of result.files){const bytes=await readFile(join(dir,STAGING,name));assert.ok(bytes.length<=ALLOWLIST[name].maxBytes);assert.ok(!bytes.includes(Buffer.from('PRIVATE_SENTINEL')));}
+});
+test('real pytest rewritten assertion is identified by its approved source line without copying values',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'gmt-checkpoint-'));await mkdir(join(dir,'scripts'));await mkdir(join(dir,'backend/tests'),{recursive:true});
+  await copyFile('scripts/windows_pytest_diagnostics.py',join(dir,'scripts/windows_pytest_diagnostics.py'));
+  await writeFile(join(dir,'backend/tests/test_windows_platform.py'),`def test_private_profile_directory():
+    value = 'PRIVATE_SENTINEL'
+    assert value == 'expected', 'PROFILE_DACL_PRESENT'
+`);
+  const run=args=>spawnSync(py,args,{cwd:dir,encoding:'utf8',shell:false});
+  assert.equal(spawnSync('git',['init','--quiet'],{cwd:dir}).status,0);
+  assert.equal(spawnSync('git',['add','backend/tests'],{cwd:dir}).status,0);
+  assert.equal(run(['scripts/windows_pytest_diagnostics.py','--catalog']).status,0);
+  const r=run(['scripts/windows_pytest_diagnostics.py','backend/tests','-q']);assert.equal(r.status,1);
+  const raw=await readFile(join(dir,'test-results/windows-python-diagnostics.json'),'utf8'),d=JSON.parse(raw);
+  const reviewed=JSON.parse(await readFile(join(dir,'scripts/windows-pytest-nodes.json'),'utf8'));
+  assertDiagnostics(d,reviewed);assert.equal(d.schema_version,2);assert.equal(d.failures[0].checkpoint,'PROFILE_DACL_PRESENT');
+  assert.equal(d.failures[0].code,'ASSERTION_FAILED');assert.ok(!raw.includes('PRIVATE_SENTINEL'));assert.ok(!raw.includes(dir));
+  reviewed.checkpoints[node]=[];assert.throws(()=>assertDiagnostics(d,reviewed));
+});
 test('private observer unit checks',()=>{
   const r=spawnSync(py,['scripts/test_windows_pytest_diagnostics.py'],{encoding:'utf8',shell:false});
   assert.equal(r.status,0,r.stderr);assert.match(r.stderr,/OK/);

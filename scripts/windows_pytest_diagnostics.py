@@ -16,6 +16,15 @@ EXCEPTIONS = {'AssertionError', 'ValueError', 'TypeError', 'RuntimeError', 'OSEr
               'UnicodeDecodeError', 'OperationalError', 'IntegrityError', 'ImportError',
               'ModuleNotFoundError', 'KeyError', 'IndexError'}
 BASE = re.compile(r'backend/tests/test_[a-zA-Z0-9_]+\.py::(?:Test[a-zA-Z0-9_]+::)?test_[a-zA-Z0-9_]+\Z')
+CHECKPOINT_TESTS = frozenset({
+    'backend/tests/test_direct_history.py::test_full_official_directory',
+    'backend/tests/test_direct_history.py::test_no_index_restriction_and_atomic_import',
+    'backend/tests/test_provider_routing.py::test_commit_backup_archive_and_references',
+    'backend/tests/test_screener.py::test_full_nse_and_provider_limited_universes',
+    'backend/tests/test_screener.py::test_job_cancel_and_bounded_capacity',
+    'backend/tests/test_screener.py::test_official_universes_do_not_include_stale_provider_directory_entries',
+    'backend/tests/test_windows_platform.py::test_private_profile_directory',
+})
 
 
 def digest(value):
@@ -53,6 +62,45 @@ def identity(node, catalog):
         return None
     return dict(test=base, case_index=hashes.index(key), node_sha256=key,
                 node_id=node if len(node) <= 512 and node.isascii() and not any(ord(c) < 32 for c in node) else None)
+
+
+def assertion_checkpoints(root):
+    """Only literal labels on assertions in the seven pre-reviewed test functions."""
+    result = {}
+    for test in sorted(CHECKPOINT_TESTS):
+        filename, function = test.split('::')
+        path = root / filename
+        if not path.is_file():
+            continue  # Disposable observer fixtures contain none of these functions.
+        for node in ast.parse(path.read_bytes()).body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function:
+                labels = []
+                for assertion in ast.walk(node):
+                    if isinstance(assertion, ast.Assert) and isinstance(assertion.msg, ast.Constant) and type(assertion.msg.value) is str:
+                        code = assertion.msg.value
+                        if not re.fullmatch(r'[A-Z][A-Z0-9_]{1,63}', code):
+                            raise ValueError('Invalid reviewed checkpoint')
+                        labels.append(dict(line=assertion.lineno, end_line=assertion.end_lineno, code=code))
+                labels.sort(key=lambda label: label['line'])
+                if any(a['end_line'] >= b['line'] for a, b in zip(labels, labels[1:])):
+                    raise ValueError('Ambiguous reviewed assertion location')
+                result[test] = labels
+    return result
+
+
+def failure_checkpoint(info, row, catalog):
+    # Do not inspect assertion messages: pytest can append arbitrary runtime values.
+    if type(info.value) is not AssertionError:
+        return None
+    filename = row['test'].split('::')[0]
+    traceback = getattr(info, 'traceback', ())
+    if traceback:
+        entry = traceback[-1]
+        if Path(entry.path).resolve() == (ROOT / filename).resolve():
+            line = entry.lineno + 1
+            labels = catalog.get('checkpoints', {}).get(row['test'], [])
+            return next((label['code'] for label in labels if label['line'] <= line <= label['end_line']), None)
+    return None
 
 
 def classify(exc):
@@ -112,7 +160,8 @@ class Observer:
                 self.omitted += 1
                 return
             kind, code = classify(call.excinfo.value)
-            self.rows.append(dict(**row, phase=call.when, outcome=outcome, exception=kind, code=code))
+            self.rows.append(dict(**row, phase=call.when, outcome=outcome, exception=kind, code=code,
+                                  checkpoint=failure_checkpoint(call.excinfo, row, self.catalog) if call.when == 'call' else None))
             flags = env_flags()
             self.env = {k: self.env[k] or flags[k] for k in flags}
 
@@ -121,7 +170,7 @@ class Observer:
 
     def result(self, exit_code):
         win = sys.getwindowsversion() if sys.platform == 'win32' else None
-        return dict(schema_version=1, status='INTERNAL_ERROR' if self.internal else 'RECORDED',
+        return dict(schema_version=2, status='INTERNAL_ERROR' if self.internal else 'RECORDED',
                     runtime=dict(platform=sys.platform, architecture='x64' if struct.calcsize('P') == 8 and __import__('platform').machine().lower() in {'amd64', 'x86_64'} else 'arm64' if struct.calcsize('P') == 8 else 'ia32',
                                  python='.'.join(map(str, sys.version_info[:3])),
                                  windows_version=f'{win.major}.{win.minor}.{win.build}' if win else None),
@@ -147,10 +196,10 @@ def main():
             return int(code)
         if any(len(v) != len(set(v)) for v in nodes.values()):
             raise ValueError('Duplicate public node ID')
-        CATALOG.write_text(json.dumps(dict(schema_version=1, files=files, nodes=nodes), sort_keys=True, separators=(',', ':')) + '\n', encoding='ascii')
+        CATALOG.write_text(json.dumps(dict(schema_version=2, files=files, nodes=nodes, checkpoints=assertion_checkpoints(ROOT)), sort_keys=True, separators=(',', ':')) + '\n', encoding='ascii')
         return 0
     catalog = json.loads(CATALOG.read_text(encoding='ascii'))
-    if catalog['files'] != files or set(catalog['nodes']) - names:
+    if catalog['files'] != files or set(catalog['nodes']) - names or catalog.get('checkpoints', {}) != assertion_checkpoints(ROOT):
         raise ValueError('Reviewed test catalogue differs from tracked sources')
     observer = Observer(catalog)
     code = pytest.main(sys.argv[1:], plugins=[observer])

@@ -6,6 +6,7 @@ from app.screener_conditions import CATALOG,Condition,ConditionGroup,ScreenConfi
 from app.screener import Screener
 from app.providers.base import ProviderError
 from test_direct_history import app,client
+from directory_reference import official_reference, universe_reference
 UTC=timezone.utc
 SEC={'kind':'equity','exchange':'NSE','currency':'INR','timezone':'Asia/Kolkata'}
 def rows(n=900):
@@ -135,9 +136,13 @@ def wait_job(client,id):
     raise AssertionError('Job did not finish')
 def test_full_nse_and_provider_limited_universes(client,app):
     u=client.get('/api/screener/universes').json();m={v['id']:v for v in u}
-    assert m['nse_mainboard']['count']==2605 and m['nse_sme']['count']==580
-    assert m['nse_mainboard']['complete'] and not m['us']['complete'] and len(u)==11
-    assert app.state.history.metrics['provider_requests']==0
+    expected=official_reference()
+    for id,board in [('nse_mainboard','MAINBOARD'),('nse_sme','SME')]:
+        assert m[id]['count']==len(expected[board]), 'UNIVERSE_OFFICIAL_COUNT'
+        assert len(m[id]['symbols'])==len(expected[board]), 'UNIVERSE_NO_DUPLICATES'
+        assert universe_reference(m[id]['symbols'])==expected[board], 'UNIVERSE_ALL_RECORDS'
+    assert m['nse_mainboard']['complete'] and m['nse_sme']['complete'] and not m['us']['complete'] and len(u)==11, 'UNIVERSE_COMPLETENESS'
+    assert app.state.history.metrics['provider_requests']==0, 'UNIVERSE_NO_HISTORY_FETCH'
 
 def test_jobs_cache_reuse_no_chart_preference_mutation(client,app):
     app.state.history.config['min_interval']=0;before=client.get('/workspace').json();payload=cfg('close_above',value=0,currency='INR').model_dump();payload.update(mode='symbols',symbols=['RELIANCE','TCS'],batch_size=2)
@@ -157,11 +162,14 @@ def test_presets_persist_separately_and_migrate(client,app):
 
 def test_job_cancel_and_bounded_capacity(client,app):
     app.state.history.config['min_interval']=0;payload=cfg('close_above',value=0,currency='INR').model_dump();payload.update(batch_size=100)
-    j=client.post('/api/screener/jobs',json=payload).json();assert j['batch_total']==100 and j['universe_total']==2605
-    assert client.post('/api/screener/jobs',json=payload).status_code==409
-    cancelled=client.post('/api/screener/jobs/'+j['id']+'/cancel').json();assert cancelled['cancelled'] and cancelled['state']=='cancelled'
-    final=wait_job(client,j['id']);assert final['job']['counts']['processed']<100;assert final['job']['counts']['cancelled']>0
-    assert client.post('/api/screener/jobs',json={**payload,'batch_size':101}).status_code==422
+    expected=official_reference()
+    j=client.post('/api/screener/jobs',json=payload).json();assert j['batch_total']==100 and j['universe_total']==len(expected['MAINBOARD']), 'SCAN_BATCH_AND_UNIVERSE'
+    assert client.post('/api/screener/jobs',json=payload).status_code==409, 'SCAN_CONCURRENT_REJECTED'
+    cancelled=client.post('/api/screener/jobs/'+j['id']+'/cancel').json();assert cancelled['cancelled'] and cancelled['state']=='cancelled', 'SCAN_CANCEL_STATE'
+    final=wait_job(client,j['id'])
+    assert final['job']['counts']['processed']<100, 'SCAN_CANCEL_PROCESSED'
+    assert final['job']['counts']['cancelled']>0, 'SCAN_CANCEL_COUNT'
+    assert client.post('/api/screener/jobs',json={**payload,'batch_size':101}).status_code==422, 'SCAN_OVERSIZED_BATCH_REJECTED'
 
 def test_adjustments_and_52week_unknown():
     config=cfg('year_high');assert evaluate(hist(rows(100)),SEC,config,now=1900000000)['status']=='unknown'
@@ -225,8 +233,13 @@ def test_official_universes_do_not_include_stale_provider_directory_entries(clie
     old.update(symbol='OLD-DELISTED',yahoo_symbol='OLD-DELISTED.NS',canonical_id='yahoo:OLD-DELISTED.NS:NSE:equity')
     app.state.db.put('global_instruments',{old['canonical_id']:old})
     known=client.get('/api/screener/universes').json()
-    assert next(u for u in known if u['id']=='nse_mainboard')['count']==2605
-    assert all(r['symbol']!='OLD-DELISTED' for u in known if u['complete'] for r in u['symbols'])
+    expected=official_reference()
+    for id,board in [('nse_mainboard','MAINBOARD'),('nse_sme','SME')]:
+        universe=next(u for u in known if u['id']==id)
+        assert universe['count']==len(expected[board]), 'STALE_OFFICIAL_COUNT'
+        assert len(universe['symbols'])==len(expected[board]), 'STALE_NO_DUPLICATES'
+        assert universe_reference(universe['symbols'])==expected[board], 'STALE_ALL_RECORDS'
+    assert all(r['symbol']!='OLD-DELISTED' for u in known if u['complete'] for r in u['symbols']), 'STALE_PROVIDER_EXCLUDED'
 
 
 def test_current_sma_volume_and_previous_relative_window_are_explicit():

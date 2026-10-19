@@ -132,26 +132,28 @@ def test_stale_preview_rejected(application,monkeypatch):
  with pytest.raises(HTTPException) as exc:application.state.migration.commit(op)
  assert exc.value.status_code==409
 def test_commit_backup_archive_and_references(application,monkeypatch):
+ from contextlib import closing
  before=seed(application);verified(application,monkeypatch);service=application.state.migration
  result=service.commit(confirmed(application));after=application.state.db.get('workspace');p=after['panes'][0]
- assert p['provider']=='hyperliquid' and p['market_type']=='perpetual'
- for key in ['indicators','appearance','scale','timeframe','auto_refresh','auto_follow','drawing_sets']:assert p[key]==before['panes'][0][key]
- assert application.state.db.get('replay_preferences')['replay_instrument']==hl()['canonical_id']
- assert application.state.db.get('favourites')[0]['canonical_id']==hl()['canonical_id']
- assert after['watchlist_revision']==before['watchlist_revision']+1
- assert application.state.registry.resolve(hl()['canonical_id'])['market_type']=='perpetual'
- assert restore_workspace(application.state.db,application.state.registry)['panes'][0]['token']==hl()['canonical_id']
- with sqlite3.connect(result['backup']) as c:assert json.loads(c.execute("select value from settings where key='workspace'").fetchone()[0])==before
+ assert p['provider']=='hyperliquid' and p['market_type']=='perpetual', 'MIGRATION_TARGET'
+ for key in ['indicators','appearance','scale','timeframe','auto_refresh','auto_follow','drawing_sets']:assert p[key]==before['panes'][0][key], 'MIGRATION_SETTINGS_PRESERVED'
+ assert application.state.db.get('replay_preferences')['replay_instrument']==hl()['canonical_id'], 'MIGRATION_REPLAY_REFERENCE'
+ assert application.state.db.get('favourites')[0]['canonical_id']==hl()['canonical_id'], 'MIGRATION_FAVOURITE_REFERENCE'
+ assert after['watchlist_revision']==before['watchlist_revision']+1, 'MIGRATION_WATCHLIST_REVISION'
+ assert application.state.registry.resolve(hl()['canonical_id'])['market_type']=='perpetual', 'MIGRATION_REGISTRY_REFERENCE'
+ assert restore_workspace(application.state.db,application.state.registry)['panes'][0]['token']==hl()['canonical_id'], 'MIGRATION_WORKSPACE_REFERENCE'
+ with closing(sqlite3.connect(result['backup'])) as c:assert json.loads(c.execute("select value from settings where key='workspace'").fetchone()[0])==before, 'MIGRATION_BACKUP_SOURCE'
  if __import__('os').name=='nt':
   import re
   from app.profile_security import windows_dacl,windows_user_sid
   dacl=windows_dacl(result['backup']);allowed={'SY','BA',windows_user_sid()}
   trustees=re.findall(r'\(A;[^)]*;;;([^;)]+)\)',dacl)
-  assert trustees and set(trustees)<=allowed,dacl
+  assert trustees, 'MIGRATION_DACL_PRESENT'
+  assert set(trustees)<=allowed, 'MIGRATION_DACL_TRUSTEES'
  else:
-  assert Path(result['backup']).stat().st_mode&0o777==0o600
- service.restore(Restore(backup_id=result['backup_id'],confirm=True));assert application.state.db.get('workspace')==before
- assert Path(result['backup']).exists()
+  assert Path(result['backup']).stat().st_mode&0o777==0o600, 'MIGRATION_POSIX_MODE'
+ service.restore(Restore(backup_id=result['backup_id'],confirm=True));assert application.state.db.get('workspace')==before, 'MIGRATION_RESTORE_SOURCE'
+ assert Path(result['backup']).exists(), 'MIGRATION_BACKUP_RETAINED'
 def test_drawing_coordinate_transfer_explicit(application,monkeypatch):
  before=seed(application);verified(application,monkeypatch)
  result=application.state.migration.commit(confirmed(application,transfer_drawings=True,retain_legacy_drawings=False));p=application.state.db.get('workspace')['panes'][0]

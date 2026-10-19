@@ -21,6 +21,7 @@ from app.providers.base import History, ProviderError
 from app.providers.nse import NSEHistoricalProvider
 from app.providers.yahoo import normalize_ohlcv, trading_time, YahooFinanceProvider, TZ_CACHE, COOKIE_CACHE, ISIN_CACHE
 from fixtures import FixtureProvider, candles
+from directory_reference import official_reference, installed_reference
 RESOURCES=Path(__file__).parents[1]/'resources'
 TOKEN='test-local-token-'+'x'*48
 
@@ -40,14 +41,15 @@ def frame():
 
 def test_full_official_directory(client,app):
     metadata=client.get('/health').json()['catalogue']
-    counts=[len(parse_directory((RESOURCES/name).read_bytes(),board)) for board,name in [('MAINBOARD','EQUITY_L.csv'),('SME','SME_EQUITY_L.csv')]]
-    assert metadata['mainboard']==counts[0]>=1000
-    assert metadata['sme']==counts[1]>=100
-    assert app.state.db.count()==sum(counts)==3185
+    expected=official_reference();combined={**expected['MAINBOARD'],**expected['SME']}
+    assert metadata['mainboard']==len(expected['MAINBOARD'])>=1000, 'DIRECTORY_MAINBOARD_COUNT'
+    assert metadata['sme']==len(expected['SME'])>=100, 'DIRECTORY_SME_COUNT'
+    assert app.state.db.count()==len(combined), 'DIRECTORY_TOTAL_COUNT'
+    assert installed_reference(app.state.db)==combined, 'DIRECTORY_ALL_RECORDS'
     for query in ('R.K. Fashion','INE2O2Y01016','RKFAL','20MICRONS'):
         rows=client.get('/api/securities/search',params={'q':query}).json()
-        assert rows and all(r['company_name'] and r['isin'] and r['series'] for r in rows)
-    assert app.state.history.metrics['provider_requests']==0 # startup does not fetch any stock
+        assert rows and all(r['company_name'] and r['isin'] and r['series'] for r in rows), 'DIRECTORY_SEARCH_METADATA'
+    assert app.state.history.metrics['provider_requests']==0, 'DIRECTORY_NO_HISTORY_FETCH' # startup does not fetch any stock
 
 @pytest.mark.parametrize('symbol,yahoo',[('RELIANCE','RELIANCE.NS'),('M&M','M&M.NS'),('RKFAL','RKFAL.NS'),('20MICRONS','20MICRONS.NS'),('TCS-EQ','TCS.NS')])
 def test_mapping(app,symbol,yahoo): assert app.state.db.resolve(symbol)['yahoo_symbol']==yahoo
@@ -55,16 +57,21 @@ def test_mapping(app,symbol,yahoo): assert app.state.db.resolve(symbol)['yahoo_s
 @pytest.mark.parametrize('content',[b'<html>Access denied</html>',b'SYMBOL,NAME OF COMPANY,SERIES\nABC,Name,EQ',b'SYMBOL,NAME_OF_COMPANY,SERIES,ISIN_NUMBER\nABC,Name,EQ,bad',b'SYMBOL,NAME_OF_COMPANY,SERIES,ISIN_NUMBER\n'])
 def test_invalid_directory_retains_existing(app,content):
     old=app.state.db.count()
+    before=installed_reference(app.state.db)
     with pytest.raises(ValueError): install_files(app.state.db,{'MAINBOARD':content,'SME':content})
     assert app.state.db.count()==old
+    assert installed_reference(app.state.db)==before
 
 def test_no_index_restriction_and_atomic_import(app):
     main=(RESOURCES/'EQUITY_L.csv').read_bytes();sme=(RESOURCES/'SME_EQUITY_L.csv').read_bytes()
     install_files(app.state.db,{'MAINBOARD':main,'SME':sme})
-    assert app.state.db.resolve('RKFAL')['board']=='SME'
-    assert app.state.db.resolve('20MICRONS')['board']=='MAINBOARD'
+    expected=official_reference();combined={**expected['MAINBOARD'],**expected['SME']}
+    assert installed_reference(app.state.db)==combined, 'IMPORT_ALL_RECORDS'
+    assert app.state.db.resolve('RKFAL')['board']=='SME', 'IMPORT_SME_CATEGORY'
+    assert app.state.db.resolve('20MICRONS')['board']=='MAINBOARD', 'IMPORT_MAINBOARD_CATEGORY'
     with pytest.raises(ValueError):install_files(app.state.db,{'MAINBOARD':main})
-    assert app.state.db.count()==3185
+    assert app.state.db.count()==len(combined), 'IMPORT_REJECTED_UPDATE_COUNT'
+    assert installed_reference(app.state.db)==combined, 'IMPORT_REJECTED_UPDATE_ATOMIC'
 
 def test_literal_search_and_limit(client):
     assert client.get('/api/securities/search',params={'q':'%_'}).json()==[]
