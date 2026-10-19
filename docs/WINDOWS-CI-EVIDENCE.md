@@ -1,6 +1,10 @@
 # Evidence-only Windows validation
 
 Review base: `ae8fb94e126a2d966e4bf058cf05911944bc6b8f`.
+For the separately reviewed diagnostic extension after e36aa63, see
+[Windows failure diagnostics](WINDOWS-FAILURE-DIAGNOSTICS.md). It retains this exact
+four-file upload policy and limits, adds source-catalogue-validated failure identifiers
+and controlled codes in schema v2, and keeps original traces runner-local.
 This is an infrastructure patch. Publishing it and dispatching it require separate
 owner approval. No binary download, release or stable tag is authorized.
 

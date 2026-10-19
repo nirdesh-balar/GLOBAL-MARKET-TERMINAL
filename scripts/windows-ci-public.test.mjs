@@ -23,6 +23,12 @@ async function putPrivate(cwd,s){await mkdir(join(cwd,PRIVATE),{recursive:true})
 function syntheticPE(){const b=Buffer.alloc(256);b.writeUInt16LE(0x5a4d);b.writeUInt32LE(128,0x3c);b.writeUInt32LE(0x4550,128);b.writeUInt16LE(0x14c,132);b.writeUInt16LE(0x10b,152);return b;}
 async function fixture({binary=true,summary=privateSummary()}={}){
   const cwd=await root();await putPrivate(cwd,summary);
+  if(summary.stages?.python_tests?.status==='COMPLETED'&&summary.executed_windows_python?.failures===0&&summary.executed_windows_python?.errors===0){
+    await mkdir(join(cwd,'test-results'));
+    await writeFile(join(cwd,'test-results/windows-python-diagnostics.json'),JSON.stringify({schema_version:1,status:'RECORDED',runtime:{platform:'win32',architecture:'x64',python:'3.13.16',windows_version:'10.0.20348'},exit_code:0,
+      counts:{passed:summary.executed_windows_python.tests,failed:0,error:0,skipped:0},rejected_identifiers:0,omitted_failures:0,
+      environment:{any_value_over_limit:false,path_over_limit:false,pytest_current_test_over_limit:false,current_test_assignment_over_limit:false},failures:[]}));
+  }
   if(binary){await mkdir(join(cwd,PRIVATE,'build'));await writeFile(join(cwd,PRIVATE,'build',INSTALLER),syntheticPE());}
   return cwd;
 }
@@ -40,7 +46,7 @@ test('arbitrary private fields, paths, credentials, market data and raw logs are
   const secret='DO_NOT_EXPORT_PRIVATE_SENTINEL',s=privateSummary();s.source_error=null;s.profile='C:\\Users\\private-person\\'+secret;
   s.environment={TOKEN:secret};s.watchlists=[{name:secret}];s.candles=[{symbol:secret,close:125}];s.regressions.results[0].output=secret;s.signing.subject=secret;
   s.stages.package.command={exit_code:0,command:'C:\\Users\\'+secret,args:[secret],error:secret};
-  const cwd=await fixture({summary:s});await mkdir(join(cwd,'test-results'));await writeFile(join(cwd,'test-results','raw.log'),secret);
+  const cwd=await fixture({summary:s});await mkdir(join(cwd,'test-results'),{recursive:true});await writeFile(join(cwd,'test-results','raw.log'),secret);
   await writeFile(join(cwd,PRIVATE,'private-report.json'),JSON.stringify({secret}));await prepareEvidence(cwd,opts);
   const text=(await publicBytes(cwd)).toString();assert.ok(!text.includes(secret));assert.ok(!text.includes('private-person'));assert.ok(!text.includes('watchlists'));
 });
@@ -59,6 +65,10 @@ test('missing private report fails closed without creating an upload directory',
 });
 test('missing EXE is NOT BUILT even when private JSON claims success',async()=>{
   const cwd=await fixture({binary:false});const {model}=await prepareEvidence(cwd,opts);assert.equal(model.installer.status,'NOT BUILT');assert.equal(model.decision,'BLOCKED');
+});
+test('missing observer results prevent READY even when the old aggregate summary claims success',()=>{
+  const model=projectSummary(privateSummary(),{...opts,installer:{sha256:'b'.repeat(64),bytes:256}});
+  assert.equal(model.decision,'BLOCKED');assert.equal(model.python_diagnostics,null);
 });
 test('partial build has checksum-only evidence and cannot become READY',async()=>{
   const s=privateSummary();s.stages.package.status='BUILD FAILURE';s.installer_status='PARTIAL BUILD';const cwd=await fixture({summary:s});const {model}=await prepareEvidence(cwd,opts);assert.equal(model.installer.status,'PARTIAL BUILD');assert.equal(model.decision,'BLOCKED');assert.ok(model.installer.sha256);
