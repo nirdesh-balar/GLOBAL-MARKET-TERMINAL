@@ -46,7 +46,7 @@ def test_embedded_png_schema_roundtrip():
     d=Drawing.model_validate(value)
     assert Drawing.model_validate_json(d.model_dump_json())==d
 
-@pytest.mark.parametrize('image',['file:///tmp/private.png','https://example.com/image.png','data:image/svg+xml,<svg onload=alert(1)>','data:image/png;base64,aGVsbG8=','data:image/png;base64,'+'A'*175001])
+@pytest.mark.parametrize('image',['file:///tmp/private.png','https://example.com/image.png','data:image/svg+xml,<svg onload=alert(1)>','data:image/png;base64,aGVsbG8=','data:image/png;base64,'+'A'*175001],ids=['local-file','remote-url','executable-svg','invalid-png','oversized-png'])
 def test_image_rejects_remote_executable_or_oversized_data(image):
     with pytest.raises(ValidationError):Drawing.model_validate(drawing('image',params={'image_data':image}))
 

@@ -73,7 +73,7 @@ def test_mapping_preview_and_invalid_columns(client):
  p=preview(client,'Code,Venue,Description\nAAPL,NASDAQ,Apple\n',mapping={'symbol':0,'exchange':1,'name':2}).json();assert p['counts']['valid']==1
  for mapping in [{'symbol':99},{'symbol':0,'exchange':0},{'path':0}]:assert preview(client,'symbol\nAAPL\n',mapping=mapping).status_code==422
 
-@pytest.mark.parametrize('content',['','symbol\n"unterminated','symbol\nAAPL\0','symbol\n'+'A'*4001,'symbol\n'+'AAPL\n'*1001,'symbol\n'+'a'*1_000_001])
+@pytest.mark.parametrize('content',['','symbol\n"unterminated','symbol\nAAPL\0','symbol\n'+'A'*4001,'symbol\n'+'AAPL\n'*1001,'symbol\n'+'a'*1_000_001],ids=['empty','unterminated-quote','nul-byte','oversized-field','too-many-rows','oversized-file'])
 def test_bounded_csv_parser(client,content):assert preview(client,content).status_code==422
 
 def test_row_errors_duplicate_counts_and_explicit_skips(client):
