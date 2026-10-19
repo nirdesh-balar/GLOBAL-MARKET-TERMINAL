@@ -28,9 +28,5 @@ jobs:
       - run: npm run build
       - run: node scripts/verify-windows.mjs --math
       - run: node scripts/release-ui.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
-        with:
-          name: source-evidence
-          path: test-results/
-          retention-days: 7
+      # Candidate binaries and raw test output remain on the ephemeral runner.
+      # No artifact upload is permitted until a separate evidence policy is reviewed.

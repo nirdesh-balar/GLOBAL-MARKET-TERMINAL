@@ -13,7 +13,7 @@ export const REQUIRED_STAGES = {
   revision:'INFRASTRUCTURE FAILURE', node:'INFRASTRUCTURE FAILURE',
   python:'INFRASTRUCTURE FAILURE', npm:'INFRASTRUCTURE FAILURE',
   dependencies:'INFRASTRUCTURE FAILURE', directory:'INFRASTRUCTURE FAILURE',
-  reporting_tests:'TEST FAILURE', python_tests:'TEST FAILURE', package:'BUILD FAILURE',
+  privacy_tests:'TEST FAILURE', reporting_tests:'TEST FAILURE', python_tests:'TEST FAILURE', package:'BUILD FAILURE',
   regressions:'TEST FAILURE', controls:'TEST FAILURE', scaling:'TEST FAILURE', installer:'TEST FAILURE',
 };
 const sha256=b=>createHash('sha256').update(b).digest('hex');

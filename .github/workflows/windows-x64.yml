@@ -1,4 +1,4 @@
-name: Windows v1.0.0 candidate (manual review required)
+name: Windows evidence-only validation (manual review required)
 on:
   workflow_dispatch:
     inputs:
@@ -14,7 +14,7 @@ permissions:
   contents: read
 jobs:
   windows-x64:
-    if: github.repository == 'nirdesh-balar/GLOBAL-MARKET-TERMINAL'
+    if: github.repository == 'nirdesh-balar/GLOBAL-MARKET-TERMINAL' && github.actor == 'nirdesh-balar' && github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     timeout-minutes: 120
     env:
@@ -41,7 +41,6 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.19.0
-          cache: npm
       - id: python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
@@ -57,6 +56,9 @@ jobs:
       - id: directory
         name: Prepare ignored official test directory
         run: node scripts/windows-ci-run.mjs directory node scripts/download-test-directory.mjs
+      - id: privacy_tests
+        name: Evidence privacy guard tests (built-ins only)
+        run: node scripts/windows-ci-run.mjs privacy_tests node --test scripts/windows-ci-public.test.mjs
       - id: reporting_tests
         name: Failure-reporting unit tests (built-ins only)
         run: node scripts/windows-ci-run.mjs reporting_tests node --test scripts/windows-ci-report.test.mjs
@@ -78,18 +80,32 @@ jobs:
       - id: installer
         name: Install, packaged real providers, quit/restart and uninstall probe
         run: node scripts/windows-ci-run.mjs installer node scripts/windows-installer-smoke.mjs --ci-disposable
-      - name: Final fingerprints and Windows candidate report
+      - id: private_report
+        name: Runner-local fingerprints and candidate report
         if: always()
         env:
           GMT_CI_STEPS: ${{ toJSON(steps) }}
-        run: node scripts/windows-ci-report.mjs
-      - name: Upload candidate artifacts and evidence (never publish a release)
+        run: node scripts/windows-ci-run.mjs private_report node scripts/windows-ci-report.mjs
+      - id: public_evidence
+        name: Regenerate sanitized evidence only (no package copying)
         if: always()
+        env:
+          GMT_PRIVATE_REPORT_OUTCOME: ${{ steps.private_report.outcome }}
+        run: node scripts/windows-ci-public.mjs prepare
+      - id: evidence_guard
+        name: Revalidate exact public evidence allowlist
+        if: always() && steps.public_evidence.outcome == 'success'
+        run: node scripts/windows-ci-public.mjs verify
+      - name: Upload reviewed text evidence only (no binaries or raw logs)
+        if: always() && steps.public_evidence.outcome == 'success' && steps.evidence_guard.outcome == 'success'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: GMT-v1.0.0-windows-x64-${{ inputs.source_ref }}
+          name: GMT-windows-evidence-only-${{ inputs.source_ref }}
           path: |
-            release-v1.0.0-global-market-terminal-windows/
-            test-results/
+            ci-evidence-public/WINDOWS-VERIFICATION.json
+            ci-evidence-public/WINDOWS-VERIFICATION.md
+            ci-evidence-public/INSTALLER-SHA256.txt
+            ci-evidence-public/EVIDENCE-SHA256SUMS.txt
           if-no-files-found: error
+          include-hidden-files: false
           retention-days: 30

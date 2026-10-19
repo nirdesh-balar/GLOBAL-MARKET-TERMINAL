@@ -80,13 +80,16 @@ Missing EXE files are reported as NOT BUILT, even if partial package JSON exists
 Empty or incomplete regression collections cannot satisfy validation.
 
 The built-ins-only command wrapper captures stdout/stderr, command, timestamps,
-spawn errors and original exit status before returning failure. This also works
+spawn errors and original exit status before returning failure. Raw subprocess
+output remains runner-local and is not forwarded to public job logs. This also works
 for npm installation, without node_modules or Python. Managed Actions such as
 setup-python retain their original diagnostic in the linked Actions step log;
 the collector records the failed action and original run URL, without inventing
 an inline error message. A missing test-results directory cannot replace that
-failure with ENOENT. Available reports, logs, screenshots and SHA-256 manifests
-are uploaded on failure. Uploading evidence does not make the job green.
+failure with ENOENT. Raw reports, logs, screenshots and binary manifests remain
+runner-local. Only the four regenerated reports described in
+[the evidence policy](WINDOWS-CI-EVIDENCE.md) may be uploaded, after strict validation.
+Uploading safe failure evidence does not make the job green.
 
 Local tests use synthetic temporary fixtures on macOS. They cover early Python
 failure, absent output directories, npm and spawn failures, failed tests, partial

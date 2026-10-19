@@ -78,3 +78,4 @@ release-v1.0.0-global-market-terminal-windows/
 # Ignore local dependency links as well as directories.
 /node_modules
 /backend/.venv
+/ci-evidence-public/
