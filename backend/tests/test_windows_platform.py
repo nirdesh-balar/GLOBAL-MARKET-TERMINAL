@@ -49,6 +49,35 @@ def test_private_profile_directory(tmp_path):
         for p in [path,child]:
             dacl=windows_dacl(p);trustees=re.findall(r'\(A;[^)]*;;;([^;)]+)\)',dacl)
             assert trustees, 'PROFILE_DACL_PRESENT'
-            assert set(trustees)<={'SY','BA',windows_user_sid()}, 'PROFILE_DACL_TRUSTEES'
+            from windows_acl_reference import inspect_private_dacl
+            if p == path:
+                audit = inspect_private_dacl(p, 'profile_directory')
+                assert audit != 'API_INCONCLUSIVE', 'PROFILE_DIR_API_INCONCLUSIVE'
+                assert audit != 'MISSING_DACL', 'PROFILE_DIR_MISSING_DACL'
+                assert audit != 'SPECIAL_ACE', 'PROFILE_DIR_SPECIAL_ACE'
+                assert audit != 'UNEXPECTED_INHERITED', 'PROFILE_DIR_UNEXPECTED_INHERITED'
+                assert audit != 'UNEXPECTED_ALLOW', 'PROFILE_DIR_UNEXPECTED_ALLOW'
+                assert audit != 'PROTECTION_MISMATCH', 'PROFILE_DIR_PROTECTION_MISMATCH'
+                assert audit != 'INHERITANCE_MISMATCH', 'PROFILE_DIR_INHERITANCE_MISMATCH'
+                assert audit != 'RIGHTS_MISMATCH', 'PROFILE_DIR_RIGHTS_MISMATCH'
+                if audit == 'EQUIVALENT_SID':
+                    # Diagnostic only: retain the exact original trustee restriction.
+                    assert set(trustees)<={'SY','BA',windows_user_sid()}, 'PROFILE_DIR_EQUIVALENT_SID'
+                else:
+                    assert set(trustees)<={'SY','BA',windows_user_sid()}, 'PROFILE_DACL_TRUSTEES'
+            else:
+                audit = inspect_private_dacl(p, 'profile_child')
+                assert audit != 'API_INCONCLUSIVE', 'PROFILE_CHILD_API_INCONCLUSIVE'
+                assert audit != 'MISSING_DACL', 'PROFILE_CHILD_MISSING_DACL'
+                assert audit != 'SPECIAL_ACE', 'PROFILE_CHILD_SPECIAL_ACE'
+                assert audit != 'UNEXPECTED_INHERITED', 'PROFILE_CHILD_UNEXPECTED_INHERITED'
+                assert audit != 'UNEXPECTED_ALLOW', 'PROFILE_CHILD_UNEXPECTED_ALLOW'
+                assert audit != 'PROTECTION_MISMATCH', 'PROFILE_CHILD_PROTECTION_MISMATCH'
+                assert audit != 'INHERITANCE_MISMATCH', 'PROFILE_CHILD_INHERITANCE_MISMATCH'
+                assert audit != 'RIGHTS_MISMATCH', 'PROFILE_CHILD_RIGHTS_MISMATCH'
+                if audit == 'EQUIVALENT_SID':
+                    assert set(trustees)<={'SY','BA',windows_user_sid()}, 'PROFILE_CHILD_EQUIVALENT_SID'
+                else:
+                    assert set(trustees)<={'SY','BA',windows_user_sid()}, 'PROFILE_CHILD_DACL_TRUSTEES'
     else:
         assert path.stat().st_mode&0o777==0o700, 'PROFILE_POSIX_MODE'

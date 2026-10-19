@@ -149,7 +149,22 @@ def test_commit_backup_archive_and_references(application,monkeypatch):
   dacl=windows_dacl(result['backup']);allowed={'SY','BA',windows_user_sid()}
   trustees=re.findall(r'\(A;[^)]*;;;([^;)]+)\)',dacl)
   assert trustees, 'MIGRATION_DACL_PRESENT'
-  assert set(trustees)<=allowed, 'MIGRATION_DACL_TRUSTEES'
+  from windows_acl_reference import inspect_private_dacl
+  audit = inspect_private_dacl(result['backup'], 'migration_backup')
+  assert audit != 'API_INCONCLUSIVE', 'MIGRATION_BACKUP_API_INCONCLUSIVE'
+  assert audit != 'MISSING_DACL', 'MIGRATION_BACKUP_MISSING_DACL'
+  assert audit != 'SPECIAL_ACE', 'MIGRATION_BACKUP_SPECIAL_ACE'
+  assert audit != 'UNEXPECTED_INHERITED', 'MIGRATION_BACKUP_UNEXPECTED_INHERITED'
+  assert audit != 'UNEXPECTED_ALLOW', 'MIGRATION_BACKUP_UNEXPECTED_ALLOW'
+  assert audit != 'PROTECTION_MISMATCH', 'MIGRATION_BACKUP_PROTECTION_MISMATCH'
+  assert audit != 'INHERITANCE_MISMATCH', 'MIGRATION_BACKUP_INHERITANCE_MISMATCH'
+  assert audit != 'RIGHTS_MISMATCH', 'MIGRATION_BACKUP_RIGHTS_MISMATCH'
+  assert inspect_private_dacl(application.state.db.path.parent, 'profile_directory') in {'STRICT_MATCH','EQUIVALENT_SID'}, 'MIGRATION_ROOT_POLICY'
+  assert inspect_private_dacl(Path(result['backup']).parent, 'migration_parent') in {'STRICT_MATCH','EQUIVALENT_SID'}, 'MIGRATION_PARENT_POLICY'
+  if audit == 'EQUIVALENT_SID':
+   assert set(trustees)<=allowed, 'MIGRATION_BACKUP_EQUIVALENT_SID'
+  else:
+   assert set(trustees)<=allowed, 'MIGRATION_DACL_TRUSTEES'
  else:
   assert Path(result['backup']).stat().st_mode&0o777==0o600, 'MIGRATION_POSIX_MODE'
  service.restore(Restore(backup_id=result['backup_id'],confirm=True));assert application.state.db.get('workspace')==before, 'MIGRATION_RESTORE_SOURCE'

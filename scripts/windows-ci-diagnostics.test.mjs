@@ -17,8 +17,8 @@ function diagnostic(){return {
   environment:{any_value_over_limit:false,path_over_limit:false,pytest_current_test_over_limit:false,current_test_assignment_over_limit:false},
   failures:[{test:node,case_index:0,node_sha256:hash(node),node_id:node,phase:'call',outcome:'failed',exception:'ValueError',code:'ENV_VAR_LENGTH_LIMIT'}],
 };}
-test('reviewed public collection is bounded and has all 2403 IDs and 461 AST functions',()=>{
-  assert.equal(Object.keys(catalog.nodes).length,461);assert.equal(Object.values(catalog.nodes).flat().length,2403);
+test('reviewed public collection is bounded and has all 2542 IDs and 479 AST functions',()=>{
+  assert.equal(Object.keys(catalog.nodes).length,479);assert.equal(Object.values(catalog.nodes).flat().length,2542);
   for(const [name,digests]of Object.entries(catalog.nodes)){
     assert.ok(name.startsWith('backend/tests/test_'));assert.equal(new Set(digests).size,digests.length);
     assert.ok(digests.every(s=>/^[a-f0-9]{64}$/.test(s)));
@@ -167,4 +167,53 @@ test('four-report staging includes only validated structured diagnostics and con
   const bad=diagnostic();bad.failures[0].message='PRIVATE_SENTINEL_456';
   await writeFile(join(dir,'test-results/windows-python-diagnostics.json'),JSON.stringify(bad));
   await assert.rejects(prepareEvidence(dir,{expectedSha:sha}));
+});
+
+// Public values remain literal assertion labels bound to each approved source frame.
+test('object-specific DACL codes preserve source binding and reject security descriptor payloads',()=>{
+  const targets=[node,'backend/tests/test_provider_routing.py::test_commit_backup_archive_and_references',
+    'backend/tests/test_windows_acl_reference.py::test_disposable_native_object_policy'];
+  for(const target of targets){
+    const labels=catalog.checkpoints[target];assert.ok(labels?.length);
+    for(const label of labels){
+      const d=diagnostic();d.schema_version=2;
+      Object.assign(d.failures[0],{test:target,case_index:0,node_sha256:catalog.nodes[target][0],node_id:target===node?node:null,
+        exception:'AssertionError',code:'ASSERTION_FAILED',checkpoint:label.code});
+      assertDiagnostics(d);assert.equal(projectDiagnostics(d).failures[0].checkpoint,label.code);
+      for(const key of ['sid','sddl','descriptor','path','username','environment','acl']){
+        const bad=structuredClone(d);bad.failures[0][key]='PRIVATE_SENTINEL';assert.throws(()=>projectDiagnostics(bad));
+      }
+      const wrong=structuredClone(d);wrong.failures[0].checkpoint='UNREVIEWED_DACL_CODE';assert.throws(()=>projectDiagnostics(wrong));
+    }
+  }
+  const directory=catalog.checkpoints[node].map(x=>x.code);
+  for(const prefix of ['PROFILE_DIR','PROFILE_CHILD'])for(const suffix of ['EQUIVALENT_SID','UNEXPECTED_ALLOW','UNEXPECTED_INHERITED','PROTECTION_MISMATCH','API_INCONCLUSIVE']){
+    assert.ok(directory.includes(prefix+'_'+suffix));
+  }
+});
+
+// Classification defects and contradictory security observations must never turn green.
+test('special and inconclusive DACL observations cannot produce READY evidence',async()=>{
+  for(const checkpoint of ['PROFILE_DIR_SPECIAL_ACE','PROFILE_DIR_API_INCONCLUSIVE','MIGRATION_BACKUP_API_INCONCLUSIVE']){
+    const target=checkpoint.startsWith('MIGRATION')?'backend/tests/test_provider_routing.py::test_commit_backup_archive_and_references':node;
+    const d=diagnostic();d.schema_version=2;
+    Object.assign(d.failures[0],{test:target,node_id:target,case_index:0,node_sha256:catalog.nodes[target][0],
+      exception:'AssertionError',code:'ASSERTION_FAILED',checkpoint});
+    const sha='a'.repeat(40),raw={source_revision:sha,host_platform:'win32',architecture:'x64',decision:'READY FOR WINDOWS VALIDATION',
+      executed_windows_python:{tests:3,failures:1,errors:0,skipped:0},checks:{python:true,source:true,host:true},
+      stages:{python_tests:{status:'TEST FAILURE',command:{exit_code:1}}}};
+    const projected=projectSummary(raw,{expectedSha:sha,privateReportOutcome:'success',diagnostics:d});
+    assert.equal(projected.decision,'BLOCKED');assert.equal(projected.stable,false);assert.equal(projected.stages.python_tests.exit_code,1);
+    const bad=structuredClone(raw);bad.stages.python_tests.command.exit_code=0;
+    assert.throws(()=>projectSummary(bad,{expectedSha:sha,privateReportOutcome:'success',diagnostics:d}));
+    const dir=await mkdtemp(join(tmpdir(),'gmt-dacl-corrected-evidence-'));
+    await mkdir(join(dir,'release-v1.0.0-global-market-terminal-windows'));await mkdir(join(dir,'test-results'));
+    await writeFile(join(dir,'release-v1.0.0-global-market-terminal-windows/WINDOWS-VERIFICATION.json'),JSON.stringify(raw));
+    await writeFile(join(dir,'test-results/windows-python-diagnostics.json'),JSON.stringify(d));
+    await writeFile(join(dir,'test-results/private.log'),'PRIVATE_ACL_PATH_SID_SENTINEL');
+    const staged=await prepareEvidence(dir,{expectedSha:sha,privateReportOutcome:'success'});
+    assert.equal(staged.model.decision,'BLOCKED');assert.equal(staged.model.python_diagnostics.failures[0].checkpoint,checkpoint);
+    assert.deepEqual(staged.files.sort(),Object.keys(ALLOWLIST).sort());
+    for(const name of staged.files){const bytes=await readFile(join(dir,STAGING,name));assert.ok(bytes.length<=ALLOWLIST[name].maxBytes);assert.ok(!bytes.includes(Buffer.from('PRIVATE_ACL_PATH_SID_SENTINEL')));}
+  }
 });

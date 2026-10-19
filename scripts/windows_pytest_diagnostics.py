@@ -24,6 +24,7 @@ CHECKPOINT_TESTS = frozenset({
     'backend/tests/test_screener.py::test_job_cancel_and_bounded_capacity',
     'backend/tests/test_screener.py::test_official_universes_do_not_include_stale_provider_directory_entries',
     'backend/tests/test_windows_platform.py::test_private_profile_directory',
+    'backend/tests/test_windows_acl_reference.py::test_disposable_native_object_policy',
 })
 
 
@@ -65,7 +66,7 @@ def identity(node, catalog):
 
 
 def assertion_checkpoints(root):
-    """Only literal labels on assertions in the seven pre-reviewed test functions."""
+    """Only literal labels on assertions in the explicitly pre-reviewed test functions."""
     result = {}
     for test in sorted(CHECKPOINT_TESTS):
         filename, function = test.split('::')

@@ -65,6 +65,29 @@ class DiagnosticTests(unittest.TestCase):
                 path.write_text('\n'.join(text.splitlines()[:5]) + '\n')
                 with self.assertRaises(ValueError): reference.official_reference()
 
+    def test_dacl_codes_are_literal_object_specific_and_origin_bound(self):
+        catalog = json.loads(d.CATALOG.read_text())
+        tests = {
+            'backend/tests/test_windows_platform.py::test_private_profile_directory': ['PROFILE_DIR', 'PROFILE_CHILD'],
+            'backend/tests/test_provider_routing.py::test_commit_backup_archive_and_references': ['MIGRATION_BACKUP'],
+        }
+        for test, prefixes in tests.items():
+            row = d.identity(test, catalog)
+            labels = catalog['checkpoints'][test]
+            codes = {label['code'] for label in labels}
+            for prefix in prefixes:
+                for suffix in ['EQUIVALENT_SID', 'API_INCONCLUSIVE', 'SPECIAL_ACE', 'UNEXPECTED_INHERITED',
+                               'UNEXPECTED_ALLOW', 'PROTECTION_MISMATCH', 'INHERITANCE_MISMATCH', 'RIGHTS_MISMATCH']:
+                    self.assertIn(prefix + '_' + suffix, codes)
+            for label in labels:
+                frame = SimpleNamespace(path=d.ROOT / test.split('::')[0], lineno=label['line'] - 1)
+                info = SimpleNamespace(value=AssertionError('PRIVATE_SID_SDDL_PATH_SENTINEL'), traceback=[frame])
+                self.assertEqual(d.failure_checkpoint(info, row, catalog), label['code'])
+                info.traceback.append(SimpleNamespace(path=d.ROOT / 'backend/tests/windows_acl_reference.py', lineno=0))
+                self.assertIsNone(d.failure_checkpoint(info, row, catalog))
+        # Changing exception text alone never supplies a checkpoint or security data.
+        self.assertNotIn('PRIVATE_SID_SDDL_PATH_SENTINEL', json.dumps(catalog['checkpoints']))
+
     def test_identity_allowlist(self):
         catalog = json.loads(d.CATALOG.read_text())
         node = 'backend/tests/test_windows_platform.py::test_private_profile_directory'
