@@ -14,11 +14,6 @@ export function startUpdates(metadata:any,emit:(s:UpdateState)=>void){
     execFileSync('/usr/bin/codesign',['--verify','--deep','--strict',app.getAppPath().replace(/\/Contents\/Resources\/app.asar$/,'')],{stdio:'pipe'});
     const r=require('node:child_process').spawnSync('/usr/bin/codesign',['-dv','--verbose=4',app.getAppPath().replace(/\/Contents\/Resources\/app.asar$/,'')],{encoding:'utf8'});
     if(!/Authority=Developer ID Application:/.test(r.stderr)||!/TeamIdentifier=[A-Z0-9]{10}\b/.test(r.stderr))throw Error('Developer ID required');
-   }else if(process.platform==='win32'){
-    if(!config.publisherName||config.verifyUpdateCodeSignature===false)throw Error('Verified Windows publisher required');
-    const subject=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',"$s=Get-AuthenticodeSignature -LiteralPath $env:GMT_VERIFY_SELF; if($s.Status -ne 'Valid'){exit 1}; $s.SignerCertificate.Subject"],{encoding:'utf8',windowsHide:true,env:{...process.env,GMT_VERIFY_SELF:process.execPath}}).trim();
-    const names=Array.isArray(config.publisherName)?config.publisherName:[config.publisherName];
-    if(!names.some((n:string)=>subject.split(/,\s*/).includes('CN='+n)))throw Error('Windows publisher mismatch');
    }else throw Error('Unsupported updater platform');
    engine=require('electron-updater').autoUpdater;
   }catch{reason='Automatic updates are blocked: official feed and trusted native signing must be verified.';}

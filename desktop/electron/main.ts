@@ -1,8 +1,7 @@
 import {startUpdates} from './updateRuntime';
 import type {ApplicationUpdates} from './updates';
-import {backendExecutable,fullscreenAccelerator,stableWindowsIdentity} from './platform';
-import {windowsIntegration} from './windowsIntegration';
-import {stopOwnedBackend,type BackendJob} from './backendLifecycle';
+import {backendExecutable,fullscreenAccelerator} from './platform';
+import {stopOwnedBackend} from './backendLifecycle';
 import {PRODUCT_NAME,RELEASE_VERSION,STABLE_BUNDLE_ID,STABLE_MARKER} from '../src/brand';
 import {execFileSync} from 'node:child_process';
 import {previewTestGuard} from './previewTestGuard';
@@ -19,7 +18,6 @@ import { basename, join } from 'node:path';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 let backend:ChildProcess|undefined;
-let backendJob:BackendJob|undefined;
 let shutdown:Promise<void>|undefined;
 let shutdownFinished=false;
 let window:BrowserWindow|undefined;
@@ -54,13 +52,11 @@ app.setName(PRODUCT_NAME);
 app.setAboutPanelOptions({applicationName:PRODUCT_NAME,applicationVersion:RELEASE_VERSION,version:RELEASE_VERSION,copyright:'Personal market analysis · Yahoo Finance and public Hyperliquid data'});
 const preview=['phase6-stage1','phase6-stage2','phase6-stage3','phase6-stage4','phase6-stage5','phase6-stage6','phase6-stage6.5','phase6-stage6.6','phase6-stage6.7-A','phase6-stage6.7-B','phase6-stage6.7-C','phase6-stage6.7-D','phase6-stage6.7-E1','phase6-stage6.7-E1.1','phase6-stage6.7-E2','phase6-stage6.7-E3A','phase6-stage6.7-E3B','phase6-stage6.7-F','phase6-stage6.7-G','phase6-stage6.7-G1'].includes(previewStage);
 const rejectLaunch=(message:string):never=>{process.stderr.write(message+'\n');process.exit(78);};
+if(process.platform!=='darwin'||process.arch!=='arm64')rejectLaunch('GLOBAL MARKET TERMINAL requires Apple Silicon macOS');
 // Fail before creating any directory or backend when a test selects the wrong package.
 if(process.env.IMT_EXPECT_PREVIEW && previewStage!==process.env.IMT_EXPECT_PREVIEW)rejectLaunch('Preview identity mismatch; no profile opened');
 if(!app.isPackaged&&!dev&&!process.env.IMT_TEST_DATA_DIR)rejectLaunch('Unpackaged runs require IMT_DEV or an isolated IMT_TEST_DATA_DIR');
 if(stable&&process.platform==='darwin'){const id=execFileSync('/usr/bin/plutil',['-extract','CFBundleIdentifier','raw',join(process.resourcesPath,'../Info.plist')],{encoding:'utf8'}).trim();if(id!==STABLE_BUNDLE_ID||metadata.version!==RELEASE_VERSION||metadata.drawingPreview)rejectLaunch('Stable package identity mismatch; no profile opened');}
-if(stable&&process.platform==='win32'&&!stableWindowsIdentity(metadata,process.execPath,process.arch))rejectLaunch('Stable Windows package identity mismatch; no profile opened');
-if(stable&&!['darwin','win32'].includes(process.platform))rejectLaunch('Unsupported stable release platform');
-if(process.platform==='win32')app.setAppUserModelId(STABLE_BUNDLE_ID);
 if(app.isPackaged&&!stable&&previewStage&&!preview)rejectLaunch('Unknown preview identity; no profile opened');
 const guardReason=previewTestGuard(previewStage,process.resourcesPath,process.env);
 if(guardReason)rejectLaunch(guardReason);
@@ -78,9 +74,8 @@ async function startBackend(){
   const executable=app.isPackaged?backendExecutable(process.resourcesPath,true):python();
   const args=app.isPackaged?[]:[join(root,process.env.IMT_UI_FIXTURE==='1'?'backend/tests/fixture_launcher.py':'backend/launcher.py')];
   const dataDir=process.env.IMT_TEST_DATA_DIR||app.getPath('userData');mkdirSync(dataDir,{recursive:true,mode:0o700});
-  backend=spawn(executable,args,{cwd:dataDir,env:{...process.env,IMT_TOKEN:auth,IMT_DATA_DIR:dataDir,IMT_PREVIEW_SEED_DB:previewSeed,IMT_PARENT_PIPE:'1',PYTHONUNBUFFERED:'1'},windowsHide:true,shell:false,stdio:['pipe','pipe','pipe']});
+  backend=spawn(executable,args,{cwd:dataDir,env:{...process.env,IMT_TOKEN:auth,IMT_DATA_DIR:dataDir,IMT_PREVIEW_SEED_DB:previewSeed,IMT_PARENT_PIPE:'1',PYTHONUNBUFFERED:'1'},shell:false,stdio:['pipe','pipe','pipe']});
   backend.on('error',()=>{/* Readiness reports spawn failures in the visible startup dialog. */});
-  if(process.platform==='win32'&&backend.pid){try{const native=windowsIntegration(),handle=native.attachBackend(backend.pid!,executable);backendJob={close:()=>native.closeBackendJob(handle)};backend.once('exit',()=>backendJob?.close());}catch(error){backend.kill();throw error;}}
   backend.stderr?.on('data',()=>{/* Controlled provider errors go to UI, no raw responses in logs. */});
   await new Promise<void>((resolve,reject)=>{
     let output='';const timeout=setTimeout(()=>reject(new Error('Local backend did not start within 45 seconds.')),45000);
@@ -130,7 +125,7 @@ ipcMain.handle('application-updates',async(event,action:unknown,value?:unknown)=
  throw Error('Update operation not allowed');
 });
 ipcMain.handle('watchlist-file',async(event,action:unknown,id?:unknown)=>{trusted(event);if(!window)return null;if(action==='import')return importWatchlistCSV(window);if(action==='export'){await readiness;return exportWatchlistCSV(window,await localFetch('/workspace','GET'),id);}throw Error('Invalid watchlist file operation');});
-ipcMain.handle('alert-notifications',async(event,action:string,value?:unknown)=>{trusted(event);await readiness;if(!alertNotifications)throw Error('Native alert service is unavailable');if(action==='status')return alertNotifications.status();if(action==='request')return alertNotifications.status(true);if(action==='test')return alertNotifications.test(value);if(action==='navigation')return alertNotifications.navigation();if(action==='settings'){await shell.openExternal(process.platform==='win32'?'ms-settings:notifications':'x-apple.systempreferences:com.apple.Notifications-Settings.extension');return null;}throw Error('Notification operation not allowed');});
+ipcMain.handle('alert-notifications',async(event,action:string,value?:unknown)=>{trusted(event);await readiness;if(!alertNotifications)throw Error('Native alert service is unavailable');if(action==='status')return alertNotifications.status();if(action==='request')return alertNotifications.status(true);if(action==='test')return alertNotifications.test(value);if(action==='navigation')return alertNotifications.navigation();if(action==='settings'){await shell.openExternal('x-apple.systempreferences:com.apple.Notifications-Settings.extension');return null;}throw Error('Notification operation not allowed');});
 ipcMain.handle('screener-csv',async(event,data:CSVData)=>{trusted(event);if(!window)return null;const csv=formatCSV(data);const selected=await dialog.showSaveDialog(window,{title:'Export historical screener results',defaultPath:'Screener-results.csv',filters:[{name:'CSV results',extensions:['csv']}]});if(selected.canceled||!selected.filePath)return null;await writeFile(selected.filePath,csv,'utf8');return selected.filePath;});
 ipcMain.on('cancel', (event,id:string)=>{trusted(event);requests.get(id)?.abort();});
 ipcMain.handle('select-files',async(event,kind:string,symbol?:string)=>{
@@ -179,7 +174,6 @@ ipcMain.handle('external',async(event,url:string)=>{
 });
 function createWindow(){
   window=new BrowserWindow({width:1440,height:920,minWidth:1050,minHeight:650,title:PRODUCT_NAME,backgroundColor:'#0c1017',...(process.platform==='darwin'?{titleBarStyle:'hiddenInset' as const,trafficLightPosition:{x:17,y:9}}:{titleBarStyle:'default' as const}),webPreferences:{preload:join(__dirname,'preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
-  if(process.platform==='win32')window.webContents.on('before-input-event',(event,input)=>{if(input.type==='keyDown'&&input.key==='F11'&&!input.isAutoRepeat){event.preventDefault();void nativeWindow.control('toggle').catch(error=>dialog.showErrorBox('Fullscreen unavailable',String(error)));}});
   window.webContents.on('did-finish-load',()=>{void readiness?.then(()=>localFetch('/api/streams/events?cursor=0&wait=0','GET')).then(value=>window?.webContents.send('market-stream',value)).catch(()=>{});});
   window.webContents.on('render-process-gone',()=>{void localFetch('/api/streams/consumers','PUT',{consumers:[]}).catch(()=>{});});
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));window.webContents.on('will-navigate',e=>e.preventDefault());
@@ -206,6 +200,6 @@ app.on('before-quit',event=>{
  shutdown=(async()=>{
   if(pendingSaves.size)await Promise.race([Promise.allSettled([...pendingSaves]),new Promise(resolve=>setTimeout(resolve,3000))]);
   for(const controller of requests.values())controller.abort();requests.clear();
-  try{await stopOwnedBackend(backend,auth,backendJob);}catch{dialog.showErrorBox(PRODUCT_NAME+' shutdown','The owned backend did not confirm shutdown. Its cleanup job has been closed. Relaunch after checking the saved application logs.');}
+  try{await stopOwnedBackend(backend,auth);}catch{dialog.showErrorBox(PRODUCT_NAME+' shutdown','The owned backend did not confirm shutdown. Its owned process did not exit. Relaunch after checking the saved application logs.');}
  })().finally(()=>{shutdownFinished=true;app.quit();});
 });

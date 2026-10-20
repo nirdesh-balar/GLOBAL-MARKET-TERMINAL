@@ -26,7 +26,7 @@ jobs:
       - run: node scripts/download-test-directory.mjs
       - run: backend/.venv/bin/python -m pytest backend/tests -q
       - run: npm run build
-      - run: node scripts/verify-windows.mjs --math
+      - run: node scripts/verify-macos.mjs --math
       - run: node scripts/release-ui.mjs
       # Candidate binaries and raw test output remain on the ephemeral runner.
       # No artifact upload is permitted until a separate evidence policy is reviewed.

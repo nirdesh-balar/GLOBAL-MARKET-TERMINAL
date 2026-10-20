@@ -1,5 +1,3 @@
-import {STABLE_BUNDLE_ID} from '../src/brand';
-import {windowsIntegration} from './windowsIntegration';
 import {Notification,type BrowserWindow} from 'electron';
 import {join} from 'node:path';
 interface Permission {authorization:string;alerts:string;sounds:string;notification_center:string;error:string}
@@ -7,20 +5,18 @@ interface EventRow {id:string;kind:string;created_at:number;payload:{instrument:
 type Fetch=(path:string,method:string,body?:unknown)=>Promise<any>;
 /** Native dispatch is owned by main, not by React rendering/polling. Claims persist before display. */
 export class AlertNotifications {
- private timer:ReturnType<typeof setInterval>|undefined;private busy=false;private closed=false;private retained=new Map<string,Notification>();private permission:Promise<Permission>|null=null;private last:unknown=null;private pendingNavigation:string|null=null;private lastTest=0;private lastWindowsActivation={id:'',at:0};
+ private timer:ReturnType<typeof setInterval>|undefined;private busy=false;private closed=false;private retained=new Map<string,Notification>();private permission:Promise<Permission>|null=null;private last:unknown=null;private pendingNavigation:string|null=null;private lastTest=0;
  constructor(private fetch:Fetch,private getWindow:()=>BrowserWindow|undefined){}
  async status(request=false){
-  if(process.platform==='win32'&&Notification.isSupported()){let setting='unknown';try{setting=windowsIntegration().notificationSetting(STABLE_BUNDLE_ID);}catch{}return {supported:true,authorization:setting==='enabled'?'authorized':setting.startsWith('disabled_')?'denied':'unknown',alerts:setting==='enabled'?'system_managed':setting,sounds:'system_managed',notification_center:'system_managed',error:setting==='unknown'?'Windows notification settings could not be read. Check Settings → System → Notifications.':'Windows controls toast presentation and sound. Do Not Disturb/Focus and actual receipt cannot be inferred from this permission check.',last:this.last};}
   if(process.platform!=='darwin'||!Notification.isSupported())return {supported:Notification.isSupported(),authorization:'unsupported',alerts:'unsupported',sounds:'unsupported',notification_center:'unsupported',error:'Native macOS notification permissions are unavailable on this platform.',last:this.last};
   try{if(request&&this.permission)await this.permission;if(!this.permission)this.permission=(require(join(__dirname,'notification-status.node')) as {status:(request:boolean)=>Promise<Permission>}).status(request).finally(()=>{this.permission=null;});const p=await this.permission;return {...p,supported:true,last:this.last};}
   catch{return {supported:true,authorization:'unknown',alerts:'unknown',sounds:'unknown',notification_center:'unknown',error:'macOS authorization could not be read. Check System Settings → Notifications.',last:this.last};}
  }
  start(){void this.restore().finally(()=>{if(!this.closed){this.timer=setInterval(()=>void this.flush(),2000);void this.flush();}});}
  private activate(id:string){
-  if(this.closed)return;if(process.platform==='win32'){const now=Date.now();if(this.lastWindowsActivation.id===id&&now-this.lastWindowsActivation.at<1000)return;this.lastWindowsActivation={id,at:now};}this.pendingNavigation=id;const w=this.getWindow();if(w){if(w.isMinimized())w.restore();w.show();w.focus();w.webContents.send('alert-navigation',id);}void this.record(id,'clicked','Native notification click received.');
+  if(this.closed)return;this.pendingNavigation=id;const w=this.getWindow();if(w){if(w.isMinimized())w.restore();w.show();w.focus();w.webContents.send('alert-navigation',id);}void this.record(id,'clicked','Native notification click received.');
  }
  private async restore(){
-  if(process.platform==='win32'){Notification.handleActivation(details=>{const match=/^gmt-alert:([a-f0-9]{32})$/.exec(details.arguments);if(match)void this.fetch('/api/alerts/history','GET').then((rows:EventRow[])=>{if(rows.some(r=>r.id===match[1]))this.activate(match[1]);}).catch(()=>{});});return;}
   if(process.platform!=='darwin')return;
   try{
    const known=new Set((await this.fetch('/api/alerts/history','GET') as EventRow[]).map(row=>row.id));
@@ -57,7 +53,7 @@ export class AlertNotifications {
   if(p.authorization==='unknown'){await this.record(row.id,'unconfirmed','System notification permission status could not be established.');return;}
   const payload=row.payload,stamp=payload.market_time?new Date(payload.market_time*1000).toISOString():payload.candle_time?new Date(payload.candle_time*1000).toISOString():'test only';
   let n:Notification;
-  try{n=new Notification({id:row.id,groupId:'historical-alerts',title:payload.title.slice(0,80),subtitle:`${payload.instrument.symbol} · ${payload.instrument.exchange} · ${payload.interval}`,body:`${payload.message.slice(0,500)}\n${payload.event_type==='live_price'?'Public trade':'Signal candle'}: ${stamp}\n${row.kind==='test'?'Test only · not a market signal':payload.event_type==='live_price'?'Public market analysis · provider timestamps':'Historical analysis · may be delayed'}`,silent:payload.sound==='none',...(process.platform==='darwin'&&payload.sound!=='none'&&payload.sound!=='default'?{sound:payload.sound}:{}),...(process.platform==='win32'?{toastXml:windowsToast(row,stamp)}:{})});}
+  try{n=new Notification({id:row.id,groupId:'historical-alerts',title:payload.title.slice(0,80),subtitle:`${payload.instrument.symbol} · ${payload.instrument.exchange} · ${payload.interval}`,body:`${payload.message.slice(0,500)}\n${payload.event_type==='live_price'?'Public trade':'Signal candle'}: ${stamp}\n${row.kind==='test'?'Test only · not a market signal':payload.event_type==='live_price'?'Public market analysis · provider timestamps':'Historical analysis · may be delayed'}`,silent:payload.sound==='none',...(process.platform==='darwin'&&payload.sound!=='none'&&payload.sound!=='default'?{sound:payload.sound}:{})});}
   catch{await this.record(row.id,'failed','Native notification could not be constructed.');return;}
   this.retained.set(row.id,n);let acknowledged=false;
   n.on('show',()=>{acknowledged=true;void this.record(row.id,'shown_by_api','Electron emitted show; Focus, banner visibility and user receipt are not guaranteed.');});
@@ -71,5 +67,3 @@ export class AlertNotifications {
  }
  close(){this.closed=true;if(this.timer)clearInterval(this.timer);this.retained.clear();}
 }
-
-export function windowsToast(row:EventRow,stamp:string){const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]!));return `<toast launch="gmt-alert:${row.id}"><visual><binding template="ToastGeneric"><text>${escape(row.payload.title.slice(0,80))}</text><text>${escape(row.payload.instrument.symbol+' · '+row.payload.instrument.exchange+' · '+row.payload.interval+'\n'+row.payload.message.slice(0,500))}</text><text>${escape(stamp+' · Personal market analysis')}</text></binding></visual>${row.payload.sound==='none'?'<audio silent="true"/>':''}</toast>`;}

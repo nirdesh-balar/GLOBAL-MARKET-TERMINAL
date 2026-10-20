@@ -143,30 +143,7 @@ def test_commit_backup_archive_and_references(application,monkeypatch):
  assert application.state.registry.resolve(hl()['canonical_id'])['market_type']=='perpetual', 'MIGRATION_REGISTRY_REFERENCE'
  assert restore_workspace(application.state.db,application.state.registry)['panes'][0]['token']==hl()['canonical_id'], 'MIGRATION_WORKSPACE_REFERENCE'
  with closing(sqlite3.connect(result['backup'])) as c:assert json.loads(c.execute("select value from settings where key='workspace'").fetchone()[0])==before, 'MIGRATION_BACKUP_SOURCE'
- if __import__('os').name=='nt':
-  import re
-  from app.profile_security import windows_dacl,windows_user_sid
-  dacl=windows_dacl(result['backup']);allowed={'SY','BA',windows_user_sid()}
-  trustees=re.findall(r'\(A;[^)]*;;;([^;)]+)\)',dacl)
-  assert trustees, 'MIGRATION_DACL_PRESENT'
-  from windows_acl_reference import inspect_private_dacl
-  audit = inspect_private_dacl(result['backup'], 'migration_backup')
-  assert audit != 'API_INCONCLUSIVE', 'MIGRATION_BACKUP_API_INCONCLUSIVE'
-  assert audit != 'MISSING_DACL', 'MIGRATION_BACKUP_MISSING_DACL'
-  assert audit != 'SPECIAL_ACE', 'MIGRATION_BACKUP_SPECIAL_ACE'
-  assert audit != 'UNEXPECTED_INHERITED', 'MIGRATION_BACKUP_UNEXPECTED_INHERITED'
-  assert audit != 'UNEXPECTED_ALLOW', 'MIGRATION_BACKUP_UNEXPECTED_ALLOW'
-  assert audit != 'PROTECTION_MISMATCH', 'MIGRATION_BACKUP_PROTECTION_MISMATCH'
-  assert audit != 'INHERITANCE_MISMATCH', 'MIGRATION_BACKUP_INHERITANCE_MISMATCH'
-  assert audit != 'RIGHTS_MISMATCH', 'MIGRATION_BACKUP_RIGHTS_MISMATCH'
-  assert inspect_private_dacl(application.state.db.path.parent, 'profile_directory') in {'STRICT_MATCH','EQUIVALENT_SID'}, 'MIGRATION_ROOT_POLICY'
-  assert inspect_private_dacl(Path(result['backup']).parent, 'migration_parent') in {'STRICT_MATCH','EQUIVALENT_SID'}, 'MIGRATION_PARENT_POLICY'
-  if audit == 'EQUIVALENT_SID':
-   assert set(trustees)<=allowed, 'MIGRATION_BACKUP_EQUIVALENT_SID'
-  else:
-   assert set(trustees)<=allowed, 'MIGRATION_DACL_TRUSTEES'
- else:
-  assert Path(result['backup']).stat().st_mode&0o777==0o600, 'MIGRATION_POSIX_MODE'
+ assert Path(result['backup']).stat().st_mode&0o777==0o600, 'MIGRATION_POSIX_MODE'
  service.restore(Restore(backup_id=result['backup_id'],confirm=True));assert application.state.db.get('workspace')==before, 'MIGRATION_RESTORE_SOURCE'
  assert Path(result['backup']).exists(), 'MIGRATION_BACKUP_RETAINED'
 def test_drawing_coordinate_transfer_explicit(application,monkeypatch):

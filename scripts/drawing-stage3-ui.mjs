@@ -12,6 +12,10 @@ await expect(canvas).toHaveAttribute('data-auto-scale','false');
 await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
 for(const [n,t] of tools.entries()){
  console.log('Stage 3 pointer checks:',t.id);
+ // Each tool uses real historical coordinates. Earlier anchor drags and scale
+ // transitions may shift the time viewport; do not click an empty future area.
+ await page.getByLabel('FIT pane 0',{exact:true}).click();
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  await choose(t);
  if(t.gesture==='freehand'){await page.mouse.move(points[0].x,points[0].y);await page.mouse.down();for(const p of points.slice(1,5))await page.mouse.move(p.x,p.y,{steps:5});await page.mouse.up();}
  else{for(const p of points.slice(0,t.anchors))await page.mouse.click(p.x,p.y);if(t.variable)await page.keyboard.press('Enter');}

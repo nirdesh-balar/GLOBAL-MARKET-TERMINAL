@@ -60,10 +60,6 @@ release-stage67g1/
 
 # Stable outputs are outside this source checkout.
 
-backend/dist-windows/
-backend/build-windows/
-desktop/native/windows/build/
-release-v0.7.0-global-market-terminal-windows/
 
 # Public candidates and provider files are not source.
 backend/build-public/
@@ -73,9 +69,10 @@ backend/resources/SME_EQUITY_L.csv
 THIRD_PARTY_NOTICES/*-inventory.private.json
 .cleanup-quarantine/
 approved-native-release/
-release-v1.0.0-global-market-terminal-windows/
 
 # Ignore local dependency links as well as directories.
 /node_modules
 /backend/.venv
-/ci-evidence-public/
+
+# macOS Finder metadata is local user state, never public source.
+.DS_Store

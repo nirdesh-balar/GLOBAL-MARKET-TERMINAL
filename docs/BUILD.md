@@ -1,13 +1,11 @@
-# Build
+# macOS Apple Silicon build
 
-Official repository: https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL. Select an exact reviewed commit. Build dependencies are separate from end-user installation requirements.
+GLOBAL MARKET TERMINAL is a macOS desktop application. Supported builds are arm64 only. Intel builds are not verified.
 
-Use Node 22.19.0 and native Python 3.11. Windows CI pins Python 3.11.13 x64; the current local Mac toolchain is Python 3.11.17 arm64. JavaScript and Python dependency lockfiles are committed. Run `npm ci`; run `npm run setup` on Mac or `npm run setup:windows` on Windows. `npm run build` checks renderer/main/preload TypeScript, builds Vite/esbuild and the host native helper.
+Use Node 22.19.0 arm64, native Python 3.11 (local verified runtime: 3.11.17 arm64) and Xcode Command Line Tools with N-API headers. Run `npm ci`, `npm run setup`, then `npm run build`. The committed JavaScript and Python locks remain in use. The build checks renderer and Electron TypeScript, builds Vite/esbuild and compiles the native macOS notification bridge.
 
-On Apple Silicon run `npm run package:public:mac`. It freezes a native Python backend and builds a new DMG, ZIP, blockmaps and latest-mac.yml. Default output is `../../release-v1.0.0-global-market-terminal/mac-candidate` from the private maintained checkout; in a public checkout set GMT_MAC_OUTPUT to a NEW project-owned directory (the CI workflow does this explicitly). Existing output is rejected. Default signing is ad-hoc and updates are blocked. Set GMT_SIGNED_RELEASE=1 only with independently provisioned Developer ID/notarization credentials; do not disable signature validation to make it pass.
+`npm run package:mac`, `npm run package:stable` and `npm run package:public:mac` all build a native frozen Python backend and arm64 DMG/ZIP, blockmaps and latest-mac.yml. Set GMT_MAC_OUTPUT to a NEW absolute project-owned candidate directory. Existing output is rejected; no build publishes automatically. Packaging requires at least 2 GiB free; allow additional temporary headroom. Never remove an old release to make a build proceed without itemized approval.
 
-On Windows x64 run `npm run package:windows`. Output is `release-v1.0.0-global-market-terminal-windows/build` under the source checkout. It freezes Windows Python, compiles the Windows addon, builds NSIS and validates AMD64 application/backend payloads. No Mac binary is copied into Windows. For a signed candidate, configure the real certificate and publisher in the protected build environment before setting GMT_SIGNED_RELEASE=1. Windows 11 native acceptance remains required after hosted Server CI.
+Signing defaults to ad-hoc; automatic updates remain blocked. Set GMT_SIGNED_RELEASE=1 only in a separately approved build environment with Developer ID and notarization credentials. Ad-hoc signatures are not trusted Developer ID or Gatekeeper acceptance. Never upload signing credentials or bypass system security.
 
-The public source and installer omit NSE CSV snapshots. The application fetches official directory metadata directly at startup, or accepts permitted manual official files. Local deterministic tests require test-only official directory files: run `node scripts/download-test-directory.mjs`. This bounded download respects failures; it is not a bypass and downloaded files are ignored by Git and omitted from public payloads. Provider failures must be reported rather than inventing instruments.
-
-The proposed MIT license, exact source manifest, native acceptance and release assets require owner approval before publication. No build command publishes automatically.
+Public source and installers omit NSE CSV snapshots and user profiles. Tests use local official directory files obtained by `node scripts/download-test-directory.mjs`; downloads respect provider failures. Market data history stays in bounded RAM. See LICENSE-AUDIT.md for unchanged third-party and data rights obligations.

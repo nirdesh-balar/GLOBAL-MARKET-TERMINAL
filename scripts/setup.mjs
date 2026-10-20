@@ -1,3 +1,4 @@
+if(process.platform!=='darwin'||process.arch!=='arm64')throw Error('Native Apple Silicon macOS is required');
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';

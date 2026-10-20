@@ -1,11 +1,11 @@
 import{readFile}from'node:fs/promises';import{createHash}from'node:crypto';import{execFileSync}from'node:child_process';import{join,basename}from'node:path';
 export const official='nirdesh-balar/GLOBAL-MARKET-TERMINAL';
 export function validateAcceptance(a){
- const required=['sourceApproved','licenseApproved','macInstallerNative','windows11InstallerNative','macTrustedSigning','macNotarized','windowsAuthenticode','macNativeUpdateAtoB','windowsNativeUpdateAtoB','profilesProtected','finalPublicationApproved'];
+ const required=['sourceApproved','licenseApproved','macInstallerNative','macTrustedSigning','macNotarized','macNativeUpdateAtoB','profilesProtected','finalPublicationApproved'];
  if(a.repository!==official||a.version!=='1.0.0'||a.tag!=='v1.0.0'||!/^[a-f0-9]{40}$/.test(a.sourceSha))throw Error('Release identity/source mismatch');
  for(const k of required)if(a[k]!==true)throw Error('Release gate incomplete: '+k);
- const names=new Set(a.assets.map(r=>r.name));for(const n of ['GLOBAL-MARKET-TERMINAL-mac-arm64.dmg','GLOBAL-MARKET-TERMINAL-win-x64-Setup.exe','latest-mac.yml','latest.yml'])if(!names.has(n))throw Error('Required release asset missing: '+n);
- for(const r of a.assets)if(!/^(GLOBAL-MARKET-TERMINAL-[A-Za-z0-9._-]+\.(dmg|exe|zip)(\.blockmap)?|latest(-mac)?\.yml|SHA256SUMS\.txt|RELEASE-NOTES\.md)$/.test(r.name)||basename(r.name)!==r.name||!/^[a-f0-9]{64}$/.test(r.sha256))throw Error('Invalid release asset');
+ const names=new Set(a.assets.map(r=>r.name));for(const n of ['GLOBAL-MARKET-TERMINAL-mac-arm64.dmg','GLOBAL-MARKET-TERMINAL-1.0.0-mac-arm64.zip','latest-mac.yml'])if(!names.has(n))throw Error('Required release asset missing: '+n);
+ for(const r of a.assets)if(!/^(GLOBAL-MARKET-TERMINAL-[A-Za-z0-9._-]+\.(dmg|zip)(\.blockmap)?|latest-mac\.yml|SHA256SUMS\.txt|RELEASE-NOTES\.md)$/.test(r.name)||basename(r.name)!==r.name||!/^[a-f0-9]{64}$/.test(r.sha256))throw Error('Invalid release asset');
  return true;
 }
 if(process.argv.includes('--check')){const file=process.argv[process.argv.indexOf('--check')+1];validateAcceptance(JSON.parse(await readFile(file,'utf8')));console.log('All declared release gates present; native evidence still requires human review.');}

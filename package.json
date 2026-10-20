@@ -64,13 +64,10 @@
     "package:stage67g": "npm run build && node scripts/package.mjs --stage67g",
     "package:stage67g1": "npm run build && node scripts/package.mjs --stage67g1",
     "package:stable": "npm run build && node scripts/package.mjs --stable",
-    "package:windows": "node scripts/package-windows.mjs",
-    "test:platform": "node scripts/windows-platform-tests.mjs",
-    "test:windows": "node scripts/verify-windows.mjs",
-    "test:windows:packaged": "node scripts/windows-packaged.mjs",
-    "setup:windows": "node scripts/setup-windows.mjs",
+    "test:platform": "node scripts/macos-platform-tests.mjs",
     "package:public:mac": "npm run build && node scripts/package-public-mac.mjs",
-    "test:release": "node scripts/release-unit.mjs"
+    "test:release": "node scripts/release-unit.mjs",
+    "test:macos": "node scripts/verify-macos.mjs"
   },
   "dependencies": {
     "electron-updater": "6.8.10",
@@ -151,5 +148,11 @@
   "bugs": {
     "url": "https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/issues"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ]
 }
