@@ -8,6 +8,7 @@ desktop/dist/
 desktop/dist-electron/
 release/
 *.spec
+!backend/windows-backend.spec
 __pycache__/
 .pytest_cache/
 *.sqlite*

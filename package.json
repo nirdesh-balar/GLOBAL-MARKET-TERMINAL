@@ -66,6 +66,7 @@
     "package:stable": "npm run build && node scripts/package.mjs --stable",
     "test:platform": "node scripts/macos-platform-tests.mjs && node scripts/windows-platform-tests.mjs",
     "test:platform:windows": "node scripts/windows-platform-tests.mjs",
+    "test:package:config": "node scripts/packaging-config-tests.mjs",
     "package:public:mac": "npm run build && node scripts/package-public-mac.mjs",
     "test:release": "node scripts/release-unit.mjs",
     "test:macos": "node scripts/verify-macos.mjs"
