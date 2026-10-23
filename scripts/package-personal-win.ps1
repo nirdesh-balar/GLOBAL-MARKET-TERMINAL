@@ -80,7 +80,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# 7. Validate backend executable placement
+# 7. Validate backend executable placement and PE architecture
 $backendExe = "backend/dist-windows/imt-backend/imt-backend.exe"
 if (-not (Test-Path $backendExe)) {
     Write-Error "Expected backend executable was not found at $backendExe."
@@ -88,6 +88,16 @@ if (-not (Test-Path $backendExe)) {
 }
 $backendSize = (Get-Item $backendExe).Length
 Write-Host "[7/12] Verified backend executable: $backendExe ($([math]::Round($backendSize / 1MB, 2)) MB)" -ForegroundColor Green
+
+# Verify PE header machine architecture is x64 (IMAGE_FILE_MACHINE_AMD64 = 0x8664)
+$bytes = [System.IO.File]::ReadAllBytes($backendExe)
+$peOffset = [System.BitConverter]::ToInt32($bytes, 0x3C)
+$machine = [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)
+if ($machine -ne 0x8664) {
+    Write-Error "Binary $backendExe is not a Windows x64 (AMD64) PE executable! Machine: 0x$($machine.ToString('X4'))"
+    exit 1
+}
+Write-Host "       Verified PE Architecture: Windows x64 (AMD64 - 0x8664)" -ForegroundColor Green
 
 # 8. Guard against overwriting an existing output
 if (Test-Path $OutputDir) {
