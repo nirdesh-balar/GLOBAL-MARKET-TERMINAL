@@ -64,7 +64,8 @@
     "package:stage67g": "npm run build && node scripts/package.mjs --stage67g",
     "package:stage67g1": "npm run build && node scripts/package.mjs --stage67g1",
     "package:stable": "npm run build && node scripts/package.mjs --stable",
-    "test:platform": "node scripts/macos-platform-tests.mjs",
+    "test:platform": "node scripts/macos-platform-tests.mjs && node scripts/windows-platform-tests.mjs",
+    "test:platform:windows": "node scripts/windows-platform-tests.mjs",
     "package:public:mac": "npm run build && node scripts/package-public-mac.mjs",
     "test:release": "node scripts/release-unit.mjs",
     "test:macos": "node scripts/verify-macos.mjs"
@@ -126,19 +127,21 @@
         "CFBundleName": "GLOBAL MARKET TERMINAL"
       }
     },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
     "npmRebuild": false,
     "asarUnpack": [
       "desktop/dist-electron/*.node"
     ],
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "nirdesh-balar",
-        "repo": "GLOBAL-MARKET-TERMINAL",
-        "releaseType": "draft",
-        "private": false
-      }
-    ]
+    "publish": null
   },
   "repository": {
     "type": "git",
@@ -150,9 +153,11 @@
   },
   "license": "MIT",
   "os": [
-    "darwin"
+    "darwin",
+    "win32"
   ],
   "cpu": [
-    "arm64"
+    "arm64",
+    "x64"
   ]
 }

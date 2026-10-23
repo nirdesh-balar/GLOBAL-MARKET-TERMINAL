@@ -1,6 +1,6 @@
 import {startUpdates} from './updateRuntime';
 import type {ApplicationUpdates} from './updates';
-import {backendExecutable,fullscreenAccelerator} from './platform';
+import {backendExecutable,fullscreenAccelerator,isSupportedPlatform} from './platform';
 import {stopOwnedBackend} from './backendLifecycle';
 import {PRODUCT_NAME,RELEASE_VERSION,STABLE_BUNDLE_ID,STABLE_MARKER} from '../src/brand';
 import {execFileSync} from 'node:child_process';
@@ -52,11 +52,12 @@ app.setName(PRODUCT_NAME);
 app.setAboutPanelOptions({applicationName:PRODUCT_NAME,applicationVersion:RELEASE_VERSION,version:RELEASE_VERSION,copyright:'Personal market analysis · Yahoo Finance and public Hyperliquid data'});
 const preview=['phase6-stage1','phase6-stage2','phase6-stage3','phase6-stage4','phase6-stage5','phase6-stage6','phase6-stage6.5','phase6-stage6.6','phase6-stage6.7-A','phase6-stage6.7-B','phase6-stage6.7-C','phase6-stage6.7-D','phase6-stage6.7-E1','phase6-stage6.7-E1.1','phase6-stage6.7-E2','phase6-stage6.7-E3A','phase6-stage6.7-E3B','phase6-stage6.7-F','phase6-stage6.7-G','phase6-stage6.7-G1'].includes(previewStage);
 const rejectLaunch=(message:string):never=>{process.stderr.write(message+'\n');process.exit(78);};
-if(process.platform!=='darwin'||process.arch!=='arm64')rejectLaunch('GLOBAL MARKET TERMINAL requires Apple Silicon macOS');
+if(!isSupportedPlatform())rejectLaunch('GLOBAL MARKET TERMINAL requires Apple Silicon macOS or 64-bit Windows');
 // Fail before creating any directory or backend when a test selects the wrong package.
 if(process.env.IMT_EXPECT_PREVIEW && previewStage!==process.env.IMT_EXPECT_PREVIEW)rejectLaunch('Preview identity mismatch; no profile opened');
 if(!app.isPackaged&&!dev&&!process.env.IMT_TEST_DATA_DIR)rejectLaunch('Unpackaged runs require IMT_DEV or an isolated IMT_TEST_DATA_DIR');
 if(stable&&process.platform==='darwin'){const id=execFileSync('/usr/bin/plutil',['-extract','CFBundleIdentifier','raw',join(process.resourcesPath,'../Info.plist')],{encoding:'utf8'}).trim();if(id!==STABLE_BUNDLE_ID||metadata.version!==RELEASE_VERSION||metadata.drawingPreview)rejectLaunch('Stable package identity mismatch; no profile opened');}
+else if(stable&&process.platform==='win32'){if(metadata.version!==RELEASE_VERSION||metadata.drawingPreview)rejectLaunch('Stable package identity mismatch; no profile opened');}
 if(app.isPackaged&&!stable&&previewStage&&!preview)rejectLaunch('Unknown preview identity; no profile opened');
 const guardReason=previewTestGuard(previewStage,process.resourcesPath,process.env);
 if(guardReason)rejectLaunch(guardReason);
@@ -125,7 +126,7 @@ ipcMain.handle('application-updates',async(event,action:unknown,value?:unknown)=
  throw Error('Update operation not allowed');
 });
 ipcMain.handle('watchlist-file',async(event,action:unknown,id?:unknown)=>{trusted(event);if(!window)return null;if(action==='import')return importWatchlistCSV(window);if(action==='export'){await readiness;return exportWatchlistCSV(window,await localFetch('/workspace','GET'),id);}throw Error('Invalid watchlist file operation');});
-ipcMain.handle('alert-notifications',async(event,action:string,value?:unknown)=>{trusted(event);await readiness;if(!alertNotifications)throw Error('Native alert service is unavailable');if(action==='status')return alertNotifications.status();if(action==='request')return alertNotifications.status(true);if(action==='test')return alertNotifications.test(value);if(action==='navigation')return alertNotifications.navigation();if(action==='settings'){await shell.openExternal('x-apple.systempreferences:com.apple.Notifications-Settings.extension');return null;}throw Error('Notification operation not allowed');});
+ipcMain.handle('alert-notifications',async(event,action:string,value?:unknown)=>{trusted(event);await readiness;if(!alertNotifications)throw Error('Native alert service is unavailable');if(action==='status')return alertNotifications.status();if(action==='request')return alertNotifications.status(true);if(action==='test')return alertNotifications.test(value);if(action==='navigation')return alertNotifications.navigation();if(action==='settings'){if(process.platform==='darwin')await shell.openExternal('x-apple.systempreferences:com.apple.Notifications-Settings.extension');else if(process.platform==='win32')await shell.openExternal('ms-settings:notifications');return null;}throw Error('Notification operation not allowed');});
 ipcMain.handle('screener-csv',async(event,data:CSVData)=>{trusted(event);if(!window)return null;const csv=formatCSV(data);const selected=await dialog.showSaveDialog(window,{title:'Export historical screener results',defaultPath:'Screener-results.csv',filters:[{name:'CSV results',extensions:['csv']}]});if(selected.canceled||!selected.filePath)return null;await writeFile(selected.filePath,csv,'utf8');return selected.filePath;});
 ipcMain.on('cancel', (event,id:string)=>{trusted(event);requests.get(id)?.abort();});
 ipcMain.handle('select-files',async(event,kind:string,symbol?:string)=>{

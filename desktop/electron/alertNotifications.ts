@@ -8,6 +8,10 @@ export class AlertNotifications {
  private timer:ReturnType<typeof setInterval>|undefined;private busy=false;private closed=false;private retained=new Map<string,Notification>();private permission:Promise<Permission>|null=null;private last:unknown=null;private pendingNavigation:string|null=null;private lastTest=0;
  constructor(private fetch:Fetch,private getWindow:()=>BrowserWindow|undefined){}
  async status(request=false){
+  if(process.platform==='win32'){
+   const supported=Notification.isSupported();
+   return {supported,authorization:supported?'authorized':'unsupported',alerts:supported?'enabled':'unsupported',sounds:supported?'enabled':'unsupported',notification_center:supported?'enabled':'unsupported',error:supported?'':'Windows notifications are unsupported on this system.',last:this.last};
+  }
   if(process.platform!=='darwin'||!Notification.isSupported())return {supported:Notification.isSupported(),authorization:'unsupported',alerts:'unsupported',sounds:'unsupported',notification_center:'unsupported',error:'Native macOS notification permissions are unavailable on this platform.',last:this.last};
   try{if(request&&this.permission)await this.permission;if(!this.permission)this.permission=(require(join(__dirname,'notification-status.node')) as {status:(request:boolean)=>Promise<Permission>}).status(request).finally(()=>{this.permission=null;});const p=await this.permission;return {...p,supported:true,last:this.last};}
   catch{return {supported:true,authorization:'unknown',alerts:'unknown',sounds:'unknown',notification_center:'unknown',error:'macOS authorization could not be read. Check System Settings → Notifications.',last:this.last};}
