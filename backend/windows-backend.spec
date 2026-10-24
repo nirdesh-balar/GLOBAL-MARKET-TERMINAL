@@ -37,8 +37,8 @@ for pkg in ['yfinance', 'curl_cffi', 'certifi', 'exchange_calendars', 'tzdata', 
 hiddenimports.extend(collect_submodules('uvicorn'))
 
 a = Analysis(
-    ['backend/launcher.py'],
-    pathex=['backend'],
+    [os.path.abspath('backend/launcher.py')],
+    pathex=[os.path.abspath('backend'), os.path.abspath('.')],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -70,7 +70,7 @@ exe = EXE(
     target_arch='x86_64',
     codesign_identity=None,
     entitlements_file=None,
-    icon='desktop/assets/icon.ico',
+    icon=os.path.abspath('desktop/assets/icon.ico'),
 )
 
 coll = COLLECT(

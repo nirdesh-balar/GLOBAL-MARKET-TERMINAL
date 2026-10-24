@@ -141,7 +141,7 @@ def test_no_global_nse_fallback(client):
 
 def test_stock_details_remains_absent():
  from pathlib import Path
- source=(Path(__file__).parents[2]/'desktop/src/components/WatchlistSidebar.tsx').read_text()
+ source=(Path(__file__).parents[2]/'desktop/src/components/WatchlistSidebar.tsx').read_text(encoding='utf-8')
  assert 'SymbolDetails' not in source and 'Coverage:' not in source and 'Historical bars' not in source
  assert 'data-testid="watchlist-rows"' in source
 

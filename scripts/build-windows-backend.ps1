@@ -1,5 +1,5 @@
 # ==============================================================================
-# GLOBAL MARKET TERMINAL — Windows Backend Frozen Build Script
+# GLOBAL MARKET TERMINAL - Windows Backend Frozen Build Script
 # Targets: Windows 10/11 x64 (Native Execution Only)
 # ==============================================================================
 
@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== GLOBAL MARKET TERMINAL — Windows Backend Build ===" -ForegroundColor Cyan
+Write-Host "=== GLOBAL MARKET TERMINAL - Windows Backend Build ===" -ForegroundColor Cyan
 
 # 1. Environment Verification
 if ($env:OS -notlike "*Windows*") {
@@ -67,5 +67,6 @@ if (-not (Test-Path $outputExe)) {
 }
 
 $size = (Get-Item $outputExe).Length
+$sizeMb = [math]::Round($size / 1MB, 2)
 Write-Host "=== Backend Build Succeeded ===" -ForegroundColor Green
-Write-Host "Output: $outputExe ($([math]::Round($size / 1MB, 2)) MB)"
+Write-Host ('Output: {0} ({1} MB)' -f $outputExe, $sizeMb)

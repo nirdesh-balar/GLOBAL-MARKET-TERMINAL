@@ -1,4 +1,4 @@
-import {resolve} from 'node:path';
+import path, {resolve} from 'node:path';
 
 export const pythonExecutable = resolve(
   process.platform === 'win32'
@@ -7,7 +7,8 @@ export const pythonExecutable = resolve(
 );
 
 export function getPythonExecutable(root = '.', platform = process.platform) {
-  return resolve(
+  const pathModule = platform === 'win32' ? path.win32 : path.posix;
+  return pathModule.resolve(
     root,
     platform === 'win32'
       ? 'backend/.venv/Scripts/python.exe'
@@ -16,8 +17,9 @@ export function getPythonExecutable(root = '.', platform = process.platform) {
 }
 
 export function getBackendExecutable(root = '.', packaged = false, platform = process.platform) {
+  const pathModule = platform === 'win32' ? path.win32 : path.posix;
   if (packaged) {
-    return resolve(root, 'backend', platform === 'win32' ? 'imt-backend.exe' : 'imt-backend');
+    return pathModule.resolve(root, 'backend', platform === 'win32' ? 'imt-backend.exe' : 'imt-backend');
   }
   return getPythonExecutable(root, platform);
 }

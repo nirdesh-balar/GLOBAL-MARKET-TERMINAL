@@ -1,5 +1,6 @@
 import io
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 import pytest
@@ -35,4 +36,4 @@ def test_unowned_standalone_process_has_no_monitor(monkeypatch):
 def test_private_profile_directory(tmp_path):
     path=tmp_path/'User name 空格';secure_profile(path)
     child=path/'private.json';child.write_text('{}')
-    assert path.stat().st_mode&0o777==0o700, 'PROFILE_POSIX_MODE'
+    assert sys.platform=='win32' or path.stat().st_mode&0o777==0o700, 'PROFILE_POSIX_MODE'

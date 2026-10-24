@@ -1,5 +1,5 @@
 # ==============================================================================
-# GLOBAL MARKET TERMINAL — Windows x64 Personal Packaging Entrypoint
+# GLOBAL MARKET TERMINAL - Windows x64 Personal Packaging Entrypoint
 # Packages a private local Windows NSIS installer without remote feeds or updates.
 # Must be executed directly on native Windows 10/11 x64.
 # ==============================================================================
@@ -13,7 +13,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " GLOBAL MARKET TERMINAL — Windows x64 Personal Packaging" -ForegroundColor Cyan
+Write-Host " GLOBAL MARKET TERMINAL - Windows x64 Personal Packaging" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 # 1. Verify Windows x64 environment
@@ -87,7 +87,8 @@ if (-not (Test-Path $backendExe)) {
     exit 1
 }
 $backendSize = (Get-Item $backendExe).Length
-Write-Host "[7/12] Verified backend executable: $backendExe ($([math]::Round($backendSize / 1MB, 2)) MB)" -ForegroundColor Green
+$backendSizeMb = [math]::Round($backendSize / 1MB, 2)
+Write-Host ('[7/12] Verified backend executable: {0} ({1} MB)' -f $backendExe, $backendSizeMb) -ForegroundColor Green
 
 # Verify PE header machine architecture is x64 (IMAGE_FILE_MACHINE_AMD64 = 0x8664)
 $bytes = [System.IO.File]::ReadAllBytes($backendExe)

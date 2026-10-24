@@ -1,3 +1,7 @@
+if (process.platform !== 'darwin') {
+  console.log('Skipping macOS platform tests on ' + process.platform);
+  process.exit(0);
+}
 import{build}from'esbuild';import assert from'node:assert/strict';import{mkdtemp,mkdir,writeFile,readFile,symlink}from'node:fs/promises';import{tmpdir,homedir}from'node:os';import{join,resolve}from'node:path';import{EventEmitter}from'node:events';
 await mkdir('test-results',{recursive:true});let checks=0;const load=async p=>{const b=await build({entryPoints:[p],bundle:true,platform:'node',format:'esm',write:false});return import('data:text/javascript;base64,'+Buffer.from(b.outputFiles[0].text).toString('base64'));};const platform=await load('desktop/electron/platform.ts');
 assert.equal(platform.backendExecutable('/app/Contents/Resources',true),'/app/Contents/Resources/backend/imt-backend');checks++;

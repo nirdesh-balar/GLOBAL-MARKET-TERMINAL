@@ -1,5 +1,5 @@
 # ==============================================================================
-# GLOBAL MARKET TERMINAL — Windows Build Prerequisites Checker
+# GLOBAL MARKET TERMINAL - Windows Build Prerequisites Checker
 # Validates build requirements without modifying any files or environment state.
 # ==============================================================================
 
@@ -9,7 +9,7 @@ param()
 $ErrorActionPreference = "Continue"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " GLOBAL MARKET TERMINAL — Windows Build Prerequisites Check" -ForegroundColor Cyan
+Write-Host " GLOBAL MARKET TERMINAL - Windows Build Prerequisites Check" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 $allPass = $true

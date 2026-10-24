@@ -65,6 +65,9 @@ release-stage67g1/
 # Public candidates and provider files are not source.
 backend/build-public/
 backend/dist-public/
+backend/build-windows/
+backend/dist-windows/
+release-win-candidate/
 backend/resources/EQUITY_L.csv
 backend/resources/SME_EQUITY_L.csv
 THIRD_PARTY_NOTICES/*-inventory.private.json

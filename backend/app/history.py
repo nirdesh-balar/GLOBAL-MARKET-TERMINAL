@@ -140,8 +140,8 @@ class HistoryService:
         async with self.gate:
             now=time.monotonic()
             if now<self.cooldown:raise ProviderError('Yahoo requests paused after throttling. Please wait.','rate',math.ceil(self.cooldown-now))
-            delay=max(0,self.next_request-now)
-            if delay:await asyncio.sleep(delay)
+            while (delay := self.next_request - time.monotonic()) > 0:
+                await asyncio.sleep(delay)
             if time.monotonic()<self.cooldown:raise ProviderError('Yahoo cooldown active. Please wait.','rate',math.ceil(self.cooldown-time.monotonic()))
             self.next_request=time.monotonic()+self.config['min_interval']
     async def _download(self, key, security, generation, loader=None, priority=0):

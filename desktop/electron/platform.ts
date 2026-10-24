@@ -1,9 +1,10 @@
 import path from 'node:path';
 export function backendExecutable(root:string,packaged:boolean,platform:string=process.platform){
+  const pathModule = platform === 'win32' ? path.win32 : path.posix;
   if(platform==='win32'){
-    return packaged?path.join(root,'backend','imt-backend.exe'):path.join(root,'backend','.venv','Scripts','python.exe');
+    return packaged?pathModule.join(root,'backend','imt-backend.exe'):pathModule.join(root,'backend','.venv','Scripts','python.exe');
   }
-  return packaged?path.join(root,'backend','imt-backend'):path.join(root,'backend','.venv','bin','python');
+  return packaged?pathModule.join(root,'backend','imt-backend'):pathModule.join(root,'backend','.venv','bin','python');
 }
 export function containedProfile(candidate:string,root:string,pathModule:typeof path=path){
   const relative=pathModule.relative(root,candidate);

@@ -279,7 +279,7 @@ def test_shared_start_spacing(tmp_path):
     a=app_for(tmp_path);h=a.state.history;h.config['min_interval']=.03;p=h.provider
     async def run():
         await asyncio.gather(h.quote(a.state.registry.resolve('RELIANCE')),h.get(a.state.registry.resolve('TCS')),h.get(a.state.registry.resolve('SBIN'),priority=1))
-        stamps=[r[2] for r in p.calls]
+        stamps=sorted(r[2] for r in p.calls)
         assert all(b-a>=.025 for a,b in zip(stamps,stamps[1:]))
         await h.close()
     asyncio.run(run())

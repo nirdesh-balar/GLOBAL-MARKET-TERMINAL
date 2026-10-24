@@ -1,4 +1,4 @@
-import asyncio,copy,json,sqlite3
+import asyncio,copy,json,sqlite3,sys
 from pathlib import Path
 from unittest.mock import patch
 import pytest
@@ -143,7 +143,7 @@ def test_commit_backup_archive_and_references(application,monkeypatch):
  assert application.state.registry.resolve(hl()['canonical_id'])['market_type']=='perpetual', 'MIGRATION_REGISTRY_REFERENCE'
  assert restore_workspace(application.state.db,application.state.registry)['panes'][0]['token']==hl()['canonical_id'], 'MIGRATION_WORKSPACE_REFERENCE'
  with closing(sqlite3.connect(result['backup'])) as c:assert json.loads(c.execute("select value from settings where key='workspace'").fetchone()[0])==before, 'MIGRATION_BACKUP_SOURCE'
- assert Path(result['backup']).stat().st_mode&0o777==0o600, 'MIGRATION_POSIX_MODE'
+ assert sys.platform=='win32' or Path(result['backup']).stat().st_mode&0o777==0o600, 'MIGRATION_POSIX_MODE'
  service.restore(Restore(backup_id=result['backup_id'],confirm=True));assert application.state.db.get('workspace')==before, 'MIGRATION_RESTORE_SOURCE'
  assert Path(result['backup']).exists(), 'MIGRATION_BACKUP_RETAINED'
 def test_drawing_coordinate_transfer_explicit(application,monkeypatch):
@@ -197,7 +197,7 @@ def test_analysis_only_endpoint_and_dependency_audit(application):
  for folder in ['backend/app','desktop/src','desktop/electron']:
   for p in (root/folder).rglob('*'):
    if p.suffix not in ('.py','.ts','.tsx'):continue
-   content=p.read_text().casefold()
+   content=p.read_text(encoding='utf-8').casefold()
    for token in ['eth_sendtransaction','eth_signtransaction','personal_sign','walletconnect','placeorder(','place_order(','api.hyperliquid.xyz/exchange']:
     assert token not in content,(p,token)
 
