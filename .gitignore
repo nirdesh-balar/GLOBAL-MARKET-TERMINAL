@@ -17,6 +17,7 @@ __pycache__/
 !.env.example
 *.log
 test-results/
+*.bundle
 backend/resources/credential-helper
 
 release-stage1/
