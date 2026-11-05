@@ -163,15 +163,15 @@ try {
   await expect(page.locator('.watch-row')).toHaveCount(0);
   console.log('PASS: Remove in colored list clears flag and removes ticker from colored list.');
 
-  // 9. Test Market / System Lists: Up, Down, Remove must be hidden
-  console.log('9. Verifying System Market List protects rows...');
+  // 9. Test Market / System Lists: Up, Down hidden; Remove (X) available to hide ticker
+  console.log('9. Verifying System Market List row actions and local hide...');
   await page.getByLabel('Active watchlist', { exact: true }).selectOption('stocks');
   await expect(page.locator('.watch-row').first()).toBeVisible();
   const firstStockSymbol = await page.locator('.watch-row').first().locator('.watch-select > span:first-child > strong').innerText();
   await expect(page.getByLabel(`Move up ${firstStockSymbol}`)).toHaveCount(0);
   await expect(page.getByLabel(`Move down ${firstStockSymbol}`)).toHaveCount(0);
-  await expect(page.getByLabel(`Remove ${firstStockSymbol}`)).toHaveCount(0);
-  console.log('PASS: System market lists do not permit row removal or reordering.');
+  await expect(page.getByLabel(`Remove ${firstStockSymbol}`)).toHaveCount(1);
+  console.log('PASS: System market lists provide Remove (X) while protecting reordering.');
 
   // 10. Test Context Menu: Create alert option is available
   console.log('10. Verifying Context Menu has Create Alert and proper actions...');

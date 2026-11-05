@@ -42,6 +42,9 @@
 .terminal-shell .watch-select .watch-change{text-align:right;display:flex;flex-direction:column;align-items:flex-end;justify-content:center}
 .terminal-shell .watch-select .watch-change strong{font-size:11px;font-variant-numeric:tabular-nums}
 .terminal-shell .watch-row.selected-symbol{border-left:3px solid #3b82f6;background:#3b82f615}
+.terminal-shell .watch-row[data-hidden="true"]{opacity:0.65;background:rgba(255,255,255,0.02)}
+.terminal-shell .watch-row[data-hidden="true"] .watch-select strong{text-decoration:line-through;color:var(--muted)}
+.terminal-shell .watch-rows:focus-visible{outline:none}
 .terminal-shell .watch-row-actions{position:relative;inset:auto;width:46px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;gap:2px;opacity:0;pointer-events:none;transition:opacity .15s ease}
 .terminal-shell .watch-row:hover .watch-row-actions,.terminal-shell .watch-row:focus-within .watch-row-actions{opacity:1;pointer-events:auto}
 .terminal-shell .watch-row-actions button{width:14px;height:22px;padding:0;font-size:9px;color:var(--muted);border-radius:2px;display:inline-flex;align-items:center;justify-content:center;background:transparent;transition:background .12s,color .12s}

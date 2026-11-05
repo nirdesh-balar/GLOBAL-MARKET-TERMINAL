@@ -349,6 +349,13 @@ class SidebarPreferences(BaseModel):
     width:int=Field(default=320,ge=220,le=480)
     volume:bool=False
     sort:Literal['manual','symbol','change']='manual'
+    @field_validator('width',mode='before')
+    @classmethod
+    def coerce_width(cls,value):
+        import math
+        if isinstance(value,float) and not isinstance(value,bool) and not math.isnan(value) and not math.isinf(value):
+            return int(round(value))
+        return value
 class StudyLayout(BaseModel):
     height:int=Field(default=104,ge=48,le=600)
     collapsed:bool=False
@@ -445,6 +452,7 @@ class Workspace(BaseModel):
     sidebar:SidebarPreferences=Field(default_factory=SidebarPreferences)
     sync_time:bool=False
     sync_crosshair:bool=False
+    hidden_symbols:dict[str,list[str]]=Field(default_factory=dict)
     @model_validator(mode='after')
     def validate_ids(self):
         if len({p.id for p in self.panes})!=8:raise ValueError('Pane identifiers must be unique')
