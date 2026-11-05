@@ -16,12 +16,12 @@ const platform = await load('desktop/electron/platform.ts');
 
 // 1. Packaged Windows backend executable path
 const winPackaged = platform.backendExecutable('C:\\Program Files\\GLOBAL MARKET TERMINAL\\resources', true, 'win32');
-assert.ok(winPackaged.endsWith(path.join('backend', 'imt-backend.exe')), 'Windows packaged backend must point to imt-backend.exe');
+assert.ok(winPackaged.endsWith(path.win32.join('backend', 'imt-backend.exe')), 'Windows packaged backend must point to imt-backend.exe');
 checks++;
 
 // 2. Unpackaged Windows Python executable path
 const winDevPython = platform.backendExecutable('C:\\GMT', false, 'win32');
-assert.ok(winDevPython.endsWith(path.join('backend', '.venv', 'Scripts', 'python.exe')), 'Windows unpackaged python must point to Scripts\\python.exe');
+assert.ok(winDevPython.endsWith(path.win32.join('backend', '.venv', 'Scripts', 'python.exe')), 'Windows unpackaged python must point to Scripts\\python.exe');
 checks++;
 
 // 3. macOS backend executable paths preserved
@@ -46,11 +46,11 @@ checks += 5;
 
 // 6. Cross-platform path helpers in scripts/platform-paths.mjs
 const winScriptPython = getPythonExecutable('C:\\project', 'win32');
-assert.ok(winScriptPython.endsWith(path.join('backend', '.venv', 'Scripts', 'python.exe')));
+assert.ok(winScriptPython.endsWith(path.win32.join('backend', '.venv', 'Scripts', 'python.exe')));
 const winScriptBackend = getBackendExecutable('C:\\project\\resources', true, 'win32');
-assert.ok(winScriptBackend.endsWith(path.join('backend', 'imt-backend.exe')));
+assert.ok(winScriptBackend.endsWith(path.win32.join('backend', 'imt-backend.exe')));
 const macScriptPython = getPythonExecutable('/project', 'darwin');
-assert.ok(macScriptPython.endsWith('backend/.venv/bin/python'));
+assert.ok(macScriptPython.endsWith(path.posix.join('backend', '.venv', 'bin', 'python')));
 checks += 3;
 
 // 7. Profile containment validation
