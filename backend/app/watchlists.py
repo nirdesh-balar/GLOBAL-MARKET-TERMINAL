@@ -8,11 +8,11 @@ from .market_router import MarketDataRouter,selectable
 from .providers.base import ProviderError
 from .markets import MARKETS,entry,EXCHANGES,SUFFIX
 SYSTEM_IDS={k for k,_ in MARKETS}
-HEADERS={'symbol':{'symbol','ticker','trading_symbol','tradingsymbol','yahoo_symbol'},'exchange':{'exchange','exchange_code','market'},'asset_type':{'asset_type','kind','type','quote_type'},'provider':{'provider','data_provider'},'name':{'name','company','company_name'},'canonical_id':{'canonical_id'},'instrument_id':{'instrument_id'}}
+HEADERS={'symbol':{'symbol','ticker','trading_symbol','tradingsymbol','yahoo_symbol'},'exchange':{'exchange','exchange_code','market'},'asset_type':{'asset_type','kind','type','quote_type'},'provider':{'provider','data_provider'},'name':{'name','company','company_name'},'canonical_id':{'canonical_id'},'instrument_id':{'instrument_id'},'color':{'color','flag','flag_color'}}
 class CSVInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     content:str=Field(max_length=1_000_000)
-    mapping:dict[str,int|None]=Field(default_factory=dict,max_length=7)
+    mapping:dict[str,int|None]=Field(default_factory=dict,max_length=8)
     resolutions:dict[str,str]=Field(default_factory=dict,max_length=1000)
     @model_validator(mode='after')
     def safe(self):
@@ -126,7 +126,13 @@ class Watchlists:
                     if r.get('legacy_unresolved'):
                         out['error']='Legacy crypto migration required; Hyperliquid metadata pending. Yahoo crypto CSV imports are disabled.';result.append(out);continue
                     MarketDataRouter.validate(r)
-                    out['identity']=entry(r)
+                    e=entry(r)
+                    raw_color=fields.get('color','').strip().lower()
+                    if raw_color:
+                        from .database import VALID_FLAG_COLORS
+                        if raw_color in VALID_FLAG_COLORS:
+                            e['color']=raw_color;out['color']=raw_color
+                    out['identity']=e
                     if r['canonical_id'] in seen:out.update(status='duplicate',error='Duplicate identity in CSV')
                     else:out['status']='valid';seen.add(r['canonical_id'])
             result.append(out)
@@ -137,10 +143,10 @@ class Watchlists:
         with self.db.connect() as c:
             c.execute('BEGIN IMMEDIATE');old=load(c,fallback)
             if revision!=old.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload and review the operation again.')
-            value=json.loads(json.dumps(old));summary=fn(value);new=persist(c,old,value)
+            value=json.loads(json.dumps(old));summary=fn(value,c);new=persist(c,old,value)
         return dict(watchlists=new['watchlists'],active_watchlist=new['active_watchlist'],watchlist_revision=new['watchlist_revision'],summary=summary)
     def mutate(self,op):
-        def apply(w):
+        def apply(w,c=None):
             lists=w['watchlists'];current=next((r for r in lists if r['id']==op.id),None)
             if op.action not in ('create',) and current is None:raise HTTPException(404,'Watchlist no longer exists')
             if op.action in ('create','rename','duplicate'):
@@ -183,7 +189,7 @@ class Watchlists:
         if failed and not op.skip_failed:raise HTTPException(422,'Resolve all failed/ambiguous rows or explicitly choose to skip them')
         incoming=[r['identity'] for r in preview['rows'] if r['status']=='valid']
         if not incoming:raise HTTPException(422,'No valid instruments to import; the existing list was not changed')
-        def apply(w):
+        def apply(w,c=None):
             current=next((r for r in w['watchlists'] if r['id']==op.target),None)
             if op.target and not current:raise HTTPException(404,'Target watchlist no longer exists')
             if current is None:
@@ -193,7 +199,13 @@ class Watchlists:
                 current=dict(id=uuid.uuid4().hex,name=name,items=[]);w['watchlists'].append(current)
             if op.mode=='replace' and op.target and not op.confirm_replace:raise HTTPException(422,'Confirm replacement before removing existing memberships')
             items=current['items'].copy() if op.mode=='append' else [];seen={key(r) for r in items};duplicates=preview['counts']['duplicate'];imported=0
+            existing_flags=self.db.get_flags(conn=c)
             for row in incoming:
+                color_val=row.pop('color',None)
+                cid=row.get('canonical_id')
+                if color_val and cid and cid not in existing_flags:
+                    try:self.db.set_flag(cid,color_val,row['symbol'],row['name'],row['exchange'],row.get('provider','yahoo'),row.get('kind','equity'),row,conn=c)
+                    except Exception:pass
                 if key(row) in seen:duplicates+=1;continue
                 items.append(row);seen.add(key(row));imported+=1
             if len(items)>100:raise HTTPException(422,'Import would exceed 100 items; no changes were saved')

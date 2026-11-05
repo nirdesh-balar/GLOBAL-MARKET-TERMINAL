@@ -17,6 +17,7 @@ from .refresh import WatchlistRefresh, routes as refresh_routes
 from .crypto_migration import MigrationService,routes as migration_routes
 from .screener import Screener,routes as screener_routes
 from .alerts import AlertEngine,routes as alert_routes
+from .flags import routes as flag_routes
 from .watchlists import Watchlists,routes as watchlist_routes,persist as persist_workspace,load as load_workspace
 from .database import Database
 from .instruments import bootstrap, refresh, refresh_startup, install_files
@@ -132,6 +133,7 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
     app.include_router(stream_routes(streams));app.state.streams=streams
     app.include_router(screener_routes(screener));app.state.screener=screener
     app.include_router(alert_routes(alerts));app.state.alerts=alerts
+    app.include_router(flag_routes(db,registry))
     app.include_router(watchlist_routes(Watchlists(db,registry,lambda:restore_workspace(db,registry))))
     app.include_router(refresh_routes(quotes));app.state.quotes=quotes
     migration=MigrationService(db,registry,service);app.include_router(migration_routes(migration));app.state.migration=migration

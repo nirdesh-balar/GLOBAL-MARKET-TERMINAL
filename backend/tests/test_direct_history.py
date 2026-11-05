@@ -214,7 +214,7 @@ def test_no_disk_candles_and_restart(client,app,tmp_path):
     result=client.get('/api/history',params={'symbol':'RELIANCE'});assert result.status_code==200
     assert result.json()['storage']=='memory only'
     with app.state.db.connect() as c:
-        assert {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}=={'securities','settings','watchlists','alert_schema','alert_preferences','alerts','alert_history'}
+        assert {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}=={'securities','settings','watchlists','alert_schema','alert_preferences','alerts','alert_history','symbol_color_flags'}
         assert 'candles' not in repr(list(c.execute('SELECT * FROM settings')))
     assert not list(tmp_path.glob('*.csv')) and not list(tmp_path.glob('*.json'))
     new=create_app(tmp_path,TOKEN,FixtureProvider(count=30));assert new.state.history.status()['entries']==0

@@ -1,0 +1,177 @@
+/* TradingView-style Colored Symbol Flags & Color Watchlists */
+
+.symbol-flag-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  color: var(--text-muted, #787b86);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  line-height: 1;
+}
+
+.symbol-flag-btn:hover {
+  transform: scale(1.15);
+}
+
+.symbol-flag-btn.unflagged {
+  opacity: 0;
+}
+
+.search-result:hover .symbol-flag-btn.unflagged,
+.search-result:focus-within .symbol-flag-btn.unflagged,
+.watch-row:hover .symbol-flag-btn.unflagged,
+.watch-row:focus-within .symbol-flag-btn.unflagged,
+.symbol-flag-btn:focus {
+  opacity: 0.65;
+}
+
+.symbol-flag-btn.flagged {
+  opacity: 1;
+}
+
+/* Color Flag Picker Popover */
+.color-flag-picker-popover {
+  background: #1e222d;
+  color: #d1d4dc;
+  border: 1px solid #2a2e39;
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  font-family: inherit;
+  font-size: 12px;
+  z-index: 1200;
+  min-width: 195px;
+  animation: flagPickerFadeIn 0.12s ease-out;
+}
+
+.theme-light .color-flag-picker-popover {
+  background: #ffffff;
+  color: #131722;
+  border: 1px solid #e0e3eb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes flagPickerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #848e9c;
+}
+
+.picker-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #787b86;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.picker-close-btn:hover {
+  color: #f0f3fa;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.picker-colors-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.color-chip-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  position: relative;
+}
+
+.color-chip-btn:hover {
+  transform: scale(1.22);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.color-chip-btn.selected {
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
+}
+
+.picker-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.theme-light .picker-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.unflag-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: #848e9c;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.unflag-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Watchlist row flag styling */
+.watch-row-flag-container {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* Search result flag styling */
+.search-row-flag-container {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
