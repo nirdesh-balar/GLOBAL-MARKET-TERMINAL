@@ -450,7 +450,9 @@ class Workspace(BaseModel):
         if len({p.id for p in self.panes})!=8:raise ValueError('Pane identifiers must be unique')
         if len({w.id for w in self.watchlists})!=len(self.watchlists):raise ValueError('Watchlist IDs must be unique')
         if len({p.id for p in self.presets})!=len(self.presets):raise ValueError('Preset IDs must be unique')
-        if self.watchlists and self.active_watchlist not in {w.id for w in self.watchlists}:raise ValueError('Select a valid active watchlist')
+        valid_lists={w.id for w in self.watchlists}
+        is_color_list=self.active_watchlist.startswith('color:') and self.active_watchlist.split(':',1)[1].lower() in {'red','blue','green','yellow','purple','cyan','pink'}
+        if self.watchlists and self.active_watchlist not in valid_lists and not is_color_list:raise ValueError('Select a valid active watchlist')
         return self
 class CacheConfig(BaseModel):
     capacity:int=Field(default=32,ge=1,le=128)

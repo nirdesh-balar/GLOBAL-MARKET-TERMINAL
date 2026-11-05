@@ -97,7 +97,12 @@ async function localFetch(path:string,method:string,body?:unknown,signal?:AbortS
   await readiness;
   const response=await fetch(`http://127.0.0.1:${port}${path}`,{method,headers:{Authorization:`Bearer ${auth}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(180000)]):AbortSignal.timeout(180000)});
   const payload=await response.json();
-  if(!response.ok)throw Object.assign(new Error(typeof payload.detail==='string'?payload.detail:(path.startsWith('/api/screener')||path.startsWith('/api/alerts')||path.startsWith('/api/watchlists'))&&Array.isArray(payload.detail)?payload.detail.slice(0,5).map((e:{msg:string})=>e.msg).join('; '):'The local service rejected this request.'),{kind:payload.kind??(response.status===404?'missing':'source'),code:payload.code,retry_after:payload.retry_after??0,retryable:payload.retryable??['temporary','rate'].includes(payload.kind),http_status:payload.http_status??response.status});
+  const errorMsg = typeof payload.detail === 'string'
+    ? payload.detail
+    : Array.isArray(payload.detail)
+      ? payload.detail.slice(0, 5).map((e: { msg?: string }) => typeof e === 'object' && e && e.msg ? e.msg : String(e)).join('; ')
+      : (typeof payload.detail === 'object' && payload.detail ? JSON.stringify(payload.detail) : 'The local service rejected this request.');
+  if(!response.ok)throw Object.assign(new Error(errorMsg),{kind:payload.kind??(response.status===404?'missing':'source'),code:payload.code,retry_after:payload.retry_after??0,retryable:payload.retryable??['temporary','rate'].includes(payload.kind),http_status:payload.http_status??response.status});
   return payload;
 }
 ipcMain.handle('api',async(event,path:string,method='GET',body?:unknown,requestId?:string)=>{

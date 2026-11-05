@@ -287,3 +287,61 @@ def test_csv_import_roundtrip_with_color(tmp_path):
     # RELIANCE must still be yellow, not reverted to red!
     flags_after = db.get_flags()
     assert flags_after["yahoo:RELIANCE.NS:NSE:equity"]["color"] == "yellow"
+
+def test_workspace_model_validation_and_put_with_color_watchlist(tmp_path):
+    """Verify that active_watchlist can be any valid color list (e.g. 'color:red') without 422 rejection."""
+    app = create_app(data_dir=str(tmp_path), token="test_token_at_least_32_characters_long_12345")
+    client = TestClient(app)
+    headers = {"Authorization": "Bearer test_token_at_least_32_characters_long_12345"}
+
+    # Fetch initial workspace
+    ws_resp = client.get("/workspace", headers=headers)
+    assert ws_resp.status_code == 200
+    workspace = ws_resp.json()
+
+    # Set active_watchlist to 'color:red'
+    workspace["active_watchlist"] = "color:red"
+
+    # PUT /workspace must succeed (HTTP 200, NOT 422!)
+    put_resp = client.put("/workspace", headers=headers, json=workspace)
+    assert put_resp.status_code == 200, f"Failed: {put_resp.text}"
+
+    # Verify GET /workspace retains 'color:red'
+    restored = client.get("/workspace", headers=headers).json()
+    assert restored["active_watchlist"] == "color:red"
+
+    # Verify invalid color in active_watchlist fails with 422
+    workspace["active_watchlist"] = "color:invalid_color_name"
+    fail_resp = client.put("/workspace", headers=headers, json=workspace)
+    assert fail_resp.status_code == 422
+
+def test_watchlist_refresh_quotes_for_colored_watchlist(tmp_path):
+    """Verify that colored watchlists resolve symbols for quote retrieval and status endpoints."""
+    app = create_app(data_dir=str(tmp_path), token="test_token_at_least_32_characters_long_12345")
+    client = TestClient(app)
+    headers = {"Authorization": "Bearer test_token_at_least_32_characters_long_12345"}
+    db = app.state.db
+
+    # Flag INFY as red
+    db.set_flag(
+        canonical_id="yahoo:INFY.NS:NSE:equity",
+        color="red",
+        symbol="INFY-EQ",
+        name="Infosys Limited",
+        exchange="NSE",
+        provider="yahoo",
+        kind="equity"
+    )
+
+    # Status endpoint for 'color:red' must succeed (200, NOT 404!)
+    status_resp = client.get("/api/quotes/status?watchlist=color%3Ared", headers=headers)
+    assert status_resp.status_code == 200
+    data = status_resp.json()
+    assert data["watchlist"] == "color:red"
+    assert "yahoo:INFY.NS:NSE:equity" in data["rows"]
+    assert data["rows"]["yahoo:INFY.NS:NSE:equity"]["state"] == "idle"
+
+    # Unknown color must return 404
+    bad_resp = client.get("/api/quotes/status?watchlist=color%3Anonexistent", headers=headers)
+    assert bad_resp.status_code == 404
+

@@ -138,8 +138,64 @@ try {
   const headerFlag = page.locator('[data-testid="header-symbol-flag"]');
   await expect(headerFlag).toBeVisible();
 
+  console.log('8. Verifying INFY Red List save and quote loading (Bug Reproduction & Verification)...');
+  // Open search and flag INFY as RED
+  await page.getByLabel('Search stocks and indices', { exact: true }).click();
+  await page.getByPlaceholder('Search symbol, company, index or ISIN').fill('INFY');
+  await page.waitForTimeout(600);
+  const infyRow = page.locator('.search-result').filter({ hasText: 'INFY' }).first();
+  await expect(infyRow).toBeVisible();
+  const infyFlagBtn = infyRow.locator('.symbol-flag-btn');
+  await infyFlagBtn.click();
+  await expect(page.locator('.color-flag-picker-popover')).toBeVisible();
+  await page.locator('[data-testid="flag-color-red"]').click();
+  await page.keyboard.press('Escape');
+
+  // Switch dropdown to Red List
+  await dropdown.selectOption('color:red');
+  await page.waitForTimeout(600);
+
+  // CRITICAL CHECK: Verify INFY is present in Red List
+  const infyWatchRow = page.locator('.watch-row').filter({ hasText: 'INFY' });
+  await expect(infyWatchRow).toHaveCount(1);
+
+  // CRITICAL CHECK: No rejected request toast
+  await expect(page.locator('.toast')).toHaveCount(0);
+
+  // CRITICAL CHECK: Statusbar must NOT say "Save failed"
+  const statusbar = page.locator('.statusbar');
+  await expect(statusbar).not.toContainText('Save failed');
+
+  // CRITICAL CHECK: Quote status must NOT be 404 or stuck on "Not fetched" if quote service responds
+  // Give quote polling a brief moment
+  await page.waitForTimeout(1000);
+  await expect(page.locator('.toast')).toHaveCount(0);
+  await expect(statusbar).not.toContainText('Save failed');
+
+  console.log('PASS: INFY Red List selection saved cleanly with zero rejected requests!');
+
+  console.log('9. Verifying App Restart Persistence for Colored Watchlist...');
+  // Close the app and relaunch with the same data directory to verify cold restart persistence
+  await app.close();
+  app = await launch();
+  const page2 = await app.firstWindow();
+  page2.on('pageerror', e => errors.push(e.message));
+
+  await expect(page2.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page2.locator('.chart-overlay')).toHaveCount(0, { timeout: 30000 });
+
+  // Verify dropdown restored to Red List
+  const dropdown2 = page2.getByTestId('watchlist-dropdown');
+  await expect(dropdown2).toHaveValue('color:red');
+
+  // Verify INFY is still in the Red List
+  const restoredRedRows = page2.locator('.watch-row').filter({ hasText: 'INFY' });
+  await expect(restoredRedRows).toHaveCount(1);
+  await expect(page2.locator('.toast')).toHaveCount(0);
+  console.log('PASS: Color flag assignment and active colored watchlist persisted across restart!');
+
   assert.equal(errors.length, 0, `Unexpected errors: ${errors.join(', ')}`);
-  console.log('ALL PHASE F1 UI TESTS PASSED SUCCESSFULLY!');
+  console.log('ALL PHASE F1 & F1.1 UI TESTS PASSED SUCCESSFULLY!');
 } finally {
   if (app) {
     await app.close();

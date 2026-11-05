@@ -70,6 +70,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
 
  return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}><div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical" onPointerDown={e=>{resizing.current=true;e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{if(resizing.current)setWidth(Math.max(220,Math.min(480,window.innerWidth-e.clientX)));}} onPointerUp={e=>{if(!resizing.current)return;resizing.current=false;e.currentTarget.releasePointerCapture(e.pointerId);onChange({...workspace,sidebar:{...workspace.sidebar,width:widthRef.current}});}} onPointerCancel={()=>resizing.current=false}/>
  <header data-testid="watchlist-header">
+  {isColored && activeColor && <span className="watchlist-header-flag" title={`${current.name}`}><FlagIcon color={activeColor} filled={true} size={15}/></span>}
   <select data-testid="watchlist-dropdown" aria-label="Active watchlist" value={current.id} disabled={busy} onChange={e=>onChange({...workspace,active_watchlist:e.target.value})}>
    <optgroup label="CUSTOM WATCHLISTS">
     {workspace.watchlists.filter(w=>!systemList(w)).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}
@@ -90,7 +91,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
  <div className="watchlist-options"><select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select><select aria-label="Watchlist sort" value={workspace.sidebar.sort} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,sort:e.target.value as Workspace['sidebar']['sort']}})}><option value="manual">Manual order</option><option value="symbol">Symbol A–Z</option><option value="change">Change %</option></select><label title="Show supplied volume"><input aria-label="Watchlist volume" type="checkbox" checked={workspace.sidebar.volume} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,volume:e.target.checked}})}/>Vol</label></div>
 
  {(error||notice||busy)&&<div className={`watchlist-status ${error?'error':''}`} role={error?'alert':'status'}>{error||busy&&'Saving watchlist…'||notice}{error&&<button aria-label="Dismiss watchlist error" onClick={()=>setError('')}><X size={12}/></button>}</div>}
- <div className="watch-columns"><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>PRICE · UNIT</span><span>CHANGE %</span></div>
+ <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG %</span></div>
  <div ref={rows} data-testid="watchlist-rows" className="watch-rows">
   {items.map(({row,n},position)=>{
    const id=identity(row),q=snapshots?.rows[id]?.value;

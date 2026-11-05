@@ -126,6 +126,14 @@ class WatchlistRefresh:
         return RefreshPreferences.model_validate(self.db.get('refresh_preferences') or {}).model_dump()
 
     def items(self, watchlist):
+        if watchlist.startswith('color:'):
+            color = watchlist.split(':', 1)[1].lower()
+            from .database import VALID_FLAG_COLORS
+            if color in VALID_FLAG_COLORS:
+                from .flags import flag_row_to_symbol_entry
+                rows = self.db.get_flags_by_color(color)
+                return [flag_row_to_symbol_entry(r) for r in rows]
+            raise HTTPException(404, f'Unknown color watchlist: {color}')
         selected = next((w for w in self.workspace()['watchlists'] if w['id'] == watchlist), None)
         if selected is None:
             raise HTTPException(404, 'Watchlist no longer exists.')
@@ -205,6 +213,8 @@ class WatchlistRefresh:
                         security = self.registry.resolve(key)
                         if security and security.get('provider')=='hyperliquid':
                             saved=next((r for w in self.workspace().get('watchlists',[]) for r in w['items'] if (r.get('canonical_id') or r.get('instrument_id'))==key),{})
+                            if not saved and watchlist.startswith('color:'):
+                                saved=next((r for r in items if (r.get('canonical_id') or r.get('instrument_id') or r.get('symbol'))==key),{})
                             if saved.get('native_mapping'):security={**security,'native_mapping':saved['native_mapping']}
                         if not security:
                             raise ProviderError('Instrument identity is no longer available.', 'missing')
