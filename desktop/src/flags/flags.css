@@ -6,32 +6,54 @@
   justify-content: center;
   background: transparent;
   border: none;
-  padding: 2px 4px;
+  padding: 0;
   cursor: pointer;
-  border-radius: 3px;
-  color: var(--text-muted, #787b86);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  border-radius: 4px;
+  color: var(--muted, #848e9c);
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.12s ease, color 0.12s ease;
   line-height: 1;
 }
 
 .symbol-flag-btn:hover {
-  transform: scale(1.15);
+  transform: scale(1.12);
 }
 
 .symbol-flag-btn.unflagged {
-  opacity: 0;
+  opacity: 0.7;
+  color: var(--muted, #848e9c);
+  display: inline-flex;
 }
 
+.theme-light .symbol-flag-btn.unflagged {
+  opacity: 0.75;
+  color: #64748b;
+}
+
+.symbol-flag-btn.unflagged:hover,
+.symbol-flag-btn.unflagged:focus-visible,
 .search-result:hover .symbol-flag-btn.unflagged,
 .search-result:focus-within .symbol-flag-btn.unflagged,
 .watch-row:hover .symbol-flag-btn.unflagged,
-.watch-row:focus-within .symbol-flag-btn.unflagged,
-.symbol-flag-btn:focus {
-  opacity: 0.65;
+.watch-row:focus-within .symbol-flag-btn.unflagged {
+  opacity: 1;
+  color: var(--text, #f0f3fa);
+}
+
+.theme-light .symbol-flag-btn.unflagged:hover,
+.theme-light .symbol-flag-btn.unflagged:focus-visible,
+.theme-light .search-result:hover .symbol-flag-btn.unflagged,
+.theme-light .watch-row:hover .symbol-flag-btn.unflagged {
+  opacity: 1;
+  color: #131722;
 }
 
 .symbol-flag-btn.flagged {
   opacity: 1;
+}
+
+.symbol-flag-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
 }
 
 /* Color Flag Picker Popover */
