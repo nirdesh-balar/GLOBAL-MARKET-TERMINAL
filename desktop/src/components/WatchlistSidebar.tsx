@@ -36,6 +36,8 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
   items:getSymbolsForColor(activeColor)
  }:(workspace.watchlists.find(w=>w.id===workspace.active_watchlist)||workspace.watchlists[0]);
 
+ const isMarket=!isColored&&(Boolean(current.market)||['stocks','us','global','indices','global_indices','crypto','forex','commodities','funds'].includes(current.id));
+
  const lastFetched=Math.max(0,...Object.values(snapshots?.rows||{}).map(r=>r.value?.fetched_at||0));
  const run=async(op:WatchlistMutation)=>{if(busy)return;setBusy(true);setError('');setNotice('');try{await onMutate(op);setManage(false);setRemoveList(false);setMenu(null);setNotice('Watchlist saved');}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const move=(from:number,to:number)=>{if(isColored||workspace.sidebar.sort!=='manual'||to<0||to>=current.items.length||from===to)return;const order=current.items.map(identity);order.splice(to,0,order.splice(from,1)[0]);void run({action:'reorder',id:current.id,order});};
@@ -91,7 +93,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
  <div className="watchlist-options"><select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select><select aria-label="Watchlist sort" value={workspace.sidebar.sort} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,sort:e.target.value as Workspace['sidebar']['sort']}})}><option value="manual">Manual order</option><option value="symbol">Symbol A–Z</option><option value="change">Change %</option></select><label title="Show supplied volume"><input aria-label="Watchlist volume" type="checkbox" checked={workspace.sidebar.volume} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,volume:e.target.checked}})}/>Vol</label></div>
 
  {(error||notice||busy)&&<div className={`watchlist-status ${error?'error':''}`} role={error?'alert':'status'}>{error||busy&&'Saving watchlist…'||notice}{error&&<button aria-label="Dismiss watchlist error" onClick={()=>setError('')}><X size={12}/></button>}</div>}
- <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG %</span></div>
+ <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG %</span><span className="watch-col-actions" aria-hidden="true"/></div>
  <div ref={rows} data-testid="watchlist-rows" className="watch-rows">
   {items.map(({row,n},position)=>{
    const id=identity(row),q=snapshots?.rows[id]?.value;
@@ -108,11 +110,10 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
      <QuoteCells migrationRequired={legacyCrypto(row)} row={snapshots?.rows[id]?{...snapshots.rows[id],state:refreshPaused?'cancelled':snapshots.rows[id].state,stale:snapshots.rows[id].stale||refreshPaused||!!q&&Date.now()/1000-q.fetched_at>Math.max(120,(refreshPreferences?.watchlist_interval||300)*2)}:undefined}/>
     </button>
     <div className="watch-row-actions">
-     {legacyCrypto(row)&&<button aria-label={`Migrate ${row.symbol}`} onClick={()=>onMigration(row)}>Migrate</button>}
-     <button className="watch-alert-button" aria-label={`Create alert watchlist ${row.symbol}`} onClick={()=>onAlert(row)}>Alert</button>
-     {!isColored&&<button aria-label={`Move up ${row.symbol}`} disabled={busy||workspace.sidebar.sort!=='manual'||n===0} onClick={()=>move(n,n-1)}><ArrowUp size={11}/></button>}
-     {!isColored&&<button aria-label={`Move down ${row.symbol}`} disabled={busy||workspace.sidebar.sort!=='manual'||n===current.items.length-1} onClick={()=>move(n,n+1)}><ArrowDown size={11}/></button>}
-     <button aria-label={`Remove ${row.symbol}`} disabled={busy} onClick={()=>{if(isColored)void removeFlag(id);else void run({action:'remove',id:current.id,instrument:id});}}><X size={11}/></button>
+     {legacyCrypto(row)&&<button className="migrate-btn" aria-label={`Migrate ${row.symbol}`} onClick={()=>onMigration(row)}>Migrate</button>}
+     {!isColored&&!isMarket&&<button aria-label={`Move up ${row.symbol}`} title="Move up" disabled={busy||workspace.sidebar.sort!=='manual'||n===0} onClick={e=>{e.stopPropagation();move(n,n-1);}}><ArrowUp size={11}/></button>}
+     {!isColored&&!isMarket&&<button aria-label={`Move down ${row.symbol}`} title="Move down" disabled={busy||workspace.sidebar.sort!=='manual'||n===current.items.length-1} onClick={e=>{e.stopPropagation();move(n,n+1);}}><ArrowDown size={11}/></button>}
+     {!isMarket&&<button aria-label={`Remove ${row.symbol}`} title={isColored?'Remove flag':'Remove from watchlist'} disabled={busy} onClick={e=>{e.stopPropagation();if(isColored)void removeFlag(id);else void run({action:'remove',id:current.id,instrument:id});}}><X size={11}/></button>}
     </div>
    </div>;
   })}
@@ -150,6 +151,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
  {menu&&<div ref={menuRef} role="menu" aria-label="Instrument actions" className="watchlist-context" style={{left:menu.x,top:menu.y}}>
   <strong>{menu.row.symbol} · {menu.row.exchange}</strong>
   <button role="menuitem" onClick={()=>{openRow(menu.row);setMenu(null);}}>Open in chart</button>
+  {onAlert&&<button role="menuitem" onClick={()=>{onAlert(menu.row);setMenu(null);}}>Create alert</button>}
   {/* Color flag actions */}
   <div style={{padding:'4px 8px',borderTop:'1px solid rgba(255,255,255,0.08)',borderBottom:'1px solid rgba(255,255,255,0.08)',margin:'3px 0'}}>
    <span style={{fontSize:'10px',color:'#848e9c',textTransform:'uppercase',letterSpacing:'0.04em',display:'block',marginBottom:'4px'}}>Flag Symbol</span>
@@ -163,7 +165,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
   <label>Destination<select aria-label="Destination watchlist" value={destination} onChange={e=>setDestination(e.target.value)}>{workspace.watchlists.filter(w=>w.id!==current.id).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
   <button role="menuitem" disabled={busy||!destination} onClick={()=>void run({action:'transfer',id:current.id,instrument:identity(menu.row),destination})}>Copy to watchlist</button>
   <button role="menuitem" disabled={busy||!destination} onClick={()=>void run({action:'transfer',id:current.id,instrument:identity(menu.row),destination,move:true})}>Move to watchlist</button>
-  <button role="menuitem" disabled={busy} onClick={()=>{if(isColored){void removeFlag(identity(menu.row));setMenu(null);}else void run({action:'remove',id:current.id,instrument:identity(menu.row)});}}>{isColored?'Unflag from this colored list':'Remove from current watchlist'}</button>
+  {!isMarket&&<button role="menuitem" disabled={busy} onClick={()=>{if(isColored){void removeFlag(identity(menu.row));setMenu(null);}else void run({action:'remove',id:current.id,instrument:identity(menu.row)});}}>{isColored?'Unflag from this colored list':'Remove from current watchlist'}</button>}
  </div>}
 
  {rowPicker&&<ColorFlagPicker symbolName={rowPicker.row.symbol} currentColor={flags[identity(rowPicker.row)]?.color} position={{x:rowPicker.x,y:rowPicker.y}} onSelectColor={col=>void assignFlag(rowPicker.row,col)} onRemoveFlag={()=>void removeFlag(identity(rowPicker.row))} onClose={()=>setRowPicker(null)}/>}
