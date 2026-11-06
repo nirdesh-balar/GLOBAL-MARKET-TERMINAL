@@ -6,6 +6,7 @@ import {PRODUCT_NAME,RELEASE_VERSION,STABLE_BUNDLE_ID,STABLE_MARKER} from '../sr
 import {execFileSync} from 'node:child_process';
 import {previewTestGuard} from './previewTestGuard';
 import {importWatchlistCSV,exportWatchlistCSV} from './watchlistFiles';
+import {exportWatchlistExcel} from './excelExport';
 import {windowControls} from './windowControls';
 import {AlertNotifications} from './alertNotifications';
 import {formatCSV,type CSVData} from '../src/screener/csv';
@@ -131,7 +132,7 @@ ipcMain.handle('application-updates',async(event,action:unknown,value?:unknown)=
  }
  throw Error('Update operation not allowed');
 });
-ipcMain.handle('watchlist-file',async(event,action:unknown,id?:unknown)=>{trusted(event);if(!window)return null;if(action==='import')return importWatchlistCSV(window);if(action==='export'){await readiness;const [ws,flags]=await Promise.all([localFetch('/workspace','GET'),localFetch('/api/flags','GET')]);return exportWatchlistCSV(window,ws,id,flags);}throw Error('Invalid watchlist file operation');});
+ipcMain.handle('watchlist-file',async(event,action:unknown,id?:unknown,extra?:unknown)=>{trusted(event);if(!window)return null;if(action==='import')return importWatchlistCSV(window);if(action==='export'){await readiness;const [ws,flags]=await Promise.all([localFetch('/workspace','GET'),localFetch('/api/flags','GET')]);return exportWatchlistCSV(window,ws,id,flags);}if(action==='export-excel'){await readiness;return exportWatchlistExcel(window,id,extra);}throw Error('Invalid watchlist file operation');});
 ipcMain.handle('alert-notifications',async(event,action:string,value?:unknown)=>{trusted(event);await readiness;if(!alertNotifications)throw Error('Native alert service is unavailable');if(action==='status')return alertNotifications.status();if(action==='request')return alertNotifications.status(true);if(action==='test')return alertNotifications.test(value);if(action==='navigation')return alertNotifications.navigation();if(action==='settings'){if(process.platform==='darwin')await shell.openExternal('x-apple.systempreferences:com.apple.Notifications-Settings.extension');else if(process.platform==='win32')await shell.openExternal('ms-settings:notifications');return null;}throw Error('Notification operation not allowed');});
 ipcMain.handle('screener-csv',async(event,data:CSVData)=>{trusted(event);if(!window)return null;const csv=formatCSV(data);const selected=await dialog.showSaveDialog(window,{title:'Export historical screener results',defaultPath:'Screener-results.csv',filters:[{name:'CSV results',extensions:['csv']}]});if(selected.canceled||!selected.filePath)return null;await writeFile(selected.filePath,csv,'utf8');return selected.filePath;});
 ipcMain.on('cancel', (event,id:string)=>{trusted(event);requests.get(id)?.abort();});

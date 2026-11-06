@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('terminal',{
   selectDrawingImage:()=>ipcRenderer.invoke('select-drawing-image'),
   windowControl:(action:unknown)=>ipcRenderer.invoke('window-control',action),
   onWindowState:(callback:(state:{fullscreen:boolean;transitioning:boolean})=>void)=>{const handler=(_event:unknown,state:{fullscreen:boolean;transitioning:boolean})=>{if(state&&typeof state.fullscreen==='boolean'&&typeof state.transitioning==='boolean')callback(state);};ipcRenderer.on('window-state',handler);return()=>ipcRenderer.removeListener('window-state',handler);},
-  watchlistFile:(action:'import'|'export',id?:string)=>ipcRenderer.invoke('watchlist-file',action,id),
+  watchlistFile:(action:'import'|'export'|'export-excel',id?:string,extra?:unknown)=>ipcRenderer.invoke('watchlist-file',action,id,extra),
   drawingFile:(action:'import'|'export',data?:string)=>ipcRenderer.invoke('drawing-file',action,data),
   cancel:(requestId:string)=>ipcRenderer.send('cancel',requestId),
   selectFiles:(kind:string,symbol?:string)=>ipcRenderer.invoke('select-files',kind,symbol),
