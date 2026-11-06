@@ -227,5 +227,12 @@ class HyperliquidHistoricalProvider:
         if not rows:raise ProviderError('No supplied candles overlap this date range. Hyperliquid retains only its recent historical window.','missing')
         return History(rows,self.name,notice='Official public Hyperliquid historical candles; bounded REST retrieval, not streaming or guaranteed live prices. Native weekly windows are epoch-aligned and 1M denotes provider 30-day candles, not calendar months. Only the most recent 5,000 native candles are available; missing periods are not filled. Volume is the provider-reported base quantity.',fetched_at=self.clock(),interval=interval,metadata=dict(provider='hyperliquid',canonical_id=row['canonical_id'],native_id=row['native_id'],native_mapping=row['native_mapping'],market_type=row['market_type'],timezone='UTC',currency=row['quote_asset'],precision=precision,volume_unit=row['base_asset'],history_limit=5000,native_interval=True,coverage_guaranteed=False))
     async def fetch_daily(self,security):return await self.fetch(security,'1d')
-    async def fetch_quote(self,security):return await self.fetch(security,'1d',quote=True,priority=1)
+    async def fetch_quote(self,security,interval='1d'):
+        req_interval = interval if interval in INTERVALS else '1M' if interval == '1Y' else '1d'
+        res = await self.fetch(security, req_interval, quote=True, priority=1)
+        if interval == '1Y':
+            from ..history import aggregate_daily
+            aggregated = aggregate_daily(res.candles, '1Y')
+            return History(aggregated, res.source, res.actions, res.notice, res.fetched_at, '1Y', res.metadata, res.trading_periods)
+        return res
     def close(self):self.client.closed=True

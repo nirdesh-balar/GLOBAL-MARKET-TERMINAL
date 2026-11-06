@@ -188,8 +188,13 @@ class YahooFinanceProvider:
         result.metadata['currency']=result.metadata.get('quote_currency','')
         return result
     def fetch_recent(self, security, interval):
-        period='5d' if interval=='1m' else '3mo' if interval=='1w' else '1y' if interval=='1M' else '1mo'
-        return self.fetch(security,interval,period=period)
+        period='5d' if interval=='1m' else '3mo' if interval=='1w' else '5y' if interval=='1Y' else '1y' if interval=='1M' else '1mo'
+        if interval == '1Y':
+            res = self.fetch(security, '1M', period=period)
+            from ..history import aggregate_daily
+            aggregated = aggregate_daily(res.candles, '1Y')
+            return History(aggregated, res.source, res.actions, res.notice, res.fetched_at, '1Y', res.metadata, res.trading_periods)
+        return self.fetch(security, interval, period=period)
     def clear_http_cache(self):
         _LIBRARY_HTTP_CACHE.cache_clear()
     def close(self):

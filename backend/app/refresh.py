@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
+from .models import Timeframe
 from .providers.base import ProviderError
 
 
@@ -25,6 +26,8 @@ class SnapshotRequest(BaseModel):
     watchlist: str = Field(min_length=1, max_length=80)
     force: bool = False
     automatic: bool = False
+    timeframe: Timeframe = '1d'
+    active_symbol: str | None = None
 
 
 class CancelRequest(BaseModel):
@@ -67,7 +70,7 @@ def market_session(security, now, metadata=None):
     return dict(state='unknown', reliable=False, basis='Current session/holiday bounds unverified')
 
 
-def quote_value(history, security, now=None):
+def quote_value(history, security, now=None, timeframe='1d'):
     now = time.time() if now is None else now
     rows = history.candles
     if not rows:
@@ -109,6 +112,7 @@ def quote_value(history, security, now=None):
                 timezone=str(zone), precision=history.metadata.get('precision', security.get('precision', 2)),
                 data_time=data_time, timestamp_kind=timestamp_kind, latest_bar_time=last['time'],
                 last_completed_bar_time=completed, fetched_at=history.fetched_at, source=history.source,
+                timeframe=timeframe,
                 session=session, notice=f'Latest available {history.source} historical candle close; bounded REST retrieval, not a realtime quote.')
 
 
@@ -139,21 +143,21 @@ class WatchlistRefresh:
             raise HTTPException(404, 'Watchlist no longer exists.')
         return selected['items']
 
-    def status(self, watchlist):
+    def status(self, watchlist, timeframe='1d'):
         items = self.items(watchlist)
-        job = self.job if self.job and self.job['watchlist'] == watchlist else None
+        job = self.job if self.job and self.job['watchlist'] == watchlist and self.job.get('timeframe') == timeframe else None
         interval = self.preferences()['watchlist_interval'] or 300
         rows = {}
         for item in items:
             key = item.get('canonical_id') or item.get('instrument_id') or item['symbol']
-            saved = dict(self.values.get(key) or {})
+            saved = dict(self.values.get((key, timeframe)) or {})
             state = (job or {}).get('states', {}).get(key, 'idle')
             value = saved.get('value')
             error = saved.get('error')
             stale = bool(value and (error or self.clock()-value['fetched_at'] > max(120, interval*2) or self.clock()-value['latest_bar_time'] > (2 if item.get('kind') == 'crypto' else 7)*86400))
             rows[key] = dict(identity=key, state=state, value=value, stale=stale,
                              error=error, retry_at=saved.get('retry_at'), attempted_at=saved.get('attempted_at'))
-        return dict(job=job['id'] if job else None, watchlist=watchlist, rows=rows,
+        return dict(job=job['id'] if job else None, watchlist=watchlist, timeframe=timeframe, rows=rows,
                     pending=sum(r['state'] in ('pending', 'loading') for r in rows.values()),
                     completed_at=job.get('completed_at') if job else None,
                     provider=self.history.status(), storage='memory only', attempts=self.attempts)
@@ -174,17 +178,22 @@ class WatchlistRefresh:
                 if state in ('pending', 'loading'):
                     self.job['states'][key] = 'cancelled'
 
-    async def start(self, watchlist, force=False,automatic=False):
+    async def start(self, watchlist, force=False, automatic=False, timeframe='1d', active_symbol=None):
         async with self.selection_lock:
-            return await self._start(watchlist, force,automatic)
+            return await self._start(watchlist, force, automatic, timeframe, active_symbol)
 
-    async def _start(self, watchlist, force=False,automatic=False):
+    async def _start(self, watchlist, force=False, automatic=False, timeframe='1d', active_symbol=None):
         items = self.items(watchlist)
         keys = [r.get('canonical_id') or r.get('instrument_id') or r['symbol'] for r in items]
-        if self.job and self.job['watchlist'] == watchlist and list(self.job['states']) == keys and self.task and not self.task.done():
-            return self.status(watchlist)
+        if active_symbol:
+            matched = [k for k in keys if k == active_symbol or k.endswith(':' + active_symbol)]
+            if matched:
+                target = matched[0]
+                keys = [target] + [k for k in keys if k != target]
+        if self.job and self.job['watchlist'] == watchlist and self.job.get('timeframe') == timeframe and list(self.job['states']) == keys and self.task and not self.task.done():
+            return self.status(watchlist, timeframe)
         await self._cancel()
-        job = dict(id=uuid.uuid4().hex, watchlist=watchlist, states={k:'pending' for k in keys}, completed_at=None)
+        job = dict(id=uuid.uuid4().hex, watchlist=watchlist, timeframe=timeframe, states={k:'pending' for k in keys}, completed_at=None)
         self.job = job
         async def run():
             queue = asyncio.Queue()
@@ -194,7 +203,7 @@ class WatchlistRefresh:
                 while not queue.empty():
                     key = queue.get_nowait()
                     job['states'][key] = 'loading'
-                    previous = self.values.get(key) or {}
+                    previous = self.values.get((key, timeframe)) or {}
                     value = previous.get('value')
                     interval = self.preferences()['watchlist_interval'] or 300
                     if value and value['session']['state'] == 'closed' and value['session']['reliable']:
@@ -218,22 +227,22 @@ class WatchlistRefresh:
                             if saved.get('native_mapping'):security={**security,'native_mapping':saved['native_mapping']}
                         if not security:
                             raise ProviderError('Instrument identity is no longer available.', 'missing')
-                        result, _ = await self.history.quote(security, force=force or bool(value))
-                        record.update(value=quote_value(result, security, self.clock()), error=None, retry_at=None, failures=0)
+                        result, _ = await self.history.quote(security, force=force or bool(value), interval=timeframe)
+                        record.update(value=quote_value(result, security, self.clock(), timeframe=timeframe), error=None, retry_at=None, failures=0)
                         job['states'][key] = 'ready'
                     except ProviderError as e:
                         failures = previous.get('failures', 0)+1
                         record.update(error=str(e), failures=failures, retry_at=self.clock()+max(e.retry_after, min(900, 30*2**min(failures-1, 5))))
                         job['states'][key] = 'error'
-                    self.values[key] = record
-                    self.values.move_to_end(key)
+                    self.values[(key, timeframe)] = record
+                    self.values.move_to_end((key, timeframe))
                     while len(self.values) > 512:
                         self.values.popitem(last=False)
             await asyncio.gather(*(worker() for _ in range(min(2, len(keys)))))
             job['completed_at'] = self.clock()
         self.task = asyncio.create_task(run())
         self.task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
-        return self.status(watchlist)
+        return self.status(watchlist, timeframe)
 
     async def close(self):
         await self.cancel()
@@ -250,11 +259,11 @@ def routes(service):
         service.db.put('refresh_preferences', value.model_dump())
         return value.model_dump()
     @router.get('/api/quotes/status')
-    def status(watchlist: str):
-        return service.status(watchlist)
+    def status(watchlist: str, timeframe: Timeframe = '1d'):
+        return service.status(watchlist, timeframe)
     @router.post('/api/quotes/snapshot')
     async def snapshot(value: SnapshotRequest):
-        return await service.start(value.watchlist, value.force,value.automatic)
+        return await service.start(value.watchlist, value.force, value.automatic, value.timeframe, value.active_symbol)
     @router.post('/api/quotes/cancel')
     async def cancel(value: CancelRequest):
         await service.cancel(value.job)

@@ -3,7 +3,7 @@ import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,RefreshPreferences} from '../refresh/hooks';
 import React, {useEffect,useRef,useState,useCallback} from 'react';
 import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check} from 'lucide-react';
-import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist} from '../types';
+import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist,Timeframe} from '../types';
 import {symbolLabel,price} from '../services/api';
 import {IndexWatchlist} from './IndexWatchlist';
 import {WatchlistDialog} from '../watchlists/WatchlistDialog';
@@ -15,7 +15,15 @@ import {FlagIcon} from './FlagIcon';
 import {ColorFlagPicker} from './ColorFlagPicker';
 import '../watchlists/watchlists.css';
 
-export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefresh,refreshPreferences,onRefreshPreferences,refreshPaused,workspace,health,indices,active,quotes,onChange,onOpen,onSearch,onAlert,onMutate,onImport}:{onMigration:(row:SymbolEntry)=>void;snapshots:QuoteSnapshot|null;quoteError:string;onQuoteRefresh:()=>void;refreshPreferences:RefreshPreferences|null;onRefreshPreferences:(value:RefreshPreferences)=>void;refreshPaused:boolean;workspace:Workspace;health:Health;indices:Instrument[];active:string;quotes:Record<string,ChartQuote>;onChange:(w:Workspace)=>void;onOpen:(row:SymbolEntry,paneId:string)=>void;onSearch:()=>void;onAlert:(row:SymbolEntry)=>void;onMutate:(op:WatchlistMutation)=>Promise<WatchlistResult>;onImport:(value:ImportCommit)=>Promise<WatchlistResult>}){
+const timeframeDisplay = (tf?: string) => {
+ if (!tf || tf === '1d') return '1D';
+ if (tf === '1w') return '1W';
+ if (tf === '1M') return '1M';
+ if (tf === '1Y') return '1Y';
+ return tf;
+};
+
+export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefresh,refreshPreferences,onRefreshPreferences,refreshPaused,workspace,health,indices,active,quotes,onChange,onOpen,onSearch,onAlert,onMutate,onImport,activeTimeframe}:{onMigration:(row:SymbolEntry)=>void;snapshots:QuoteSnapshot|null;quoteError:string;onQuoteRefresh:()=>void;refreshPreferences:RefreshPreferences|null;onRefreshPreferences:(value:RefreshPreferences)=>void;refreshPaused:boolean;workspace:Workspace;health:Health;indices:Instrument[];active:string;quotes:Record<string,ChartQuote>;onChange:(w:Workspace)=>void;onOpen:(row:SymbolEntry,paneId:string)=>void;onSearch:()=>void;onAlert:(row:SymbolEntry)=>void;onMutate:(op:WatchlistMutation)=>Promise<WatchlistResult>;onImport:(value:ImportCommit)=>Promise<WatchlistResult>;activeTimeframe?:Timeframe}){
  const [query,setQuery]=useState(''),[manage,setManage]=useState(false),[name,setName]=useState(''),[action,setAction]=useState<'create'|'rename'|'duplicate'>('create'),[drag,setDrag]=useState<string|null>(null),[target,setTarget]=useState('active'),[width,setWidth]=useState(Math.round(workspace.sidebar.width||320)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[removeList,setRemoveList]=useState(false),[clearConfirm,setClearConfirm]=useState(false),[importing,setImporting]=useState(false),[menu,setMenu]=useState<{row:SymbolEntry;x:number;y:number}|null>(null),[destination,setDestination]=useState('');
  const [rowPicker,setRowPicker]=useState<{row:SymbolEntry;x:number;y:number}|null>(null);
  const [aliasInput,setAliasInput]=useState('');
@@ -187,7 +195,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
   finally{setBusy(false);}
  };
 
- return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}><div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical" onPointerDown={e=>{resizing.current=true;e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{if(resizing.current)setWidth(Math.round(Math.max(220,Math.min(480,window.innerWidth-e.clientX))));}} onPointerUp={e=>{if(!resizing.current)return;resizing.current=false;e.currentTarget.releasePointerCapture(e.pointerId);onChange({...workspace,sidebar:{...workspace.sidebar,width:Math.round(widthRef.current)}});}} onPointerCancel={()=>resizing.current=false}/>
+ return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}><div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical" onPointerDown={e=>{resizing.current=true;e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{if(resizing.current){const next=Math.round(Math.max(220,Math.min(480,window.innerWidth-e.clientX)));widthRef.current=next;setWidth(next);}}} onPointerUp={e=>{if(!resizing.current)return;resizing.current=false;e.currentTarget.releasePointerCapture(e.pointerId);onChange({...workspace,sidebar:{...workspace.sidebar,width:Math.round(widthRef.current)}});}} onPointerCancel={()=>resizing.current=false}/>
  <header data-testid="watchlist-header">
   {isColored && activeColor && <span className="watchlist-header-flag" title={`${current.name}`}><FlagIcon color={activeColor} filled={true} size={15}/></span>}
   <select data-testid="watchlist-dropdown" aria-label="Active watchlist" value={current.id} disabled={busy} onChange={e=>onChange({...workspace,active_watchlist:e.target.value})}>
@@ -201,6 +209,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
     {workspace.watchlists.filter(w=>systemList(w)).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}
    </optgroup>
   </select>
+  <span data-testid="watchlist-active-timeframe" className="watchlist-timeframe-badge" title={`Comparison timeframe synchronized with active chart (${timeframeDisplay(activeTimeframe)})`}>{timeframeDisplay(activeTimeframe)}</span>
   <button aria-label="Create watchlist" title="Create watchlist" onClick={()=>{setAction('create');setName('');setManage(true);setError('');}}><Plus size={16}/></button>
   <button aria-label="Import watchlist CSV" title="Import watchlist CSV" disabled={busy} onClick={()=>setImporting(true)}><Upload size={14}/></button>
   <button aria-label="Export watchlist CSV" title="Export watchlist CSV" disabled={busy} onClick={exportCSV}><Download size={14}/></button>
@@ -215,7 +224,7 @@ export function WatchlistSidebar({onMigration,snapshots,quoteError,onQuoteRefres
  </div>
 
  {(error||notice||busy)&&<div className={`watchlist-status ${error?'error':''}`} role={error?'alert':'status'}>{error||busy&&'Saving watchlist…'||notice}{error&&<button aria-label="Dismiss watchlist error" onClick={()=>setError('')}><X size={12}/></button>}</div>}
- <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG %</span><span className="watch-col-actions" aria-hidden="true"/></div>
+ <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG</span><span>CHG %</span><span className="watch-col-actions" aria-hidden="true"/></div>
  <div ref={rows} data-testid="watchlist-rows" className="watch-rows" tabIndex={0} onKeyDown={e=>handleKeyDown(e)}>
   {items.map(({row,n},position)=>{
    const id=identity(row),q=snapshots?.rows[id]?.value;

@@ -3,7 +3,7 @@ from datetime import datetime,time,timedelta
 from zoneinfo import ZoneInfo
 IST=ZoneInfo('Asia/Kolkata')
 INTRADAY={'1m','5m','15m','30m','1h','4h'}
-YAHOO_INTERVALS={'1m':'1m','5m':'5m','15m':'15m','30m':'30m','1h':'60m','4h':'15m','1d':'1d','1w':'1wk','1M':'1mo'}
+YAHOO_INTERVALS={'1m':'1m','5m':'5m','15m':'15m','30m':'30m','1h':'60m','4h':'15m','1d':'1d','1w':'1wk','1M':'1mo','1Y':'1mo'}
 LOOKBACK_DAYS={'1m':7,'5m':60,'15m':60,'30m':60,'1h':730,'4h':60}
 
 def aggregate_four_hour(rows,session_closes=None):

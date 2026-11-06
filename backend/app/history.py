@@ -58,7 +58,14 @@ def aggregate_daily(rows, interval):
     grouped=OrderedDict()
     for r in rows:
         d=datetime.fromtimestamp(r['time'],timezone.utc).date()
-        key=(d-timedelta(days=d.weekday())) if interval=='1w' else d.replace(day=1)
+        if interval=='1w':
+            key=d-timedelta(days=d.weekday())
+        elif interval=='1M':
+            key=d.replace(day=1)
+        elif interval=='1Y':
+            key=d.replace(month=1, day=1)
+        else:
+            key=d.replace(day=1)
         if key not in grouped:
             grouped[key]=dict(r, last_time=r['time'])
         else:
@@ -134,7 +141,7 @@ class HistoryService:
         self.last_error=None
     def key(self, security, source='yahoo', interval='1d'):
         if security.get('provider')=='hyperliquid':return ('hyperliquid',security['native_id'],security['canonical_id'],interval)
-        base='quote' if interval=='quote' else '1d' if source=='nse' or not hasattr(self.provider,'fetch') else '15m' if interval=='4h' else interval
+        base=interval if interval.startswith('quote') else '1d' if source=='nse' or not hasattr(self.provider,'fetch') else '15m' if interval=='4h' else '1M' if interval=='1Y' else interval
         return (source,(security.get('native_id') or security.get('yahoo_symbol') or security['symbol']) if source=='yahoo' else security['symbol'],security.get('canonical_id') or security.get('isin') or security.get('id',''),base)
     async def throttle(self):
         async with self.gate:
@@ -153,13 +160,13 @@ class HistoryService:
                     if attempt and not self.waiters.get(key):raise asyncio.CancelledError()
                     if not crypto:
                         await self.throttle()
-                        self.metrics['quote_provider_requests' if key[-1]=='quote' else 'provider_requests']+=1
+                        self.metrics['quote_provider_requests' if (key[-1]=='quote' or key[-1].startswith('quote_')) else 'provider_requests']+=1
                     try:
                         data=(await loader() if inspect.iscoroutinefunction(loader) else await asyncio.to_thread(loader)) if loader else await asyncio.to_thread(self.provider.fetch,security,key[-1]) if hasattr(self.provider,'fetch') else await asyncio.to_thread(self.provider.fetch_daily,security)
                         if not data.candles: raise ProviderError('Provider returned no candles.', 'missing')
-                        if generation==self.generation and not self.closed: (self.quote_cache if key[-1]=='quote' else self.cache).put(key,data)
+                        if generation==self.generation and not self.closed: (self.quote_cache if (key[-1]=='quote' or key[-1].startswith('quote_')) else self.cache).put(key,data)
                         self.last_error=None
-                        if key[-1]!='quote' and getattr(self,'registry',None) and not crypto and self.provider.name=='YAHOO FINANCE': self.registry.record(security,'verified',interval=key[-1],metadata=data.metadata)
+                        if not (key[-1]=='quote' or key[-1].startswith('quote_')) and getattr(self,'registry',None) and not crypto and self.provider.name=='YAHOO FINANCE': self.registry.record(security,'verified',interval=key[-1],metadata=data.metadata)
                         return data
                     except ProviderError as e:
                         if e.kind=='rate' and not crypto:
@@ -195,7 +202,7 @@ class HistoryService:
             task=self.inflight[key]
         else:
             if not force:
-                cached=(self.quote_cache if key[-1]=='quote' else self.cache).get(key)
+                cached=(self.quote_cache if (key[-1]=='quote' or key[-1].startswith('quote_')) else self.cache).get(key)
                 if cached and route=='hyperliquid' and cached.metadata.get('native_mapping')!=verified['native_mapping']:
                     self.cache.remove(key);self.quote_cache.remove(key);cached=None
                 if cached: self.metrics['cache_hits']+=1;return cached,True
@@ -249,14 +256,21 @@ class HistoryService:
         if interval in INTRADAY and start and int(datetime.strptime(start,'%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp())<daily.candles[0]['time']:
             result['notice']+=' Requested dates extend before the available intraday history. Only available candles are shown.'
         return result
-    async def quote(self, security, force=False):
+    async def quote(self, security, force=False, interval='1d'):
         route=self.router.require(security,'quote')
+        quote_interval = 'quote' if interval == '1d' else f'quote_{interval}'
         if route=='hyperliquid':
-            async def loader():return await self.hyperliquid.fetch_quote(security)
-            return await self.daily(security,force=force,interval='quote',loader=loader,priority=1)
-        if not hasattr(self.provider,'fetch_quote'):
-            raise ProviderError('This provider has no quote-sized historical snapshot.','source')
-        return await self.daily(security,force=force,interval='quote',loader=lambda:self.provider.fetch_quote(security),priority=1)
+            async def loader():return await self.hyperliquid.fetch_quote(security, interval=interval)
+            return await self.daily(security,force=force,interval=quote_interval,loader=loader,priority=1)
+        if interval == '1d':
+            if not hasattr(self.provider,'fetch_quote'):
+                raise ProviderError('This provider has no quote-sized historical snapshot.','source')
+            return await self.daily(security,force=force,interval='quote',loader=lambda:self.provider.fetch_quote(security),priority=1)
+        async def loader():
+            if hasattr(self.provider, 'fetch_recent'):
+                return await asyncio.to_thread(self.provider.fetch_recent, security, interval)
+            return await asyncio.to_thread(self.provider.fetch, security, interval)
+        return await self.daily(security,force=force,interval=quote_interval,loader=loader,priority=1)
     async def incremental(self, security, interval='1d', start=None, end=None, adjusted=False, automatic=False):
         route=self.router.require(security,'refresh/replay')
         if route=='hyperliquid':

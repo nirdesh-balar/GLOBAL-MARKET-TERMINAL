@@ -1,6 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel,Field,model_validator,field_validator,ConfigDict
-Timeframe=Literal['1m','5m','15m','30m','1h','4h','1d','1w','1M']
+Timeframe=Literal['1m','5m','15m','30m','1h','4h','1d','1w','1M','1Y']
 IndicatorKind=Literal['SMA','EMA','WMA','VWMA','RSI','MACD','STOCHRSI','BB','ATR','SUPERTREND','VWAP','HMA','ICHIMOKU','SAR','ADX','ZIGZAG','AROON','LINREG','CMO','DPO','KAMA','LSMA','MCGINLEY','SMMA','TEMA','DEMA','VORTEX','STOCH','CCI','ROC','AO','MOM','WILLR','ULTOSC','TSI','FISHER','PPO','KST','COPPOCK','CKS','KC','DC','STDDEV','HV','CHAIKIN_VOL','CHOP','MASS','OBV','CMF','MFI','ADL','VO','EOM','NVI','PVI','PVT','TMF','VROC','PIVOT','SWING_PIVOT','CPR','CPR_MTF','ORB','PREV_OHLC','ALPHATREND','HALFTREND','RELATIVE_STRENGTH','VRVP','INDIA_VIX']
 Source=Literal['close','open','high','low','HL2','HLC3','OHLC4']
 Color=str
