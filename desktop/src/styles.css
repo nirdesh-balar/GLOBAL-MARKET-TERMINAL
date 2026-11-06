@@ -147,3 +147,723 @@
 
 /* Loading never blocks pane controls or an already validated chart. */
 .chart-overlay.chart-loading{inset:46px auto auto 10px;display:flex;flex-direction:row;gap:8px;padding:8px 12px;background:var(--panel,#111b29);border:1px solid var(--border,#263040);border-radius:6px;font-size:12px;pointer-events:none;z-index:8}.chart-overlay.error{pointer-events:none}.chart-overlay.error .connection-actions{pointer-events:auto}.chart-overlay.chart-cached-error{inset:auto 10px 110px 10px;max-height:160px;background:var(--panel,#111b29)}
+
+/* ============================================================== */
+/* PHASE F1.9: COMPLETE LIGHT MODE HOVER, SELECTION & CONTRAST   */
+/* ============================================================== */
+
+/* 1. Theme Variables & Semantic Tokens */
+.terminal-shell.theme-light,
+.theme-light {
+  --surface: #ffffff;
+  --surface-alt: #f8fafc;
+  --canvas: #ffffff;
+  --border: #cbd5e1;
+  --border-subtle: #e2e8f0;
+  --muted: #64748b;
+  --text: #172334;
+  --hover: #eaf1f9;
+  --selected: #dbeafe;
+  --selected-hover: #d0e3fc;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  color-scheme: light;
+  color: var(--text);
+  background: var(--canvas);
+}
+
+/* 2. Global Button Hover & Active Safe Fallback in Light Mode */
+.terminal-shell.theme-light button:hover,
+.theme-light button:hover {
+  background: var(--hover, #eaf1f9);
+  color: var(--text, #172334);
+}
+
+.terminal-shell.theme-light button.selected,
+.theme-light button.selected,
+.terminal-shell.theme-light button[aria-pressed="true"],
+.theme-light button[aria-pressed="true"] {
+  background: var(--selected, #dbeafe);
+  color: var(--accent, #2563eb);
+  font-weight: 600;
+}
+
+/* 3. Symbol Search Dialog in Light Mode */
+.theme-light .search-modal {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  color: #172334;
+}
+
+.theme-light .search-input {
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.theme-light .search-input input {
+  color: #172334 !important;
+  background: transparent;
+  border: 0 !important;
+}
+
+.theme-light .search-input input::placeholder {
+  color: #94a3b8;
+}
+
+.theme-light .search-input button {
+  background: transparent;
+  color: #64748b;
+}
+
+.theme-light .search-input button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light .search-caption {
+  background: #f8fafc;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .global-search-filters {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .global-search-filters select,
+.theme-light .global-search-filters input {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+.theme-light .search-results {
+  background: #ffffff;
+}
+
+.search-result .result-main,
+.search-result .result-main:hover,
+.search-result .result-main:active {
+  background: transparent !important;
+}
+
+.search-result:hover:not(.highlighted) {
+  background: var(--hover);
+}
+
+.theme-light .search-result {
+  background: transparent;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.theme-light .search-result:hover:not(.highlighted) {
+  background: #eaf1f9;
+}
+
+.theme-light .search-result.highlighted {
+  background: #dbeafe;
+}
+
+.theme-light .search-result.highlighted:hover {
+  background: #d0e3fc;
+}
+
+.theme-light .search-result .symbol-avatar {
+  background: #e2e8f0;
+  color: #2563eb;
+}
+
+.theme-light .search-result .result-main strong {
+  color: #172334;
+  font-weight: 600;
+}
+
+.theme-light .search-result .result-main small {
+  color: #64748b;
+}
+
+.theme-light .search-result .exchange {
+  color: #64748b;
+}
+
+.theme-light .search-result .symbol-flag-btn {
+  background: transparent;
+}
+
+.theme-light .search-result .symbol-flag-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .search-result button[aria-label^="Favourite"] {
+  background: transparent;
+}
+
+.theme-light .search-result button[aria-label^="Favourite"]:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .search-results>button[aria-label="Load more instruments"] {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #172334;
+}
+
+.theme-light .search-results>button[aria-label="Load more instruments"]:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light .search-modal footer {
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.theme-light .search-modal footer kbd {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+/* 4. Watchlist Sidebar in Light Mode */
+.terminal-shell .watch-select,
+.terminal-shell .watch-select:hover,
+.terminal-shell .watch-select:active {
+  background: transparent !important;
+}
+
+.terminal-shell.theme-light .watch-row-actions button {
+  background: transparent;
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .watch-row-actions button:hover {
+  background: #e2e8f0;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .watch-row-actions button:hover:has(svg.lucide-x) {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.terminal-shell.theme-light .watchlist>header button {
+  background: transparent;
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .watchlist>header button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .watch-search>button {
+  background: transparent;
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .watch-search>button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .watch-columns {
+  background: #f8fafc;
+  border-bottom: 1px solid #dce2eb;
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .watchlist-bottom {
+  background: #f8fafc;
+  border-top: 1px solid #dce2eb;
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .quote-preferences summary {
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .quote-preferences summary:hover {
+  color: #172334;
+}
+
+.terminal-shell.theme-light .quote-preferences>div {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #172334;
+}
+
+/* 5. Bottom Chart Toolbar in Light Mode */
+.terminal-shell .range-toolbar button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.terminal-shell .range-toolbar button.selected {
+  color: #79a9ff;
+  background: #3275db1c;
+  font-weight: 600;
+}
+
+.terminal-shell.theme-light .bottom-chart-toolbar {
+  background: #f8fafc;
+  border-top: 1px solid #dce2eb;
+}
+
+.terminal-shell.theme-light .range-toolbar button {
+  background: transparent;
+  color: #64748b;
+  border-radius: 3px;
+}
+
+.terminal-shell.theme-light .range-toolbar button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .range-toolbar button.selected {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.terminal-shell .price-controls button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.terminal-shell.theme-light .price-controls button {
+  background: transparent;
+  color: #64748b;
+  border-radius: 3px;
+}
+
+.terminal-shell.theme-light .price-controls button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .price-controls button[aria-pressed="true"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.terminal-shell .bottom-chart-toolbar>button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.terminal-shell.theme-light .bottom-chart-toolbar>button {
+  background: transparent;
+  color: #64748b;
+  border-radius: 3px;
+}
+
+.terminal-shell.theme-light .bottom-chart-toolbar>button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .bottom-chart-toolbar>button[aria-pressed="true"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.terminal-shell.theme-light .go-date summary {
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .go-date summary:hover {
+  background: #eaf1f9;
+  color: #172334;
+  border-radius: 3px;
+}
+
+.terminal-shell.theme-light .go-date[open]>div {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #172334;
+}
+
+.terminal-shell.theme-light .go-date input {
+  background: #f8fafc;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+.terminal-shell.theme-light .go-date button {
+  background: #eaf1f9;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.terminal-shell.theme-light .go-date button:hover {
+  background: #dbeafe;
+}
+
+.terminal-shell.theme-light .custom-range {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #172334;
+}
+
+.terminal-shell.theme-light .custom-range input {
+  background: #f8fafc;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+.terminal-shell.theme-light .custom-range button {
+  background: #eaf1f9;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.terminal-shell.theme-light .custom-range button:hover {
+  background: #dbeafe;
+}
+
+.terminal-shell.theme-light .history-controls.open {
+  background: #f8fafc;
+  border-top: 1px solid #dce2eb;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .history-controls select,
+.terminal-shell.theme-light .history-controls button {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+.terminal-shell.theme-light .history-controls button:hover {
+  background: #eaf1f9;
+  color: #1d4ed8;
+}
+
+/* 6. Top Chart Toolbar & Header in Light Mode */
+.terminal-shell.theme-light .terminal-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #dce2eb;
+}
+
+.terminal-shell.theme-light .terminal-header button {
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .terminal-header button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .terminal-header button.selected,
+.terminal-shell.theme-light .terminal-header button[aria-pressed="true"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.terminal-shell.theme-light .timeframe-toolbar button {
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .timeframe-toolbar button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .timeframe-toolbar button.selected {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.terminal-shell.theme-light .terminal-header .header-symbol {
+  color: #172334;
+}
+
+.terminal-shell.theme-light .terminal-header .header-symbol:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .terminal-header .symbol-flag-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.terminal-shell.theme-light .terminal-header .symbol-flag-btn:hover {
+  background: #eaf1f9;
+  border-color: #94a3b8;
+}
+
+.terminal-shell.theme-light .terminal-header select {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+.terminal-shell.theme-light .layout-menu {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+  color: #172334;
+}
+
+.terminal-shell.theme-light .layout-menu>button {
+  color: #172334;
+}
+
+.terminal-shell.theme-light .layout-menu>button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .layout-preview i {
+  border-color: #94a3b8;
+  background: #e2e8f0;
+}
+
+.terminal-shell.theme-light .sync-option {
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .sync-option:hover {
+  color: #172334;
+}
+
+.theme-light .workspace-switch {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #1d4ed8;
+}
+
+.theme-light .workspace-switch:hover {
+  background: #eaf1f9;
+  color: #1e293b;
+}
+
+.theme-light .workspace-switch[aria-pressed="true"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* 7. Drawing Toolbar in Light Mode */
+.terminal-shell.theme-light .drawing-toolbar {
+  background: #f8fafc;
+  border-right: 1px solid #dce2eb;
+}
+
+.terminal-shell.theme-light .drawing-toolbar button {
+  color: #64748b;
+}
+
+.terminal-shell.theme-light .drawing-toolbar button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.terminal-shell.theme-light .drawing-toolbar button.selected {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.theme-light .drawing-flyout {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  color: #172334;
+}
+
+.theme-light .drawing-flyout>header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .drawing-flyout>header button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light .drawing-tool-search {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+}
+
+.theme-light .drawing-tool-search input {
+  color: #172334;
+}
+
+.theme-light .drawing-tool-group {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .drawing-tool-group h3 {
+  color: #64748b;
+}
+
+.theme-light .drawing-tool-row:hover {
+  background: #eaf1f9;
+}
+
+.theme-light .drawing-tool-row.highlighted {
+  background: #dbeafe;
+}
+
+.theme-light .drawing-tool-row>button:first-child {
+  color: #172334;
+}
+
+.theme-light .drawing-tool-row>button:first-child:hover {
+  background: transparent !important;
+}
+
+.theme-light .drawing-tool-row>button:last-child:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .drawing-flyout>footer {
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.theme-light .drawing-visibility {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  color: #172334;
+}
+
+.theme-light .drawing-visibility button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light .drawing-editor textarea {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+/* 8. Modals, Popovers & Context Menus in Light Mode */
+.theme-light .indicator-manager,
+.theme-light .indicator-settings-dialog,
+.theme-light .settings-modal {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  color: #172334;
+}
+
+.theme-light .indicator-manager>header,
+.theme-light .indicator-settings-dialog>header,
+.theme-light .settings-modal>header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .manager-columns>div:first-child {
+  border-right: 1px solid #e2e8f0;
+}
+
+.theme-light .indicator-catalog button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light .indicator-catalog button.selected {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.theme-light .indicator-row {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .settings-card {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .settings-card p {
+  color: #475569;
+}
+
+.theme-light .settings-card code {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.theme-light .secondary-button {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #172334;
+}
+
+.theme-light .secondary-button:hover {
+  background: #eaf1f9;
+}
+
+.theme-light .watchlist-dialog {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.15);
+  color: #172334;
+}
+
+.theme-light .watchlist-dialog>header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.theme-light .watchlist-dialog button {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+.theme-light .watchlist-dialog button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light .watchlist-dialog input:not([type=checkbox]),
+.theme-light .watchlist-dialog select {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+
+.theme-light .watchlist-context {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+  color: #172334;
+}
+
+.theme-light .watchlist-context button {
+  color: #172334;
+}
+
+.theme-light .watchlist-context button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+
+.theme-light option,
+.terminal-shell.theme-light option {
+  background: #ffffff;
+  color: #172334;
+}
+
+.theme-light input[type="checkbox"],
+.terminal-shell.theme-light input[type="checkbox"] {
+  accent-color: #2563eb;
+}
+

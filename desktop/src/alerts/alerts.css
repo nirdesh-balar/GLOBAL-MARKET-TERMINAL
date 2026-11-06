@@ -2,3 +2,60 @@
 .alert-from-line{position:absolute;right:22px;top:65px;z-index:5;background:var(--panel,#101823);border:1px solid var(--border,#273240);border-radius:4px;padding:6px 10px}
 
 .alert-modal-backdrop>.modal-backdrop{z-index:110}
+
+/* Light Mode Refinements for Alerts Workspace & Dialog */
+.theme-light .alerts-workspace {
+  background: #f8fafc;
+  color: #172334;
+}
+.theme-light .alerts-title {
+  border-bottom: 1px solid #e2e8f0;
+}
+.theme-light .alerts-title p {
+  color: #64748b;
+}
+.theme-light .alert-limitations {
+  background: #f1f5f9;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+.theme-light .alerts-scroll>section {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+.theme-light .alerts-workspace button {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+.theme-light .alerts-workspace button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+.theme-light .alert-dialog {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #172334;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+.theme-light .alert-dialog input,
+.theme-light .alert-dialog select,
+.theme-light .alert-dialog textarea {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+.theme-light .alert-dialog button {
+  background: #ffffff;
+  color: #172334;
+  border: 1px solid #cbd5e1;
+}
+.theme-light .alert-dialog button:hover {
+  background: #eaf1f9;
+  color: #172334;
+}
+.theme-light .alert-from-line {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #2563eb;
+}

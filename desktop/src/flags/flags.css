@@ -118,6 +118,11 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.theme-light .picker-close-btn:hover {
+  color: #172334;
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .picker-colors-row {
   display: flex;
   align-items: center;
@@ -147,6 +152,11 @@
 
 .color-chip-btn.selected {
   outline: 2px solid #ffffff;
+  outline-offset: 1px;
+}
+
+.theme-light .color-chip-btn.selected {
+  outline: 2px solid #1e293b;
   outline-offset: 1px;
 }
 
