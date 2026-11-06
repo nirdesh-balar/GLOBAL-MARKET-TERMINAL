@@ -11,6 +11,7 @@ import {useRefreshTask} from '../refresh/hooks';
 import {updatedView,mergeCandles} from '../refresh/scheduler';
 import { memo,useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, TickMarkType, PriceScaleMode, type IChartApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
+import { getCandleColors, getVolumeColors, LIGHT_THEME, DARK_THEME } from './appearance';
 import { CandlestickChart, SlidersHorizontal, RefreshCw, X, Upload } from 'lucide-react';
 import type { Candle, Pane, Indicator, Timeframe, HistoryResult, ChartQuote } from '../types';
 import {marketDay,marketMidnight} from '../services/marketTime';
@@ -111,12 +112,20 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     if(!container.current)return;
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
     const preserve=chartIdentity.current===identity;if(!preserve)view.current=null;chartIdentity.current=identity;
-    const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:theme==='light'?'#ffffff':'#0d131c'},textColor:theme==='light'?'#475569':'#78879b',fontFamily:'-apple-system, BlinkMacSystemFont, sans-serif',fontSize:11,attributionLogo:true,panes:{enableResize:true,separatorColor:theme==='light'?'#d2dbe7':'#263040',separatorHoverColor:'#527baa'}},grid:{vertLines:{color:theme==='light'?'#e8edf4':'#19212d'},horzLines:{color:theme==='light'?'#e8edf4':'#19212d'}},rightPriceScale:{borderColor:'#263040',minimumWidth:70,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor:'#263040',timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>new Intl.DateTimeFormat('en-IN',{timeZone:displayZone,dateStyle:'medium',...(!['1d','1w','1M','1Y'].includes(pane.timeframe)?{timeStyle:'short' as const}:{})}).format(date(time))},crosshair:{vertLine:{color:'#61748e',labelBackgroundColor:'#34445c'},horzLine:{color:'#61748e',labelBackgroundColor:'#34445c'}},handleScroll:true,handleScale:true});
+    const isLight=theme==='light';
+    const bg=pane.appearance.background||(isLight?LIGHT_THEME.background:DARK_THEME.background);
+    const gridColor=pane.appearance.grid_color||(isLight?LIGHT_THEME.grid:DARK_THEME.grid);
+    const textColor=isLight?LIGHT_THEME.textColor:DARK_THEME.textColor;
+    const borderColor=isLight?LIGHT_THEME.borderColor:DARK_THEME.borderColor;
+    const crosshairColor=isLight?LIGHT_THEME.crosshair:DARK_THEME.crosshair;
+    const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
+    const candleColors=getCandleColors(pane.appearance,theme);
+    const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',fontSize:11,attributionLogo:true,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:70,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>new Intl.DateTimeFormat('en-IN',{timeZone:displayZone,dateStyle:'medium',...(!['1d','1w','1M','1Y'].includes(pane.timeframe)?{timeStyle:'short' as const}:{})}).format(date(time))},crosshair:{vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
     chart.current=c;setChartEpoch(v=>v+1);container.current.dataset.chartCreations=String(Number(container.current.dataset.chartCreations??0)+1);if(container.current){container.current.dataset.priceMode=String(c.priceScale('right').options().mode);container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);}
     let main:ISeriesApi<SeriesType>;
-    if(pane.chart_type==='candles')main=c.addSeries(CandlestickSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},upColor:'#37c5a2',downColor:'#ee6a79',wickUpColor:'#37c5a2',wickDownColor:'#ee6a79',borderVisible:false});
-    else if(pane.chart_type==='area')main=c.addSeries(AreaSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},lineColor:'#37c5a2',topColor:'#37c5a230',bottomColor:'#37c5a200',lineWidth:2});
-    else main=c.addSeries(LineSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},color:'#37c5a2',lineWidth:2});
+    if(pane.chart_type==='candles')main=c.addSeries(CandlestickSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders});
+    else if(pane.chart_type==='area')main=c.addSeries(AreaSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00',lineWidth:2});
+    else main=c.addSeries(LineSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},color:candleColors.upColor,lineWidth:2});
     const ready=dataFor.current===identity;
     const initialRows=ready?rowsRef.current:[];
     main.setData(initialRows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));
@@ -144,9 +153,16 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
   },[!!data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
   useEffect(()=>{
     const c=chart.current,m=mainSeries.current;if(!c||!m)return;const a=pane.appearance;
-    const grid=(a.grid_color||(theme==='light'?'#b4bfce':'#334155'))+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0');
-    c.applyOptions({layout:{background:{type:ColorType.Solid,color:a.background||(theme==='light'?'#ffffff':'#0d131c')}},grid:{vertLines:{visible:a.grid_visible,color:grid},horzLines:{visible:a.grid_visible,color:grid}},rightPriceScale:{scaleMargins:{top:a.margin_top,bottom:a.margin_bottom}},timeScale:{visible:a.dates_visible,timeVisible:a.time_visible&&!['1d','1w','1M','1Y'].includes(pane.timeframe),barSpacing:a.bar_spacing},crosshair:{vertLine:{visible:a.crosshair,labelVisible:a.crosshair},horzLine:{visible:a.crosshair,labelVisible:a.crosshair}}});
-    m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...(pane.chart_type==='candles'?{upColor:a.up_color,downColor:a.down_color,wickUpColor:a.wick_up,wickDownColor:a.wick_down,borderUpColor:a.border_up,borderDownColor:a.border_down,borderVisible:a.borders}:{})});
+    const isLight=theme==='light';
+    const bg=a.background||(isLight?LIGHT_THEME.background:DARK_THEME.background);
+    const grid=a.grid_color?(a.grid_color+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0')):(isLight?LIGHT_THEME.grid:('#334155'+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0')));
+    const borderColor=isLight?LIGHT_THEME.borderColor:DARK_THEME.borderColor;
+    const textColor=isLight?LIGHT_THEME.textColor:DARK_THEME.textColor;
+    const crosshairColor=isLight?LIGHT_THEME.crosshair:DARK_THEME.crosshair;
+    const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
+    const candleColors=getCandleColors(a,theme);
+    c.applyOptions({layout:{background:{type:ColorType.Solid,color:bg},textColor},grid:{vertLines:{visible:a.grid_visible,color:grid},horzLines:{visible:a.grid_visible,color:grid}},rightPriceScale:{borderColor,scaleMargins:{top:a.margin_top,bottom:a.margin_bottom}},timeScale:{borderColor,visible:a.dates_visible,timeVisible:a.time_visible&&!['1d','1w','1M','1Y'].includes(pane.timeframe),barSpacing:a.bar_spacing},crosshair:{vertLine:{visible:a.crosshair,labelVisible:a.crosshair,color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{visible:a.crosshair,labelVisible:a.crosshair,color:crosshairColor,labelBackgroundColor:crosshairBg}}});
+    m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...(pane.chart_type==='candles'?{upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders}:pane.chart_type==='area'?{lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00'}:{color:candleColors.upColor})});
     const mark=createTextWatermark(c.panes()[0],{visible:a.watermark,horzAlign:'center',vertAlign:'center',lines:[{text:pane.kind==='index'?pane.name:symbolLabel(pane.symbol),color:theme==='dark'?'#ffffff0d':'#0000000d',fontSize:48,fontStyle:'bold'}]});
     return()=>{if(chart.current===c)mark.detach();};
   },[pane.appearance,!!data,pane.chart_type,pane.volume,pane.timeframe,pane.symbol,theme]);
@@ -159,8 +175,9 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     // A shorter replay prefix removes the hovered histogram's first visible value.
     // Clear that obsolete hover before LWC synchronously re-hit-tests old series.
     if(rows.length<renderedRows.current.length)c.clearCrosshairPosition();
-    if(incremental){m.update({...tail,time:tail.time as UTCTimestamp,value:tail.close});volumeSeries.current?.update(tail.volume===null?{time:tail.time as UTCTimestamp}:{time:tail.time as UTCTimestamp,value:tail.volume,color:tail.close>=tail.open?'#37c5a255':'#ee6a7955'});}
-    else{m.setData(rows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));volumeSeries.current?.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?'#37c5a255':'#ee6a7955'}));}
+    const volColors=getVolumeColors(theme);
+    if(incremental){m.update({...tail,time:tail.time as UTCTimestamp,value:tail.close});volumeSeries.current?.update(tail.volume===null?{time:tail.time as UTCTimestamp}:{time:tail.time as UTCTimestamp,value:tail.volume,color:tail.close>=tail.open?volColors.bullish:volColors.bearish});}
+    else{m.setData(rows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));volumeSeries.current?.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));}
     incrementalStudies.current=incremental;renderedRows.current=rows;
     if(container.current)container.current.dataset.streamUpdate=incremental?'incremental':'reset';
     if(pendingStudyView.current&&replay===null)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
@@ -186,7 +203,8 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     studyLayout.current=layout;
     detachIndicatorPrimitives(indicatorRender.current);
     for(const series of [...indicatorRender.current.handles].reverse())c.removeSeries(series);
-    if(showVolume&&!volumeSeries.current){volumeSeries.current=c.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},1);volumeSeries.current.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?'#37c5a255':'#ee6a7955'}));}
+    const volColors=getVolumeColors(theme);
+    if(showVolume&&!volumeSeries.current){volumeSeries.current=c.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},1);volumeSeries.current.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));}
     else if(!showVolume&&volumeSeries.current){c.removeSeries(volumeSeries.current);volumeSeries.current=null;}
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
     indicatorRender.current=renderIndicatorPanes(c,dataFor.current===identity?computed.series:[],showVolume,paneHeights.current,mainSeries.current??undefined);setStudyEpoch(v=>v+1);
