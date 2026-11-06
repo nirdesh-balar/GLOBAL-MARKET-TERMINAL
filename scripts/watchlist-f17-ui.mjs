@@ -55,6 +55,7 @@ try {
     return {
       borderLeftWidth: cs.borderLeftWidth,
       borderLeftStyle: cs.borderLeftStyle,
+      borderLeftColor: cs.borderLeftColor,
       boxShadow: cs.boxShadow,
       outlineStyle: cs.outlineStyle,
       backgroundColor: cs.backgroundColor,
@@ -65,12 +66,13 @@ try {
   });
   console.log('Selected Row 0 Computed Styles:', row0Styles);
 
-  assert.equal(row0Styles.borderLeftWidth, '0px', 'Selected row must NOT have a thick left border');
+  assert.equal(row0Styles.borderLeftWidth, '4px', 'Selected row must have 4px left blue accent');
+  assert.ok(row0Styles.borderLeftColor.includes('59, 130, 246') || row0Styles.borderLeftColor.toLowerCase().includes('#3b82f6'), 'Left accent must be blue #3b82f6');
   assert.equal(row0Styles.boxShadow, 'none', 'Selected row must NOT have a boxed shadow or inset glow');
   assert.equal(row0Styles.outlineStyle, 'none', 'Selected row must NOT have an outline box');
   assert.equal(row0Styles.height, '44px', 'Selected row height must remain 44px');
   assert.ok(row0Styles.backgroundColor.includes('rgba(255, 255, 255') || row0Styles.backgroundColor.includes('rgb('), 'Must have subtle background highlight');
-  console.log('PASS: Selected row has no thick border, no left accent strip, and no boxed outline!');
+  console.log('PASS: Selected row has 4px blue accent, soft background, and no boxed outline!');
 
   // =========================================================================
   // TEST 2: Action Icons Visibility on Selected Row
@@ -181,7 +183,7 @@ try {
   });
   console.log('Light Theme Selected Row Styles:', lightRow0Styles);
 
-  assert.equal(lightRow0Styles.borderLeftWidth, '0px', 'Light theme selected row must have NO left border');
+  assert.equal(lightRow0Styles.borderLeftWidth, '4px', 'Light theme selected row must have 4px left blue accent');
   assert.equal(lightRow0Styles.boxShadow, 'none', 'Light theme selected row must have NO box shadow');
   assert.equal(lightRow0Styles.outlineStyle, 'none', 'Light theme selected row must have NO outline');
   assert.ok(lightRow0Styles.backgroundColor.includes('rgba(0, 0, 0') || lightRow0Styles.backgroundColor.includes('rgb('), 'Must have subtle light-theme highlight');

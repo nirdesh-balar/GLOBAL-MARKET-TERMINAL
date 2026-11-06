@@ -112,12 +112,13 @@ try {
     };
   });
   console.log('Selected row styles:', row0Styles);
-  assert.equal(row0Styles.borderLeftWidth, '0px', 'Selected row must have no left accent border');
+  assert.equal(row0Styles.borderLeftWidth, '4px', 'Selected row must have 4px left blue accent border');
+  assert.ok(row0Styles.borderLeftColor.includes('59, 130, 246') || row0Styles.borderLeftColor.toLowerCase().includes('#3b82f6'), 'Selected row border must be blue #3b82f6');
   assert.equal(row0Styles.boxShadow, 'none', 'Selected row must have no boxed outline or box-shadow');
 
   const strongWeight = await row0.locator('.watch-select > span:first-child > strong').evaluate(el => window.getComputedStyle(el).fontWeight);
   assert.ok(parseInt(strongWeight) >= 600, `Selected ticker text must have font-weight >= 600 (got ${strongWeight})`);
-  console.log('PASS: State B (Unflagged & Selected) verified with soft hover background, no thick border and no inset shadow!');
+  console.log('PASS: State B (Unflagged & Selected) verified with soft hover background, 4px blue accent, and no inset shadow!');
 
   // Capture Screenshot: State B (Unflagged & Selected)
   await page.screenshot({ path: 'test-results/watchlist-f14-state-b-selected.png' });
@@ -170,9 +171,10 @@ try {
     };
   });
   console.log('Flagged selected row styles:', row1Styles);
-  assert.equal(row1Styles.borderLeftWidth, '0px', 'Selected row must have no left accent border');
+  assert.equal(row1Styles.borderLeftWidth, '4px', 'Flagged selected row must have 4px left blue accent');
+  assert.ok(row1Styles.borderLeftColor.includes('59, 130, 246') || row1Styles.borderLeftColor.toLowerCase().includes('#3b82f6'), 'Flagged selected row border remains blue #3b82f6');
   assert.equal(row1Styles.boxShadow, 'none', 'Selected row must have no boxed shadow');
-  console.log('PASS: State D (Flagged & Selected) verified with soft hover background and no thick border!');
+  console.log('PASS: State D (Flagged & Selected) verified with soft hover background and 4px blue accent!');
 
   // Capture Screenshot: State D
   await page.screenshot({ path: 'test-results/watchlist-f14-state-d-flagged-selected.png' });
@@ -214,7 +216,8 @@ try {
     };
   });
   console.log('Light theme selected row styles:', lightStyles);
-  assert.equal(lightStyles.borderLeftWidth, '0px', 'Light theme selected row must have no left border');
+  assert.equal(lightStyles.borderLeftWidth, '4px', 'Light theme selected row must have 4px left blue accent');
+  assert.ok(lightStyles.borderLeftColor.includes('59, 130, 246') || lightStyles.borderLeftColor.toLowerCase().includes('#3b82f6'), 'Light theme selected row border remains blue #3b82f6');
   assert.equal(lightStyles.boxShadow, 'none', 'Light theme selected row must have no box-shadow');
 
   // Capture Light Theme Screenshot
