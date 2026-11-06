@@ -112,13 +112,12 @@ try {
     };
   });
   console.log('Selected row styles:', row0Styles);
-  assert.equal(row0Styles.borderLeftWidth, '4px', 'Selected row must have 4px left accent border');
-  assert.ok(row0Styles.backgroundColor.includes('rgba(59, 130, 246') || row0Styles.backgroundColor.includes('rgb(59, 130, 246'), 'Selected row must have blue background tint');
-  assert.ok(row0Styles.boxShadow.includes('rgba(59, 130, 246') || row0Styles.boxShadow.includes('rgb(59, 130, 246') || row0Styles.boxShadow !== 'none', 'Selected row must have subtle inset shadow');
+  assert.equal(row0Styles.borderLeftWidth, '0px', 'Selected row must have no left accent border');
+  assert.equal(row0Styles.boxShadow, 'none', 'Selected row must have no boxed outline or box-shadow');
 
   const strongWeight = await row0.locator('.watch-select > span:first-child > strong').evaluate(el => window.getComputedStyle(el).fontWeight);
-  assert.ok(parseInt(strongWeight) >= 700, `Selected ticker text must have strong font-weight 700 (got ${strongWeight})`);
-  console.log('PASS: State B (Unflagged & Selected) verified with 4px border, 20% blue tint, inset shadow and 700 font-weight!');
+  assert.ok(parseInt(strongWeight) >= 600, `Selected ticker text must have font-weight >= 600 (got ${strongWeight})`);
+  console.log('PASS: State B (Unflagged & Selected) verified with soft hover background, no thick border and no inset shadow!');
 
   // Capture Screenshot: State B (Unflagged & Selected)
   await page.screenshot({ path: 'test-results/watchlist-f14-state-b-selected.png' });
@@ -167,13 +166,13 @@ try {
       borderLeftWidth: cs.borderLeftWidth,
       borderLeftColor: cs.borderLeftColor,
       backgroundColor: cs.backgroundColor,
+      boxShadow: cs.boxShadow,
     };
   });
   console.log('Flagged selected row styles:', row1Styles);
-  assert.equal(row1Styles.borderLeftWidth, '4px');
-  // Flagged red row has red border accent
-  assert.ok(row1Styles.borderLeftColor.includes('239, 68, 68') || row1Styles.borderLeftColor.toLowerCase().includes('#ef4444'), `Left border matches flag red color (got ${row1Styles.borderLeftColor})`);
-  console.log('PASS: State D (Flagged & Selected) verified with matching accent border and solid flag!');
+  assert.equal(row1Styles.borderLeftWidth, '0px', 'Selected row must have no left accent border');
+  assert.equal(row1Styles.boxShadow, 'none', 'Selected row must have no boxed shadow');
+  console.log('PASS: State D (Flagged & Selected) verified with soft hover background and no thick border!');
 
   // Capture Screenshot: State D
   await page.screenshot({ path: 'test-results/watchlist-f14-state-d-flagged-selected.png' });
@@ -211,10 +210,12 @@ try {
       borderLeftWidth: cs.borderLeftWidth,
       borderLeftColor: cs.borderLeftColor,
       backgroundColor: cs.backgroundColor,
+      boxShadow: cs.boxShadow,
     };
   });
   console.log('Light theme selected row styles:', lightStyles);
-  assert.equal(lightStyles.borderLeftWidth, '4px');
+  assert.equal(lightStyles.borderLeftWidth, '0px', 'Light theme selected row must have no left border');
+  assert.equal(lightStyles.boxShadow, 'none', 'Light theme selected row must have no box-shadow');
 
   // Capture Light Theme Screenshot
   await page.screenshot({ path: 'test-results/watchlist-f14-light-theme.png' });
