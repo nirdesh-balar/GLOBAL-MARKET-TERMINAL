@@ -31,13 +31,60 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     const [showHidden, setShowHidden] = useState(false);
  const [exportMenu,setExportMenu]=useState<{x:number;y:number}|null>(null);
  const [exporting,setExporting]=useState<{progress:string;current:number;total:number}|null>(null);
+ const [noticeType,setNoticeType]=useState<'success'|'cancelled'|'notice'>('notice');
  const cancelExport=useRef(false);
+ const noticeTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const noticeTokenRef=useRef(0);
+
+ const clearStatusTimer=useCallback(()=>{
+  if(noticeTimerRef.current){
+   clearTimeout(noticeTimerRef.current);
+   noticeTimerRef.current=null;
+  }
+ },[]);
+
+ const dismissStatus=useCallback(()=>{
+  clearStatusTimer();
+  noticeTokenRef.current++;
+  setNotice('');
+  setError('');
+  setNoticeType('notice');
+ },[clearStatusTimer]);
+
+ const setAutoDismissNotice=useCallback((msg:string,type:'success'|'cancelled'|'notice'='notice',durationMs=4000)=>{
+  clearStatusTimer();
+  const token=++noticeTokenRef.current;
+  setNotice(msg);
+  setNoticeType(type);
+  setError('');
+  noticeTimerRef.current=setTimeout(()=>{
+   if(noticeTokenRef.current===token){
+    setNotice('');
+    setNoticeType('notice');
+    noticeTimerRef.current=null;
+   }
+  },durationMs);
+ },[clearStatusTimer]);
+
+ const setAutoDismissError=useCallback((errMsg:string,durationMs=8000)=>{
+  clearStatusTimer();
+  const token=++noticeTokenRef.current;
+  setError(errMsg);
+  setNotice('');
+  noticeTimerRef.current=setTimeout(()=>{
+   if(noticeTokenRef.current===token){
+    setError('');
+    noticeTimerRef.current=null;
+   }
+  },durationMs);
+ },[clearStatusTimer]);
 
     const { flags, counts, aliases, assignFlag, removeFlag, clearColor, setAlias, getSymbolsForColor } = useFlags();
 
  const resizing=useRef(false),widthRef=useRef(width),rows=useRef<HTMLDivElement>(null),menuRef=useRef<HTMLDivElement>(null);widthRef.current=width;
  useEffect(()=>setWidth(Math.round(workspace.sidebar.width||320)),[workspace.sidebar.width]);
- useEffect(()=>{setQuery('');setMenu(null);setRowPicker(null);setExportMenu(null);},[workspace.active_watchlist]);
+ useEffect(()=>{setQuery('');setMenu(null);setRowPicker(null);setExportMenu(null);dismissStatus();},[workspace.active_watchlist,dismissStatus]);
+ useEffect(()=>{return()=>clearStatusTimer();},[clearStatusTimer]);
  useEffect(()=>{
   if(!exportMenu)return;
   const dismiss=(e:PointerEvent)=>{if(!(e.target as HTMLElement).closest('.watchlist-export-menu,[data-testid="watchlist-export-btn"]'))setExportMenu(null);};
@@ -62,7 +109,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     const hasHidden = isMarket && hiddenSymbols.length > 0;
 
     const lastFetched = Math.max(0, ...Object.values(snapshots?.rows || {}).map(r => r.value?.fetched_at || 0));
-    const run = async (op: WatchlistMutation) => { if (busy) return; setBusy(true); setError(''); setNotice(''); try { await onMutate(op); setManage(false); setRemoveList(false); setMenu(null); setNotice('Watchlist saved'); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } };
+    const run = async (op: WatchlistMutation) => { if (busy) return; setBusy(true); setError(''); setNotice(''); try { await onMutate(op); setManage(false); setRemoveList(false); setMenu(null); setAutoDismissNotice('Watchlist saved', 'notice', 3000); } catch (e) { setAutoDismissError((e as Error).message); } finally { setBusy(false); } };
     const move = (from: number, to: number) => { if (isColored || workspace.sidebar.sort !== 'manual' || to < 0 || to >= current.items.length || from === to) return; const order = current.items.map(identity); order.splice(to, 0, order.splice(from, 1)[0]); void run({ action: 'reorder', id: current.id, order }); };
 
     let items = current.items.map((row, n) => ({ row, n }))
@@ -84,7 +131,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         }
         if (isColored) {
             await removeFlag(id);
-            setNotice(`Unflagged ${row.symbol}`);
+            setAutoDismissNotice(`Unflagged ${row.symbol}`, 'notice', 3000);
         } else if (isMarket) {
             const nextHidden = Array.from(new Set([...hiddenSymbols, id]));
             onChange({
@@ -94,7 +141,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
                     [current.id]: nextHidden,
                 }
             });
-            setNotice(`Hidden ${row.symbol} from ${current.name}`);
+            setAutoDismissNotice(`Hidden ${row.symbol} from ${current.name}`, 'notice', 3000);
         } else {
             await run({ action: 'remove', id: current.id, instrument: id });
         }
@@ -109,7 +156,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
                 [current.id]: nextHidden,
             }
         });
-        setNotice('Restored symbol to watchlist');
+        setAutoDismissNotice('Restored symbol to watchlist', 'notice', 3000);
     };
 
     const restoreAllHidden = () => {
@@ -119,7 +166,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
             ...workspace,
             hidden_symbols: nextMap,
         });
-        setNotice(`Restored all hidden symbols in ${current.name}`);
+        setAutoDismissNotice(`Restored all hidden symbols in ${current.name}`, 'notice', 3000);
         setManage(false);
     };
 
@@ -182,22 +229,22 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     };
 
     const context = (row: SymbolEntry, x: number, y: number) => { setMenu({ row, x: Math.max(5, Math.min(x, window.innerWidth - 290)), y: Math.max(5, Math.min(y, window.innerHeight - 380)) }); setDestination(workspace.watchlists.find(l => l.id !== current.id)?.id || ''); };
-    const exportCSV = async () => { setBusy(true); setError(''); try { const result = await window.terminal.watchlistFile('export', current.id); if (result) setNotice(`Exported ${result}`); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } };
+    const exportCSV = async () => { dismissStatus(); setBusy(true); try { const result = await window.terminal.watchlistFile('export', current.id); if (result) setAutoDismissNotice(`Exported ${result}`, 'success', 4000); } catch (e) { setAutoDismissError((e as Error).message); } finally { setBusy(false); } };
 
  const handleExportExcel=async()=>{
   if(busy||exporting)return;
+  dismissStatus();
   const exportTf=activeTimeframe||'1d';
   const listName=current.name;
   const listId=current.id;
   const targetItems=isMarket&&!showHidden&&hiddenSymbols.length>0?current.items.filter(r=>!hiddenSymbols.includes(identity(r))):current.items;
-  if(!targetItems.length){setError('Watchlist contains no symbols to export.');return;}
+  if(!targetItems.length){setAutoDismissError('Watchlist contains no symbols to export.');return;}
   const sorted=[...targetItems];
   if(workspace.sidebar.sort==='symbol'){sorted.sort((a,b)=>a.symbol.localeCompare(b.symbol));}
   else if(workspace.sidebar.sort==='change'){sorted.sort((a,b)=>(snapshots?.rows[identity(b)]?.value?.change??-Infinity)-(snapshots?.rows[identity(a)]?.value?.change??-Infinity));}
 
   cancelExport.current=false;
   setExporting({progress:`Preparing Excel export… Loaded 0 / ${sorted.length} symbols`,current:0,total:sorted.length});
-  setError('');setNotice('');
 
   try{
    let quoteMap:Record<string,QuoteRow>={};
@@ -222,7 +269,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     }catch{}
    }
 
-   if(cancelExport.current){setNotice('Export cancelled');setExporting(null);return;}
+   if(cancelExport.current){setExporting(null);setAutoDismissNotice('Export cancelled','cancelled',2000);return;}
 
    let successCount=0;
    let unavailCount=0;
@@ -277,39 +324,40 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     rows
    };
 
+   setExporting({progress:'Saving Excel workbook…',current:sorted.length,total:sorted.length});
    const result=await window.terminal.watchlistFile('export-excel',listId,payload);
+   setExporting(null);
    if(result&&typeof result==='string'){
-    setNotice(`Exported ${result} (${sorted.length} symbols)`);
+    setAutoDismissNotice(`Excel exported successfully · Exported ${result} (${sorted.length} symbols · ${timeframeDisplay(exportTf)})`,'success',4000);
    }else{
-    setNotice('Export cancelled');
+    setAutoDismissNotice('Export cancelled','cancelled',2000);
    }
   }catch(e){
-   setError((e as Error).message);
-  }finally{
    setExporting(null);
+   setAutoDismissError((e as Error).message||'Export failed',8000);
   }
  };
 
     const handleSaveAlias = async () => {
         if (!activeColor) return;
-        setBusy(true); setError('');
+        setBusy(true); dismissStatus();
         try {
             await setAlias(activeColor, aliasInput.trim());
             setManage(false);
-            setNotice('List alias saved');
-        } catch (e) { setError((e as Error).message); }
+            setAutoDismissNotice('List alias saved', 'notice', 3000);
+        } catch (e) { setAutoDismissError((e as Error).message); }
         finally { setBusy(false); }
     };
 
     const handleClearList = async () => {
         if (!activeColor) return;
-        setBusy(true); setError('');
+        setBusy(true); dismissStatus();
         try {
             await clearColor(activeColor);
             setClearConfirm(false);
             setManage(false);
-            setNotice(`${current.name} cleared`);
-        } catch (e) { setError((e as Error).message); }
+            setAutoDismissNotice(`${current.name} cleared`, 'notice', 3000);
+        } catch (e) { setAutoDismissError((e as Error).message); }
         finally { setBusy(false); }
     };
 
@@ -353,7 +401,17 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   {hasHidden&&<label title="Show or hide locally hidden tickers" className="watch-hidden-toggle" style={{display:'inline-flex',alignItems:'center',gap:'3px',fontSize:'10px',cursor:'pointer'}}><input aria-label="Show hidden symbols" type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/>Hidden ({hiddenSymbols.length})</label>}
  </div>
 
- {(error||notice||busy||exporting)&&<div className={`watchlist-status ${error?'error':''}`} role={error?'alert':'status'}><span>{error||busy&&'Saving watchlist…'||exporting?.progress||notice}</span>{exporting&&<button data-testid="watchlist-cancel-export-btn" aria-label="Cancel export" className="watchlist-cancel-btn" onClick={()=>{cancelExport.current=true;setExporting(null);setNotice('Export cancelled');}}>Cancel</button>}{error&&<button aria-label="Dismiss watchlist error" onClick={()=>setError('')}><X size={12}/></button>}</div>}
+ {(error||notice||busy||exporting)&&(
+  <div className={`watchlist-status ${error?'error':exporting||busy?'preparing':noticeType}`} role={error?'alert':'status'} aria-live={error?'assertive':'polite'}>
+   <div className="watchlist-status-content">
+    {noticeType==='success'&&!error&&!exporting&&!busy&&<Check size={11} className="status-icon success" strokeWidth={2.5}/>}
+    {(exporting||busy)&&<RefreshCw size={11} className="spin status-icon preparing"/>}
+    <span className="status-text">{error||(busy&&!exporting&&'Saving watchlist…')||exporting?.progress||notice}</span>
+   </div>
+   {exporting&&<button data-testid="watchlist-cancel-export-btn" aria-label="Cancel export" className="watchlist-cancel-btn" onClick={()=>{cancelExport.current=true;setExporting(null);setAutoDismissNotice('Export cancelled','cancelled',2000);}}>Cancel</button>}
+   {(error||notice)&&!exporting&&!busy&&<button aria-label="Dismiss watchlist notification" className="watchlist-status-dismiss" onClick={dismissStatus}><X size={11}/></button>}
+  </div>
+ )}
  <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG</span><span>CHG %</span><span className="watch-col-actions" aria-hidden="true"/></div>
  <div ref={rows} data-testid="watchlist-rows" className="watch-rows" tabIndex={0} onKeyDown={e=>handleKeyDown(e)}>
   {items.map(({row,n},position)=>{
