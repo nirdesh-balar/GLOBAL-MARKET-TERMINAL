@@ -10,7 +10,7 @@ import {useStreamStatus,useStreamFeed,mergeLive,streamView,type StreamFeed} from
 import {useRefreshTask} from '../refresh/hooks';
 import {updatedView,mergeCandles} from '../refresh/scheduler';
 import { memo,useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, TickMarkType, PriceScaleMode, type IChartApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
+import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
 import { getCandleColors, getVolumeColors, LIGHT_THEME, DARK_THEME } from './appearance';
 import { CandlestickChart, SlidersHorizontal, RefreshCw, X, Upload } from 'lucide-react';
 import type { Candle, Pane, Indicator, Timeframe, HistoryResult, ChartQuote } from '../types';
@@ -30,6 +30,26 @@ import { renderIndicatorPanes,updateIndicatorPanes,detachIndicatorPrimitives } f
 const rangeDays:Record<string,number>={'1D':1,'5D':5,'1M':30,'3M':90,'6M':180,'1Y':365,'5Y':1825};
 function date(time:Time){return new Date(typeof time==='number'?time*1000:typeof time==='string'?time:`${time.year}-${String(time.month).padStart(2,'0')}-${String(time.day).padStart(2,'0')}T00:00:00Z`);}
 function tickLabel(time:Time,type:TickMarkType,zone:string){return new Intl.DateTimeFormat('en-IN',{timeZone:zone,...(type===TickMarkType.Year?{year:'numeric'}:type===TickMarkType.Month?{month:'short'}:type===TickMarkType.DayOfMonth?{day:'2-digit',month:'short'}:{hour:'2-digit',minute:'2-digit',hour12:false})} as Intl.DateTimeFormatOptions).format(date(time));}
+
+export function setPriceScaleRange(scale:IPriceScaleApi,from:number,to:number){
+  if(scale.options().mode===PriceScaleMode.Logarithmic){
+    const defLog={logicalOffset:4,coordOffset:0.0001};
+    const diff=Math.abs(to-from);
+    const formula=(diff>=1||diff<1e-15)?defLog:{
+      logicalOffset:defLog.logicalOffset+Math.ceil(Math.abs(Math.log10(diff))),
+      coordOffset:1/Math.pow(10,defLog.logicalOffset+Math.ceil(Math.abs(Math.log10(diff))))
+    };
+    const toLogVal=(p:number)=>{
+      const m=Math.abs(p);
+      if(m<1e-15)return 0;
+      const r=Math.log10(m+formula.coordOffset)+formula.logicalOffset;
+      return p<0?-r:r;
+    };
+    scale.setVisibleRange({from:toLogVal(from),to:toLogVal(to)});
+  }else{
+    scale.setVisibleRange({from,to});
+  }
+}
 
 export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
   const instrumentZone=pane.timezone||'Asia/Kolkata';
@@ -87,7 +107,123 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
   useEffect(()=>{if(!playing||replay===null)return;const timer=setInterval(()=>setReplay(v=>{if(v===null)return v;if((replayRows.current?.length||0)<=v+1){setPlaying(false);return v;}return Math.min((replayRows.current?.length||1)-1,v+1);}),1000/speed);return()=>clearInterval(timer);},[playing,speed,data]);
   const scaleMode=pane.scale.percentage?PriceScaleMode.Percentage:pane.scale.logarithmic?PriceScaleMode.Logarithmic:PriceScaleMode.Normal;
   const scaleRef=useRef(pane.scale);scaleRef.current=pane.scale;
-  useEffect(()=>{if(!chart.current)return;chart.current.priceScale('right').applyOptions({mode:scaleMode,autoScale:true});chart.current.priceScale('right').setAutoScale(pane.scale.auto);if(container.current){container.current.dataset.priceMode=String(chart.current.priceScale('right').options().mode);container.current.dataset.autoScale=String(chart.current.priceScale('right').options().autoScale);}},[pane.scale.logarithmic,pane.scale.auto,pane.scale.percentage]);
+  const onChangeRef=useRef(onChange);onChangeRef.current=onChange;
+  useEffect(()=>{
+    if(!chart.current)return;
+    chart.current.priceScale('right').applyOptions({mode:scaleMode,autoScale:pane.scale.auto});
+    chart.current.priceScale('right').setAutoScale(pane.scale.auto);
+    if(container.current){
+      container.current.dataset.priceMode=String(chart.current.priceScale('right').options().mode);
+      container.current.dataset.autoScale=String(chart.current.priceScale('right').options().autoScale);
+    }
+    const frame=requestAnimationFrame(()=>{
+      if(!chart.current||!container.current)return;
+      const vr=chart.current.priceScale('right').getVisibleRange();
+      if(vr){
+        container.current.dataset.priceRangeFrom=String(vr.from);
+        container.current.dataset.priceRangeTo=String(vr.to);
+      }
+    });
+    return()=>cancelAnimationFrame(frame);
+  },[pane.scale.logarithmic,pane.scale.auto,pane.scale.percentage,scaleMode]);
+  useEffect(()=>{
+    const el=container.current;
+    if(!el)return;
+    const onWheel=(e:WheelEvent)=>{
+      const c=chart.current;
+      if(!c)return;
+      const rect=el.getBoundingClientRect();
+      const scaleWidth=c.priceScale('right').width()||70;
+      const isOverPriceScaleX=e.clientX>=rect.right-scaleWidth&&e.clientX<=rect.right;
+      const timeScaleHeight=c.timeScale().height()||26;
+      const mainPaneHeight=c.panes()[0]?c.panes()[0].getHeight():(rect.height-timeScaleHeight);
+      const isOverMainPriceScaleY=e.clientY>=rect.top&&e.clientY<=rect.top+mainPaneHeight;
+
+      if(!isOverPriceScaleX||!isOverMainPriceScaleY)return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const delta=e.deltaY;
+      if(delta===0)return;
+
+      const priceScale=c.priceScale('right');
+      const currentRange=priceScale.getVisibleRange();
+      if(!currentRange||!Number.isFinite(currentRange.from)||!Number.isFinite(currentRange.to)||currentRange.from>=currentRange.to)return;
+
+      const rawFactor=Math.exp(delta*0.0015);
+      const factor=Math.min(Math.max(rawFactor,0.5),2.0);
+
+      const pointerY=e.clientY-rect.top;
+      const anchorPrice=mainSeries.current?.coordinateToPrice(pointerY);
+      const hasValidAnchor=anchorPrice!==null&&anchorPrice!==undefined&&Number.isFinite(anchorPrice)&&anchorPrice>=currentRange.from&&anchorPrice<=currentRange.to;
+
+      const isLog=priceScale.options().mode===PriceScaleMode.Logarithmic;
+      let newFrom:number;
+      let newTo:number;
+
+      if(isLog&&currentRange.from>0&&currentRange.to>0){
+        const lFrom=Math.log(currentRange.from);
+        const lTo=Math.log(currentRange.to);
+        const lSpan=lTo-lFrom;
+        const newLSpan=lSpan*factor;
+        if(hasValidAnchor&&(anchorPrice as number)>0){
+          const lAnchor=Math.log(anchorPrice as number);
+          const ratio=(lAnchor-lFrom)/lSpan;
+          newFrom=Math.exp(lAnchor-ratio*newLSpan);
+          newTo=Math.exp(lAnchor+(1-ratio)*newLSpan);
+        }else{
+          const lMid=(lFrom+lTo)/2;
+          newFrom=Math.exp(lMid-newLSpan/2);
+          newTo=Math.exp(lMid+newLSpan/2);
+        }
+      }else{
+        const span=currentRange.to-currentRange.from;
+        const newSpan=span*factor;
+        if(hasValidAnchor){
+          const ratio=((anchorPrice as number)-currentRange.from)/span;
+          newFrom=(anchorPrice as number)-ratio*newSpan;
+          newTo=(anchorPrice as number)+(1-ratio)*newSpan;
+        }else{
+          const mid=(currentRange.from+currentRange.to)/2;
+          newFrom=mid-newSpan/2;
+          newTo=mid+newSpan/2;
+        }
+      }
+
+      const midPrice=(currentRange.from+currentRange.to)/2;
+      const minSpan=Math.max(1e-5,Math.abs(midPrice)*1e-4);
+      const maxSpan=Math.max(1e6,Math.abs(midPrice)*1e4);
+
+      if(newTo-newFrom<minSpan){
+        const center=(newFrom+newTo)/2;
+        newFrom=center-minSpan/2;
+        newTo=center+minSpan/2;
+      }else if(newTo-newFrom>maxSpan){
+        const center=(newFrom+newTo)/2;
+        newFrom=center-maxSpan/2;
+        newTo=center+maxSpan/2;
+      }
+
+      if(!Number.isFinite(newFrom)||!Number.isFinite(newTo)||newFrom>=newTo)return;
+
+      setPriceScaleRange(priceScale,newFrom,newTo);
+      priceScale.setAutoScale(false);
+
+      if(el){
+        el.dataset.autoScale='false';
+        el.dataset.priceRangeFrom=String(newFrom);
+        el.dataset.priceRangeTo=String(newTo);
+      }
+
+      if(scaleRef.current.auto){
+        scaleRef.current={...scaleRef.current,auto:false};
+        onChangeRef.current({scale:{...scaleRef.current,auto:false}});
+      }
+    };
+    el.addEventListener('wheel',onWheel,{passive:false,capture:true});
+    return()=>{el.removeEventListener('wheel',onWheel,{capture:true});};
+  },[]);
   useEffect(()=>{const c=chart.current,m=mainSeries.current;if(c&&m){const p=data?.precision??precision;m.applyOptions({priceFormat:{type:'price',precision:p,minMove:10**-p}});c.applyOptions({localization:{priceFormatter:formatActualPrice}});}},[data?.precision,precision]);
   // Fetch only when symbol, timeframe, range, source or Refresh changes.
   // Indicator, volume and layout changes only rebuild series from data in RAM.
@@ -121,7 +257,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
     const candleColors=getCandleColors(pane.appearance,theme);
     const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',fontSize:11,attributionLogo:true,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:70,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>new Intl.DateTimeFormat('en-IN',{timeZone:displayZone,dateStyle:'medium',...(!['1d','1w','1M','1Y'].includes(pane.timeframe)?{timeStyle:'short' as const}:{})}).format(date(time))},crosshair:{vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
-    chart.current=c;setChartEpoch(v=>v+1);container.current.dataset.chartCreations=String(Number(container.current.dataset.chartCreations??0)+1);if(container.current){container.current.dataset.priceMode=String(c.priceScale('right').options().mode);container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);}
+    chart.current=c;(container.current as any).__chart=c;setChartEpoch(v=>v+1);container.current.dataset.chartCreations=String(Number(container.current.dataset.chartCreations??0)+1);if(container.current){container.current.dataset.priceMode=String(c.priceScale('right').options().mode);container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);}
     let main:ISeriesApi<SeriesType>;
     if(pane.chart_type==='candles')main=c.addSeries(CandlestickSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders});
     else if(pane.chart_type==='area')main=c.addSeries(AreaSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00',lineWidth:2});
@@ -129,10 +265,10 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     const ready=dataFor.current===identity;
     const initialRows=ready?rowsRef.current:[];
     main.setData(initialRows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));
-    mainSeries.current=main;const drawingsPrimitive=new DrawingsPrimitive();primitive.current=drawingsPrimitive;main.attachPrimitive(drawingsPrimitive);drawingsPrimitive.volumeSupported=pane.kind!=='index'&&pane.kind!=='forex';drawingsPrimitive.rows=initialRows;drawingsPrimitive.currency=data?.currency||pane.currency||"";drawingsPrimitive.precision=data?.precision??precision;drawingsPrimitive.update(pane.drawing_sets[drawingStorageKey(pane)]||[],drawing.selected,pane.drawings_hidden);
+    mainSeries.current=main;if(container.current)(container.current as any).__mainSeries=main;const drawingsPrimitive=new DrawingsPrimitive();primitive.current=drawingsPrimitive;main.attachPrimitive(drawingsPrimitive);drawingsPrimitive.volumeSupported=pane.kind!=='index'&&pane.kind!=='forex';drawingsPrimitive.rows=initialRows;drawingsPrimitive.currency=data?.currency||pane.currency||"";drawingsPrimitive.precision=data?.precision??precision;drawingsPrimitive.update(pane.drawing_sets[drawingStorageKey(pane)]||[],drawing.selected,pane.drawings_hidden);
     indicatorRender.current={slots:new Map(),handles:[],primitives:[],owners:[]};
     if(initialRows.length){if(preserve&&view.current)c.timeScale().setVisibleLogicalRange(view.current);else c.timeScale().setVisibleLogicalRange({from:Math.max(0,initialRows.length-150),to:initialRows.length+6});}
-    const scaleFrame=requestAnimationFrame(()=>{if(chart.current!==c)return;c.priceScale('right').getVisibleRange();c.priceScale('right').setAutoScale(scaleRef.current.auto);if(container.current)container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);});
+    const scaleFrame=requestAnimationFrame(()=>{if(chart.current!==c)return;const vr=c.priceScale('right').getVisibleRange();c.priceScale('right').setAutoScale(scaleRef.current.auto);if(container.current){container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);if(vr){container.current.dataset.priceRangeFrom=String(vr.from);container.current.dataset.priceRangeTo=String(vr.to);}}});
     setCurrent(initialRows.at(-1)||null);
     // O(1) crosshair lookup even with decades of history.
 
@@ -149,6 +285,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     });
     return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);if(showVolume&&c.panes()[1])paneHeights.current.set('volume',c.panes()[1].getStretchFactor());for(const [id,index] of indicatorRender.current.slots)paneHeights.current.set(id,c.panes()[index].getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
       detachIndicatorPrimitives(indicatorRender.current);main.detachPrimitive(drawingsPrimitive);
+      if(container.current){delete (container.current as any).__chart;delete (container.current as any).__mainSeries;}
       c.remove();chart.current=null;primitive.current=null;mainSeries.current=null;volumeSeries.current=null;};
   },[!!data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
   useEffect(()=>{
@@ -181,7 +318,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     incrementalStudies.current=incremental;renderedRows.current=rows;
     if(container.current)container.current.dataset.streamUpdate=incremental?'incremental':'reset';
     if(pendingStudyView.current&&replay===null)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
-    if(previousPrice)c.priceScale('right').setVisibleRange(previousPrice);
+    if(previousPrice)setPriceScaleRange(c.priceScale('right'),previousPrice.from,previousPrice.to);
     setCurrent(rows.at(-1)||null);
     if(replay!==null)c.timeScale().setVisibleLogicalRange({from:Math.max(0,rows.length-100),to:rows.length+6});
     if(container.current){container.current.dataset.renderRevision=String(++renderRevision.current);container.current.dataset.lastClose=String(rows.at(-1)?.close??'');container.current.dataset.lastVolume=String(rows.at(-1)?.volume??'');container.current.dataset.renderedBars=String(rows.length);container.current.dataset.replay=String(replay!==null);container.current.dataset.lastRenderedTime=String(rows.at(-1)?.time||0);}
@@ -208,13 +345,13 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     else if(!showVolume&&volumeSeries.current){c.removeSeries(volumeSeries.current);volumeSeries.current=null;}
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
     indicatorRender.current=renderIndicatorPanes(c,dataFor.current===identity?computed.series:[],showVolume,paneHeights.current,mainSeries.current??undefined);setStudyEpoch(v=>v+1);
-    if(previous)c.timeScale().setVisibleLogicalRange(previous);if(manualPrice)c.priceScale('right').setVisibleRange(manualPrice);
+    if(previous)c.timeScale().setVisibleLogicalRange(previous);if(manualPrice)setPriceScaleRange(c.priceScale('right'),manualPrice.from,manualPrice.to);
   },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,pane.volume,pane.indicators_hidden,theme]);
   useLayoutEffect(()=>{
     const c=chart.current;if(!c)return;const range=c.timeScale().getVisibleLogicalRange(),price=c.priceScale('right').getVisibleRange(),wasHidden=previousHidden.current;previousHidden.current=hidden;layoutResizing.current=true;
     if(hidden){layoutSnapshot.current={range,price};return;}
     const snapshot=wasHidden&&layoutSnapshot.current?layoutSnapshot.current:{range,price};let second=0;
-    const frame=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>{if(chart.current===c){if(snapshot.range)c.timeScale().setVisibleLogicalRange(snapshot.range);if(snapshot.price&&!scaleRef.current.auto)c.priceScale('right').setVisibleRange(snapshot.price);}layoutResizing.current=false;});});
+    const frame=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>{if(chart.current===c){if(snapshot.range)c.timeScale().setVisibleLogicalRange(snapshot.range);if(snapshot.price&&!scaleRef.current.auto)setPriceScaleRange(c.priceScale('right'),snapshot.price.from,snapshot.price.to);}layoutResizing.current=false;});});
     return()=>{cancelAnimationFrame(frame);cancelAnimationFrame(second);};
   },[hidden,expanded]);
   const resetChart=()=>{const count=rows.length;chart.current?.timeScale().setVisibleLogicalRange({from:Math.max(0,count-150),to:count+6});};
