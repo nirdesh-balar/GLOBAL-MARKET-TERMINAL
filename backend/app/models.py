@@ -348,7 +348,8 @@ class SidebarPreferences(BaseModel):
     visible:bool=True
     width:int=Field(default=320,ge=220,le=480)
     volume:bool=False
-    sort:Literal['manual','symbol','change']='manual'
+    sort:Literal['manual','symbol','symbol_desc','price','price_desc','change','change_desc','change_asc','change_abs','change_abs_desc']='manual'
+    sort_dir:Literal['asc','desc']='asc'
     @field_validator('width',mode='before')
     @classmethod
     def coerce_width(cls,value):

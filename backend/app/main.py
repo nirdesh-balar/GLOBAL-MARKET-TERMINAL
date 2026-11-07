@@ -157,7 +157,7 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
         return dict(status='ok',mode='DIRECT',database='preferences only',instruments=db.count(),
             catalogue=db.get('catalogue',dict(source='Official NSE directory pending',updated=0,count=0,mainboard=0,sme=0)),
             catalogue_error=db.get('catalogue_error'),directory_loading=db.get('directory_loading',False),
-            timezone='Asia/Kolkata',market_status='HISTORICAL',version='1.1.0-rc.1',api_version='1.0.0',provider=service.status())
+            timezone='Asia/Kolkata',market_status='HISTORICAL',version='1.1.0-rc.2',api_version='1.0.0',provider=service.status())
     @app.get('/api/securities/search')
     @app.get('/instruments')
     def securities(q:str='',limit:int=60): return db.search(q,max(1,min(limit,200)))

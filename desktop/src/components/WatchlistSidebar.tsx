@@ -1,7 +1,7 @@
 import {legacyCrypto} from '../providers/legacy';
 import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,QuoteRow,RefreshPreferences} from '../refresh/hooks';
-import React, {useEffect,useRef,useState,useCallback} from 'react';
+import React, {useEffect,useLayoutEffect,useRef,useState,useCallback} from 'react';
 import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check} from 'lucide-react';
 import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist,Timeframe} from '../types';
 import {symbolLabel,price,api} from '../services/api';
@@ -23,6 +23,80 @@ const timeframeDisplay = (tf?: string) => {
     if (tf === '1Y') return '1Y';
     return tf;
 };
+
+export type WatchlistSortOption =
+    | 'manual'
+    | 'symbol'
+    | 'symbol_desc'
+    | 'price'
+    | 'price_desc'
+    | 'change'
+    | 'change_desc'
+    | 'change_asc'
+    | 'change_abs'
+    | 'change_abs_desc';
+
+export function compareSymbolEntries(
+    a: SymbolEntry,
+    b: SymbolEntry,
+    sort: WatchlistSortOption,
+    quotes?: Record<string, QuoteRow>
+): number {
+    if (sort === 'manual') return 0;
+
+    if (sort === 'symbol') {
+        const cmp = a.symbol.localeCompare(b.symbol);
+        return cmp !== 0 ? cmp : (a.exchange || '').localeCompare(b.exchange || '');
+    }
+    if (sort === 'symbol_desc') {
+        const cmp = b.symbol.localeCompare(a.symbol);
+        return cmp !== 0 ? cmp : (b.exchange || '').localeCompare(a.exchange || '');
+    }
+
+    const idA = identity(a);
+    const idB = identity(b);
+    const qA = quotes?.[idA]?.value;
+    const qB = quotes?.[idB]?.value;
+
+    const getFinite = (val: number | null | undefined, fallback: number): number => {
+        return typeof val === 'number' && Number.isFinite(val) ? val : fallback;
+    };
+
+    if (sort === 'price_desc' || sort === 'price') {
+        const isDesc = sort === 'price_desc';
+        const missing = isDesc ? -Infinity : Infinity;
+        const pA = getFinite(qA?.price, missing);
+        const pB = getFinite(qB?.price, missing);
+        if (pA !== pB) {
+            return isDesc ? pB - pA : pA - pB;
+        }
+        return a.symbol.localeCompare(b.symbol);
+    }
+
+    if (sort === 'change' || sort === 'change_desc' || sort === 'change_asc') {
+        const isDesc = sort !== 'change_asc';
+        const missing = isDesc ? -Infinity : Infinity;
+        const cA = getFinite(qA?.change, missing);
+        const cB = getFinite(qB?.change, missing);
+        if (cA !== cB) {
+            return isDesc ? cB - cA : cA - cB;
+        }
+        return a.symbol.localeCompare(b.symbol);
+    }
+
+    if (sort === 'change_abs_desc' || sort === 'change_abs') {
+        const isDesc = sort === 'change_abs_desc';
+        const missing = isDesc ? -Infinity : Infinity;
+        const cA = getFinite(qA?.absolute_change, missing);
+        const cB = getFinite(qB?.absolute_change, missing);
+        if (cA !== cB) {
+            return isDesc ? cB - cA : cA - cB;
+        }
+        return a.symbol.localeCompare(b.symbol);
+    }
+
+    return 0;
+}
 
 export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, health, indices, active, quotes, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe }: { onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; health: Health; indices: Instrument[]; active: string; quotes: Record<string, ChartQuote>; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
     const [query, setQuery] = useState(''), [manage, setManage] = useState(false), [name, setName] = useState(''), [action, setAction] = useState<'create' | 'rename' | 'duplicate'>('create'), [drag, setDrag] = useState<string | null>(null), [target, setTarget] = useState('active'), [width, setWidth] = useState(Math.round(workspace.sidebar.width || 320)), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [removeList, setRemoveList] = useState(false), [clearConfirm, setClearConfirm] = useState(false), [importing, setImporting] = useState(false), [menu, setMenu] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null), [destination, setDestination] = useState('');
@@ -82,6 +156,20 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     const { flags, counts, aliases, assignFlag, removeFlag, clearColor, setAlias, getSymbolsForColor } = useFlags();
 
  const resizing=useRef(false),widthRef=useRef(width),rows=useRef<HTMLDivElement>(null),menuRef=useRef<HTMLDivElement>(null);widthRef.current=width;
+ const [resortEpoch, setResortEpoch] = useState(0);
+ const triggerResort = useCallback(() => setResortEpoch(e => e + 1), []);
+
+ const scrollPosRef = useRef<number>(0);
+ const anchorRef = useRef<{ id: string; offset: number } | null>(null);
+
+ const lastSortRef = useRef<string>(workspace.sidebar.sort);
+ const lastWatchlistRef = useRef<string>('');
+ const lastQueryRef = useRef<string>(query);
+ const lastShowHiddenRef = useRef<boolean>(showHidden);
+ const lastResortEpochRef = useRef<number>(resortEpoch);
+ const lastItemsKeyRef = useRef<string>('');
+ const displayOrderRef = useRef<string[]>([]);
+
  useEffect(()=>setWidth(Math.round(workspace.sidebar.width||320)),[workspace.sidebar.width]);
  useEffect(()=>{setQuery('');setMenu(null);setRowPicker(null);setExportMenu(null);dismissStatus();},[workspace.active_watchlist,dismissStatus]);
  useEffect(()=>{return()=>clearStatusTimer();},[clearStatusTimer]);
@@ -93,7 +181,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   window.addEventListener('keydown',key);
   return()=>{window.removeEventListener('pointerdown',dismiss);window.removeEventListener('keydown',key);};
  },[exportMenu]);
- useEffect(()=>{if(!menu)return;menuRef.current?.querySelector('button')?.focus();const dismiss=(e:PointerEvent)=>{if(!menuRef.current?.contains(e.target as Node))setMenu(null);};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopImmediatePropagation();e.preventDefault();setMenu(null);rows.current?.querySelector<HTMLElement>(`[data-identity="${CSS.escape(identity(menu.row))}"] .watch-select`)?.focus();}};window.addEventListener('pointerdown',dismiss);window.addEventListener('keydown',key,true);return()=>{window.removeEventListener('pointerdown',dismiss);window.removeEventListener('keydown',key,true);};},[menu]);
+ useEffect(()=>{if(!menu)return;menuRef.current?.querySelector('button')?.focus();const dismiss=(e:PointerEvent)=>{if(!menuRef.current?.contains(e.target as Node))setMenu(null);};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopImmediatePropagation();e.preventDefault();setMenu(null);rows.current?.querySelector<HTMLElement>(`[data-identity="${CSS.escape(identity(menu.row))}"] .watch-select`)?.focus({preventScroll:true});}};window.addEventListener('pointerdown',dismiss);window.addEventListener('keydown',key,true);return()=>{window.removeEventListener('pointerdown',dismiss);window.removeEventListener('keydown',key,true);};},[menu]);
 
     const isColored = workspace.active_watchlist.startsWith('color:');
     const activeColor = isColored ? (workspace.active_watchlist.slice(6) as FlagColor) : null;
@@ -112,12 +200,113 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     const run = async (op: WatchlistMutation) => { if (busy) return; setBusy(true); setError(''); setNotice(''); try { await onMutate(op); setManage(false); setRemoveList(false); setMenu(null); setAutoDismissNotice('Watchlist saved', 'notice', 3000); } catch (e) { setAutoDismissError((e as Error).message); } finally { setBusy(false); } };
     const move = (from: number, to: number) => { if (isColored || workspace.sidebar.sort !== 'manual' || to < 0 || to >= current.items.length || from === to) return; const order = current.items.map(identity); order.splice(to, 0, order.splice(from, 1)[0]); void run({ action: 'reorder', id: current.id, order }); };
 
-    let items = current.items.map((row, n) => ({ row, n }))
+    const baseItems = current.items.map((row, n) => ({ row, n }))
         .filter(({ row }) => showHidden || !hiddenSymbols.includes(identity(row)))
         .filter(({ row }) => `${row.symbol} ${row.name} ${row.exchange} ${row.kind}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
 
-    if (workspace.sidebar.sort === 'symbol') items.sort((a, b) => a.row.symbol.localeCompare(b.row.symbol));
-    if (workspace.sidebar.sort === 'change') items.sort((a, b) => (snapshots?.rows[identity(b.row)]?.value?.change ?? -Infinity) - (snapshots?.rows[identity(a.row)]?.value?.change ?? -Infinity));
+    const itemsKey = baseItems.map(it => identity(it.row)).join('|');
+    const currentSort = workspace.sidebar.sort;
+    const isManual = currentSort === 'manual';
+
+    const needsResort =
+        currentSort !== lastSortRef.current ||
+        current.id !== lastWatchlistRef.current ||
+        query !== lastQueryRef.current ||
+        showHidden !== lastShowHiddenRef.current ||
+        resortEpoch !== lastResortEpochRef.current ||
+        itemsKey !== lastItemsKeyRef.current ||
+        displayOrderRef.current.length === 0;
+
+    if (needsResort) {
+        if (rows.current && rows.current.scrollTop > 0 && displayOrderRef.current.length > 0) {
+            const topIdx = Math.max(0, Math.floor(rows.current.scrollTop / 44));
+            const topSymbolId = displayOrderRef.current[topIdx];
+            if (topSymbolId) {
+                anchorRef.current = {
+                    id: topSymbolId,
+                    offset: rows.current.scrollTop - (topIdx * 44)
+                };
+            }
+        }
+
+        if (isManual) {
+            displayOrderRef.current = baseItems.map(it => identity(it.row));
+        } else {
+            const sorted = [...baseItems];
+            sorted.sort((a, b) => compareSymbolEntries(a.row, b.row, currentSort, snapshots?.rows));
+            displayOrderRef.current = sorted.map(it => identity(it.row));
+        }
+
+        lastSortRef.current = currentSort;
+        lastWatchlistRef.current = current.id;
+        lastQueryRef.current = query;
+        lastShowHiddenRef.current = showHidden;
+        lastResortEpochRef.current = resortEpoch;
+        lastItemsKeyRef.current = itemsKey;
+    }
+
+    const baseMap = new Map<string, { row: SymbolEntry; n: number }>();
+    for (const item of baseItems) {
+        baseMap.set(identity(item.row), item);
+    }
+    const items: Array<{ row: SymbolEntry; n: number }> = [];
+    for (const id of displayOrderRef.current) {
+        const item = baseMap.get(id);
+        if (item) {
+            items.push(item);
+            baseMap.delete(id);
+        }
+    }
+    for (const item of baseMap.values()) {
+        items.push(item);
+    }
+
+    useLayoutEffect(() => {
+        const container = rows.current;
+        if (!container) return;
+
+        if (anchorRef.current) {
+            const anchor = anchorRef.current;
+            anchorRef.current = null;
+            const newIndex = items.findIndex(it => identity(it.row) === anchor.id);
+            if (newIndex >= 0) {
+                const targetScroll = Math.max(0, newIndex * 44 + anchor.offset);
+                container.scrollTop = targetScroll;
+                scrollPosRef.current = targetScroll;
+                return;
+            }
+        }
+
+        if (scrollPosRef.current > 0 && container.scrollTop === 0) {
+            container.scrollTop = scrollPosRef.current;
+        }
+    });
+
+    const isSymbol = currentSort === 'symbol' || currentSort === 'symbol_desc';
+    const isPrice = currentSort === 'price' || currentSort === 'price_desc';
+    const isChangeAbs = currentSort === 'change_abs' || currentSort === 'change_abs_desc';
+    const isChangePct = currentSort === 'change' || currentSort === 'change_desc' || currentSort === 'change_asc';
+
+    const handleColumnSort = (column: 'symbol' | 'price' | 'change_abs' | 'change') => {
+        let nextSort: Workspace['sidebar']['sort'];
+        if (column === 'symbol') {
+            nextSort = currentSort === 'symbol' ? 'symbol_desc' : 'symbol';
+        } else if (column === 'price') {
+            nextSort = currentSort === 'price_desc' ? 'price' : 'price_desc';
+        } else if (column === 'change_abs') {
+            nextSort = currentSort === 'change_abs_desc' ? 'change_abs' : 'change_abs_desc';
+        } else {
+            nextSort = (currentSort === 'change' || currentSort === 'change_desc') ? 'change_asc' : 'change';
+        }
+        onChange({
+            ...workspace,
+            sidebar: {
+                ...workspace.sidebar,
+                sort: nextSort,
+            }
+        });
+        triggerResort();
+    };
 
     const activePaneSymbol = identity(workspace.panes.find(p => p.id === active) || workspace.panes[0]);
     const openRow = (row: SymbolEntry) => onOpen(row, target === 'active' ? active : target);
@@ -242,8 +431,9 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   const targetItems=isMarket&&!showHidden&&hiddenSymbols.length>0?current.items.filter(r=>!hiddenSymbols.includes(identity(r))):current.items;
   if(!targetItems.length){setAutoDismissError('Watchlist contains no symbols to export.');return;}
   const sorted=[...targetItems];
-  if(workspace.sidebar.sort==='symbol'){sorted.sort((a,b)=>a.symbol.localeCompare(b.symbol));}
-  else if(workspace.sidebar.sort==='change'){sorted.sort((a,b)=>(snapshots?.rows[identity(b)]?.value?.change??-Infinity)-(snapshots?.rows[identity(a)]?.value?.change??-Infinity));}
+  if(workspace.sidebar.sort!=='manual'){
+   sorted.sort((a,b)=>compareSymbolEntries(a,b,workspace.sidebar.sort,snapshots?.rows));
+  }
 
   cancelExport.current=false;
   setExporting({progress:`Preparing Excel export… Loaded 0 / ${sorted.length} symbols`,current:0,total:sorted.length});
@@ -398,7 +588,17 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
  <div className="watch-search"><button aria-label="Refresh watchlist prices" title="Fetch latest available historical prices" onClick={onQuoteRefresh} disabled={!!snapshots?.pending||refreshPaused}><RefreshCw size={14} className={snapshots?.pending&&!refreshPaused?'spin':''}/></button><input aria-label="Search current watchlist" placeholder="Search this watchlist" value={query} onChange={e=>setQuery(e.target.value)}/><button aria-label="Add watchlist symbol" title="Search global instruments" onClick={onSearch}><Plus size={16}/></button></div>
  <div className="watchlist-options">
   <select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select>
-  <select aria-label="Watchlist sort" value={workspace.sidebar.sort} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,sort:e.target.value as Workspace['sidebar']['sort']}})}><option value="manual">Manual order</option><option value="symbol">Symbol A–Z</option><option value="change">Change %</option></select>
+  <select aria-label="Watchlist sort" data-testid="watchlist-sort-select" value={workspace.sidebar.sort} onChange={e=>{const nextSort=e.target.value as Workspace['sidebar']['sort'];onChange({...workspace,sidebar:{...workspace.sidebar,sort:nextSort}});triggerResort();}}>
+   <option value="manual">Manual order</option>
+   <option value="symbol">Symbol (A to Z)</option>
+   <option value="symbol_desc">Symbol (Z to A)</option>
+   <option value="price_desc">Last Price (High to Low)</option>
+   <option value="price">Last Price (Low to High)</option>
+   <option value="change_abs_desc">Change (High to Low)</option>
+   <option value="change_abs">Change (Low to High)</option>
+   <option value="change">Change % (High to Low)</option>
+   <option value="change_asc">Change % (Low to High)</option>
+  </select>
   <label title="Show supplied volume"><input aria-label="Watchlist volume" type="checkbox" checked={workspace.sidebar.volume} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,volume:e.target.checked}})}/>Vol</label>
   {hasHidden&&<label title="Show or hide locally hidden tickers" className="watch-hidden-toggle" style={{display:'inline-flex',alignItems:'center',gap:'3px',fontSize:'10px',cursor:'pointer'}}><input aria-label="Show hidden symbols" type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/>Hidden ({hiddenSymbols.length})</label>}
  </div>
@@ -414,14 +614,29 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
    {(error||notice)&&!exporting&&!busy&&<button aria-label="Dismiss watchlist notification" className="watchlist-status-dismiss" onClick={dismissStatus}><X size={11}/></button>}
   </div>
  )}
- <div className="watch-columns"><span className="watch-col-flag" aria-hidden="true"/><span title={`${current.items.length} items`}>SYMBOL · {current.items.length}</span><span>LAST</span><span>CHG</span><span>CHG %</span><span className="watch-col-actions" aria-hidden="true"/></div>
- <div ref={rows} data-testid="watchlist-rows" className="watch-rows" tabIndex={0} onKeyDown={e=>handleKeyDown(e)}>
+ <div className="watch-columns">
+  <span className="watch-col-flag" aria-hidden="true"/>
+  <button type="button" className={`watch-col-btn watch-col-symbol ${isSymbol?'active':''}`} onClick={()=>handleColumnSort('symbol')} title={isSymbol?(currentSort==='symbol'?'Symbol (A to Z) · Click to sort Z to A':'Symbol (Z to A) · Click to sort A to Z'):'Click to sort by Symbol'} aria-label="Sort by Symbol">
+   SYMBOL · {current.items.length}{isSymbol&&<span className="sort-arrow">{currentSort==='symbol'?' ▲':' ▼'}</span>}
+  </button>
+  <button type="button" className={`watch-col-btn watch-col-price ${isPrice?'active':''}`} onClick={()=>handleColumnSort('price')} title={isPrice?(currentSort==='price_desc'?'Last Price (High to Low) · Click to sort Low to High':'Last Price (Low to High) · Click to sort High to Low'):'Click to sort by Last Price'} aria-label="Sort by Last Price">
+   LAST{isPrice&&<span className="sort-arrow">{currentSort==='price_desc'?' ▼':' ▲'}</span>}
+  </button>
+  <button type="button" className={`watch-col-btn watch-col-change-abs ${isChangeAbs?'active':''}`} onClick={()=>handleColumnSort('change_abs')} title={isChangeAbs?(currentSort==='change_abs_desc'?'Change (High to Low) · Click to sort Low to High':'Change (Low to High) · Click to sort High to Low'):'Click to sort by Change'} aria-label="Sort by Change">
+   CHG{isChangeAbs&&<span className="sort-arrow">{currentSort==='change_abs_desc'?' ▼':' ▲'}</span>}
+  </button>
+  <button type="button" className={`watch-col-btn watch-col-change-pct ${isChangePct?'active':''}`} onClick={()=>handleColumnSort('change')} title={isChangePct?(currentSort==='change_asc'?'Change % (Low to High) · Click to sort High to Low':'Change % (High to Low) · Click to sort Low to High'):'Click to sort by Change %'} aria-label="Sort by Change %">
+   CHG %{isChangePct&&<span className="sort-arrow">{currentSort==='change_asc'?' ▲':' ▼'}</span>}
+  </button>
+  <span className="watch-col-actions" aria-hidden="true"/>
+ </div>
+ <div ref={rows} data-testid="watchlist-rows" className="watch-rows" tabIndex={0} onKeyDown={e=>handleKeyDown(e)} onScroll={e=>{scrollPosRef.current=e.currentTarget.scrollTop;}}>
   {items.map(({row,n},position)=>{
    const id=identity(row),q=snapshots?.rows[id]?.value;
    const rowFlagColor=flags[id]?.color;
    const rowFlagHex=rowFlagColor?FLAG_COLORS[rowFlagColor]?.hex:undefined;
    const isHidden=hiddenSymbols.includes(id);
-   return <div data-stream-state={snapshots?.rows[id]?.stream_state} data-quote-state={snapshots?.rows[id]?.state||'idle'} data-identity={id} data-hidden={isHidden} data-flag-color={rowFlagColor||undefined} style={rowFlagHex?({'--row-flag-color':rowFlagHex} as React.CSSProperties):undefined} className={`watch-row ${activePaneSymbol===id?'selected-symbol':''}`} key={id} draggable={!isColored&&!busy&&workspace.sidebar.sort==='manual'} onClick={e=>{if((e.target as HTMLElement).closest('.symbol-flag-btn, .watch-row-actions, button, a'))return;openRow(row);e.currentTarget.querySelector<HTMLButtonElement>('.watch-select')?.focus();}} onContextMenu={e=>{e.preventDefault();context(row,e.clientX,e.clientY);}} onDragStart={e=>{if(isColored)return;setDrag(id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>setDrag(null)} onDragOver={e=>{if(!isColored&&drag&&workspace.sidebar.sort==='manual')e.preventDefault();}} onDrop={e=>{e.preventDefault();if(!isColored&&drag&&workspace.sidebar.sort==='manual')move(current.items.findIndex(r=>identity(r)===drag),n);setDrag(null);}}>
+   return <div data-stream-state={snapshots?.rows[id]?.stream_state} data-quote-state={snapshots?.rows[id]?.state||'idle'} data-identity={id} data-hidden={isHidden} data-flag-color={rowFlagColor||undefined} style={rowFlagHex?({'--row-flag-color':rowFlagHex} as React.CSSProperties):undefined} className={`watch-row ${activePaneSymbol===id?'selected-symbol':''}`} key={id} draggable={!isColored&&!busy&&workspace.sidebar.sort==='manual'} onClick={e=>{if((e.target as HTMLElement).closest('.symbol-flag-btn, .watch-row-actions, button, a'))return;openRow(row);e.currentTarget.querySelector<HTMLButtonElement>('.watch-select')?.focus({preventScroll:true});}} onContextMenu={e=>{e.preventDefault();context(row,e.clientX,e.clientY);}} onDragStart={e=>{if(isColored)return;setDrag(id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>setDrag(null)} onDragOver={e=>{if(!isColored&&drag&&workspace.sidebar.sort==='manual')e.preventDefault();}} onDrop={e=>{e.preventDefault();if(!isColored&&drag&&workspace.sidebar.sort==='manual')move(current.items.findIndex(r=>identity(r)===drag),n);setDrag(null);}}>
     <button data-testid={`watchlist-flag-${row.symbol}`} aria-label={rowFlagColor?`${rowFlagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${rowFlagColor?'flagged':'unflagged'}`} title={rowFlagColor?`${rowFlagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const b=e.currentTarget.getBoundingClientRect();setRowPicker({row,x:b.left,y:b.bottom+4});}}>
      <FlagIcon color={rowFlagColor} filled={Boolean(rowFlagColor)} size={14}/>
     </button>

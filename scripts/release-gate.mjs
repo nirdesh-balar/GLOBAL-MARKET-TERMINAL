@@ -2,7 +2,7 @@ import{readFile}from'node:fs/promises';import{createHash}from'node:crypto';impor
 export const official='nirdesh-balar/GLOBAL-MARKET-TERMINAL';
 export function validateAcceptance(a){
  const required=['sourceApproved','licenseApproved','macInstallerNative','macTrustedSigning','macNotarized','macNativeUpdateAtoB','profilesProtected','finalPublicationApproved'];
- if(a.repository!==official||!['1.0.0','1.1.0-rc.1'].includes(a.version)||!['v1.0.0','v1.1.0-rc.1'].includes(a.tag)||!/^[a-f0-9]{40}$/.test(a.sourceSha))throw Error('Release identity/source mismatch');
+ if(a.repository!==official||!['1.0.0','1.1.0-rc.1','1.1.0-rc.2'].includes(a.version)||!['v1.0.0','v1.1.0-rc.1','v1.1.0-rc.2'].includes(a.tag)||!/^[a-f0-9]{40}$/.test(a.sourceSha))throw Error('Release identity/source mismatch');
  for(const k of required)if(a[k]!==true)throw Error('Release gate incomplete: '+k);
  const names=new Set(a.assets.map(r=>r.name));for(const n of ['GLOBAL-MARKET-TERMINAL-mac-arm64.dmg',`GLOBAL-MARKET-TERMINAL-${a.version}-mac-arm64.zip`,'latest-mac.yml'])if(!names.has(n))throw Error('Required release asset missing: '+n);
  for(const r of a.assets)if(!/^(GLOBAL-MARKET-TERMINAL-[A-Za-z0-9._-]+\.(dmg|zip)(\.blockmap)?|latest-mac\.yml|SHA256SUMS\.txt|RELEASE-NOTES\.md)$/.test(r.name)||basename(r.name)!==r.name||!/^[a-f0-9]{64}$/.test(r.sha256))throw Error('Invalid release asset');
