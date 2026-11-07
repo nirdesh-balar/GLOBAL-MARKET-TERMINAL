@@ -172,7 +172,9 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
 
     const navigateRows = (direction: 'next' | 'prev' | 'home' | 'end') => {
         if (!items.length) return;
-        const currentPos = items.findIndex(({ row }) => identity(row) === activePaneSymbol);
+        const focusedRowId = (document.activeElement?.closest('[data-identity]') as HTMLElement)?.dataset?.identity;
+        const focusedPos = focusedRowId ? items.findIndex(({ row }) => identity(row) === focusedRowId) : -1;
+        const currentPos = focusedPos !== -1 ? focusedPos : items.findIndex(({ row }) => identity(row) === activePaneSymbol);
         let targetIndex = currentPos;
         if (direction === 'home') {
             targetIndex = 0;

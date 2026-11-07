@@ -43,6 +43,7 @@ try{
  await page.getByLabel('Preset name',{exact:true}).fill('Trend and momentum');await page.getByRole('button',{name:'Save preset',exact:true}).click();await page.getByLabel('Preset target 1',{exact:true}).check();await page.getByRole('button',{name:'Load preset',exact:true}).click();await page.screenshot({path:'test-results/advanced-indicators.png'});await page.getByLabel('Close indicators',{exact:true}).click();
  await expect(page.getByTestId('pane-0').locator('.chart-canvas')).toHaveAttribute('data-view-from',viewport);
  assert.equal((await status()).history_requests,before,'Scale/indicator/preset changes never request OHLCV');
+ await expect.poll(async()=>(await workspace()).panes[1].indicators.length).toBe(4);
  w=await workspace();assert.equal(w.panes[0].indicators.length,4);assert.equal(w.panes[1].indicators.length,4);assert.ok(w.panes[0].indicators.some(i=>i.length===9&&i.source==='HLC3'));
  // All nine timeframes, returning native intervals or session-aligned derived 4h.
  for(const interval of ['1m','5m','15m','30m','1h','4h','1d','1w','1M']){await page.getByLabel('Timeframe pane 0',{exact:true}).selectOption(interval);await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect(page.getByTestId('pane-0').locator('.history-meta')).not.toContainText('No candles');}
