@@ -199,7 +199,19 @@ try {
   await expect(logBtn0).toHaveClass(/selected/);
   await expect(logBtn0).toHaveAttribute('aria-pressed', 'true');
   assert.equal(await canvas0.getAttribute('data-price-mode'), '1', 'Mode must be PriceScaleMode.Logarithmic (1)');
-  console.log('PASS: TEST 8 - LOG mode enables PriceScaleMode.Logarithmic.');
+  const test8Check = await canvas0.evaluate(el => {
+    const m = el.__mainSeries;
+    const c = el.__chart;
+    const vr = c.priceScale('right').getVisibleRange();
+    const h = c.panes()[0]?.getHeight() || 400;
+    const coord = m && m.data().length ? m.priceToCoordinate(m.data().at(-1).close) : null;
+    return { vr, coord, h };
+  });
+  assert.ok(test8Check.vr && Number.isFinite(test8Check.vr.from) && Number.isFinite(test8Check.vr.to), 'Visible range must be finite in LOG mode');
+  assert.ok(test8Check.vr.from < test8Check.vr.to, 'Range from < to in LOG mode');
+  assert.ok(test8Check.coord !== null && Number.isFinite(test8Check.coord), 'Candle coordinate must be finite in LOG mode');
+  assert.ok(test8Check.coord >= 0 && test8Check.coord <= test8Check.h, `Candle coordinate ${test8Check.coord} must be within chart bounds [0, ${test8Check.h}] in LOG mode`);
+  console.log(`PASS: TEST 8 - LOG mode enables PriceScaleMode.Logarithmic, candles visible at coord ${test8Check.coord.toFixed(1)}px.`);
   await saveScreenshot('f111-05-log-enabled.png');
 
   // =========================================================================
@@ -229,9 +241,22 @@ try {
   assert.equal(await canvas0.getAttribute('data-price-mode'), '0');
   assert.equal(await canvas0.getAttribute('data-auto-scale'), 'false');
 
-  // State C: LOG + AUTO ON
+  // Transition State B -> C: Click LOG while in Manual mode (reproduction scenario)
   await logBtn0.click();
   await page.waitForTimeout(300);
+  assert.equal(await canvas0.getAttribute('data-price-mode'), '1');
+  const manualLogCheck = await canvas0.evaluate(el => {
+    const m = el.__mainSeries;
+    const c = el.__chart;
+    const vr = c.priceScale('right').getVisibleRange();
+    const h = c.panes()[0]?.getHeight() || 400;
+    const coord = m && m.data().length ? m.priceToCoordinate(m.data().at(-1).close) : null;
+    return { vr, coord, h };
+  });
+  assert.ok(manualLogCheck.vr && Number.isFinite(manualLogCheck.vr.from) && Number.isFinite(manualLogCheck.vr.to), 'Visible range must be finite when switching to LOG from manual mode');
+  assert.ok(manualLogCheck.coord !== null && Number.isFinite(manualLogCheck.coord) && manualLogCheck.coord >= 0 && manualLogCheck.coord <= manualLogCheck.h, `Candle coordinate ${manualLogCheck.coord} must be within chart bounds [0, ${manualLogCheck.h}] in manual LOG mode`);
+
+  // State C: LOG + AUTO ON
   await autoBtn0.click();
   await page.waitForTimeout(300);
   assert.equal(await canvas0.getAttribute('data-price-mode'), '1');

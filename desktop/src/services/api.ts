@@ -36,4 +36,4 @@ export function acquireHistory(path:string){
   }};
 }
 export const symbolLabel=(symbol:string)=>symbol.replace(/-(EQ|BE|BZ|SM|ST|BL|IL|IT)$/,'');
-export const price=(n:number,precision=2)=>n.toLocaleString('en-IN',{minimumFractionDigits:precision,maximumFractionDigits:precision});
+export const price=(n:number,precision=2)=>typeof n==='number'&&Number.isFinite(n)?n.toLocaleString('en-IN',{minimumFractionDigits:precision,maximumFractionDigits:precision}):'—';

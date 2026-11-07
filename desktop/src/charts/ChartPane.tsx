@@ -32,7 +32,9 @@ function date(time:Time){return new Date(typeof time==='number'?time*1000:typeof
 function tickLabel(time:Time,type:TickMarkType,zone:string){return new Intl.DateTimeFormat('en-IN',{timeZone:zone,...(type===TickMarkType.Year?{year:'numeric'}:type===TickMarkType.Month?{month:'short'}:type===TickMarkType.DayOfMonth?{day:'2-digit',month:'short'}:{hour:'2-digit',minute:'2-digit',hour12:false})} as Intl.DateTimeFormatOptions).format(date(time));}
 
 export function setPriceScaleRange(scale:IPriceScaleApi,from:number,to:number){
+  if(!Number.isFinite(from)||!Number.isFinite(to)||from>=to)return;
   if(scale.options().mode===PriceScaleMode.Logarithmic){
+    if(from<=0)return;
     const defLog={logicalOffset:4,coordOffset:0.0001};
     const diff=Math.abs(to-from);
     const formula=(diff>=1||diff<1e-15)?defLog:{
@@ -45,7 +47,11 @@ export function setPriceScaleRange(scale:IPriceScaleApi,from:number,to:number){
       const r=Math.log10(m+formula.coordOffset)+formula.logicalOffset;
       return p<0?-r:r;
     };
-    scale.setVisibleRange({from:toLogVal(from),to:toLogVal(to)});
+    const lFrom=toLogVal(from);
+    const lTo=toLogVal(to);
+    if(Number.isFinite(lFrom)&&Number.isFinite(lTo)&&lFrom<lTo){
+      scale.setVisibleRange({from:lFrom,to:lTo});
+    }
   }else{
     scale.setVisibleRange({from,to});
   }
@@ -108,18 +114,55 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
   const scaleMode=pane.scale.percentage?PriceScaleMode.Percentage:pane.scale.logarithmic?PriceScaleMode.Logarithmic:PriceScaleMode.Normal;
   const scaleRef=useRef(pane.scale);scaleRef.current=pane.scale;
   const onChangeRef=useRef(onChange);onChangeRef.current=onChange;
+  const prevModeRef=useRef<PriceScaleMode>(scaleMode);
   useEffect(()=>{
-    if(!chart.current)return;
-    chart.current.priceScale('right').applyOptions({mode:scaleMode,autoScale:pane.scale.auto});
-    chart.current.priceScale('right').setAutoScale(pane.scale.auto);
+    const c=chart.current;
+    if(!c)return;
+    const ps=c.priceScale('right');
+    const prevMode=prevModeRef.current;
+    const modeChanged=prevMode!==scaleMode;
+    prevModeRef.current=scaleMode;
+
+    if(modeChanged){
+      const prevVr=ps.getVisibleRange();
+      const isValidPrev=prevVr!==null&&
+        Number.isFinite(prevVr.from)&&
+        Number.isFinite(prevVr.to)&&
+        prevVr.from<prevVr.to&&
+        (scaleMode!==PriceScaleMode.Logarithmic||prevVr.from>0);
+
+      if(pane.scale.auto){
+        ps.applyOptions({mode:scaleMode,autoScale:true});
+        ps.setAutoScale(true);
+      }else if(isValidPrev){
+        ps.applyOptions({mode:scaleMode,autoScale:false});
+        setPriceScaleRange(ps,prevVr.from,prevVr.to);
+        const postVr=ps.getVisibleRange();
+        if(!postVr||!Number.isFinite(postVr.from)||!Number.isFinite(postVr.to)||postVr.from>=postVr.to||(scaleMode===PriceScaleMode.Logarithmic&&postVr.from<=0)){
+          ps.applyOptions({mode:scaleMode,autoScale:true});
+          ps.setAutoScale(true);
+          scaleRef.current={...scaleRef.current,auto:true};
+          onChangeRef.current({scale:{...scaleRef.current,auto:true}});
+        }
+      }else{
+        ps.applyOptions({mode:scaleMode,autoScale:true});
+        ps.setAutoScale(true);
+        scaleRef.current={...scaleRef.current,auto:true};
+        onChangeRef.current({scale:{...scaleRef.current,auto:true}});
+      }
+    }else{
+      ps.applyOptions({mode:scaleMode,autoScale:pane.scale.auto});
+      ps.setAutoScale(pane.scale.auto);
+    }
+
     if(container.current){
-      container.current.dataset.priceMode=String(chart.current.priceScale('right').options().mode);
-      container.current.dataset.autoScale=String(chart.current.priceScale('right').options().autoScale);
+      container.current.dataset.priceMode=String(ps.options().mode);
+      container.current.dataset.autoScale=String(ps.options().autoScale);
     }
     const frame=requestAnimationFrame(()=>{
       if(!chart.current||!container.current)return;
       const vr=chart.current.priceScale('right').getVisibleRange();
-      if(vr){
+      if(vr&&Number.isFinite(vr.from)&&Number.isFinite(vr.to)){
         container.current.dataset.priceRangeFrom=String(vr.from);
         container.current.dataset.priceRangeTo=String(vr.to);
       }
@@ -203,6 +246,11 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
         const center=(newFrom+newTo)/2;
         newFrom=center-maxSpan/2;
         newTo=center+maxSpan/2;
+      }
+
+      if(isLog&&newFrom<=0){
+        newFrom=Math.max(1e-4,currentRange.from*0.1);
+        if(newTo<=newFrom)newTo=newFrom+Math.max(1e-4,currentRange.from*0.5);
       }
 
       if(!Number.isFinite(newFrom)||!Number.isFinite(newTo)||newFrom>=newTo)return;
