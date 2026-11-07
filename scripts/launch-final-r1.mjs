@@ -3,7 +3,7 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const exe = '/tmp/gmt-r1-final-install-test/GLOBAL MARKET TERMINAL.app/Contents/MacOS/GLOBAL MARKET TERMINAL';
+const exe = '/tmp/gmt-r1-verified-install-test/GLOBAL MARKET TERMINAL.app/Contents/MacOS/GLOBAL MARKET TERMINAL';
 const profile = join(tmpdir(), 'gmt-r1-final-profile');
 await rm(profile, { recursive: true, force: true });
 await mkdir(profile, { recursive: true });

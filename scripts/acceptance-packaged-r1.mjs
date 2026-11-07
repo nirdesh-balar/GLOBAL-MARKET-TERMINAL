@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const exe = process.env.GMT_MAC_TEST_EXE || '/tmp/gmt-r1-final-install-test/GLOBAL MARKET TERMINAL.app/Contents/MacOS/GLOBAL MARKET TERMINAL';
+const exe = process.env.GMT_MAC_TEST_EXE || '/tmp/gmt-r1-verified-install-test/GLOBAL MARKET TERMINAL.app/Contents/MacOS/GLOBAL MARKET TERMINAL';
 const profile = await mkdtemp(join(tmpdir(), 'gmt-r1-packaged-acc-'));
 const artifactDir = '/Users/nirdeshbalar/.gemini/antigravity/brain/ed53976a-b070-44c0-93ef-f78ae069ab40';
 await mkdir(artifactDir, { recursive: true });
