@@ -9,9 +9,11 @@ export const UPDATE_INTERVAL=6*60*60*1000;
 export interface UpdateState {installed:string;latest:string|null;lastCheck:number|null;status:string;message:string;progress:number;automatic:boolean;restartReady:boolean;available:boolean;}
 export interface UpdateEngine extends EventEmitter {autoDownload:boolean;autoInstallOnAppQuit:boolean;allowPrerelease:boolean;allowDowngrade:boolean;channel:string|null;checkForUpdates:()=>Promise<unknown>;downloadUpdate:()=>Promise<unknown>;quitAndInstall:(silent?:boolean,runAfter?:boolean)=>void;}
 export function newerStable(next:string,current:string){
- const parse=(s:string)=>/^\d+\.\d+\.\d+$/.test(s)?s.split('.').map(Number):null;
- const a=parse(next),b=parse(current);if(!a||!b)return false;
- for(let i=0;i<3;i++){if(a[i]!==b[i])return a[i]>b[i];}return false;
+ const parse=(s:string)=>{const clean=s.replace(/-.*$/,'');return /^\d+\.\d+\.\d+$/.test(clean)?clean.split('.').map(Number):null;};
+ const a=/^\d+\.\d+\.\d+$/.test(next)?next.split('.').map(Number):null;
+ const b=parse(current);if(!a||!b)return false;
+ for(let i=0;i<3;i++){if(a[i]!==b[i])return a[i]>b[i];}
+ return current.includes('-');
 }
 /** A fixed public feed; renderer never supplies URLs, file paths or install arguments. */
 export class ApplicationUpdates {

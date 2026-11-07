@@ -43,5 +43,11 @@ const winExeResolved = winExeTemplate.replace('${version}', pkg.version).replace
 assert.equal(winExeResolved, `GLOBAL-MARKET-TERMINAL-Setup-${EXPECTED_VERSION}-win-x64.exe`);
 console.log('✔ Windows setup artifact pattern resolves to:', winExeResolved);
 
+// 6. Check package-lock.json
+const lock = JSON.parse(await readFile(resolve('package-lock.json'), 'utf8'));
+assert.equal(lock.version, EXPECTED_VERSION, `package-lock.json version must be ${EXPECTED_VERSION}`);
+assert.equal(lock.packages[''].version, EXPECTED_VERSION, `package-lock.json packages[""].version must be ${EXPECTED_VERSION}`);
+console.log('✔ package-lock.json version and packages[""].version match:', lock.version);
+
 console.log('=== All Version Consistency Checks Passed Successfully ===');
 
