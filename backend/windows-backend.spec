@@ -12,6 +12,8 @@ block_cipher = None
 # Collect all data and submodules for dynamic/packaged dependencies
 datas = [
     (os.path.abspath('backend/resources/index-verification.json'), 'resources'),
+    (os.path.abspath('backend/resources/EQUITY_L.csv'), 'resources'),
+    (os.path.abspath('backend/resources/SME_EQUITY_L.csv'), 'resources'),
 ]
 binaries = []
 hiddenimports = [

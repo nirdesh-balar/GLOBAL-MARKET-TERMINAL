@@ -17,6 +17,7 @@ module.exports = {
   extends: null,
   appId: 'local.globalmarket.terminal.personal',
   productName: 'GLOBAL MARKET TERMINAL',
+  electronDist: 'node_modules/electron/dist',
   directories: {
     output: process.env.GMT_WIN_OUTPUT || 'release-win-candidate',
   },
