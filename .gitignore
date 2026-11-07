@@ -23,6 +23,10 @@ backend/resources/credential-helper
 
 release-stage1/
 
+release-candidate-r1/
+release-candidate-r1-final/
+release-bundle-handoff/
+
 release-stage2/
 
 release-stage3/
