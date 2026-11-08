@@ -1,90 +1,70 @@
+# Dependencies
 node_modules/
-.runtime/
+/node_modules
 .venv/
 backend/.venv/
+/backend/.venv
+
+# Python artifacts and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Build and distribution outputs
+.runtime/
 backend/build/
 backend/dist/
-desktop/dist/
-desktop/dist-electron/
-release/
-*.spec
-!backend/windows-backend.spec
-__pycache__/
-.pytest_cache/
-*.sqlite*
-.env
-.env.*
-!.env.example
-*.log
-test-results/
-*.bundle
-*.bundle.sha256
-backend/resources/credential-helper
-
-release-stage1/
-
-release-candidate-r1/
-release-candidate-r1-final/
-release-candidate-r1-verified/
-release-candidate-r2/
-release-bundle-handoff/
-
-release-stage2/
-
-release-stage3/
-
-release-stage4/
-
-release-stage5/
-
-release-stage6/
-
-release-stage65/
-
-release-stage66/
-
-release-stage67a/
-
-release-stage67b/
-
-release-stage67c/
-
-release-stage67d/
-
-release-stage67e1/
-
-release-stage67e11/
-
-release-stage67e2/
-
-/release-stage67e3a/
-
-/release-stage67e3b/
-
-release-stage67f/
-
-release-stage67g/
-
-release-stage67g1/
-
-# Stable outputs are outside this source checkout.
-
-
-# Public candidates and provider files are not source.
 backend/build-public/
 backend/dist-public/
 backend/build-windows/
 backend/dist-windows/
-release-win-candidate/
+desktop/dist/
+desktop/dist-electron/
+release/
+release-*/
+approved-native-release/
+.cleanup-quarantine/
+
+# Binary archives and installers (release assets stay outside source repo)
+*.dmg
+*.zip
+*.exe
+*.msi
+*.pkg
+*.bundle
+*.bundle.sha256
+*.app/
+*.log
+
+# Windows portable user data, local test profiles and test outputs
+GMT-Portable-Data/
+gmt-*-desktop-profile/
+test-results/
+
+# PyInstaller specs (preserve committed windows-backend.spec)
+*.spec
+!backend/windows-backend.spec
+
+# Local environment and private databases
+*.sqlite*
+.env
+.env.*
+!.env.example
+
+# Third-party market data snapshots and private audit inventories
 backend/resources/EQUITY_L.csv
 backend/resources/SME_EQUITY_L.csv
+backend/resources/credential-helper
 THIRD_PARTY_NOTICES/*-inventory.private.json
-.cleanup-quarantine/
-approved-native-release/
 
-# Ignore local dependency links as well as directories.
-/node_modules
-/backend/.venv
-
-# macOS Finder metadata is local user state, never public source.
+# Local IDE and operating system metadata
 .DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo

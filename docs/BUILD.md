@@ -1,11 +1,75 @@
-# macOS Apple Silicon build
+# GLOBAL MARKET TERMINAL — Cross-Platform Build Guide
 
-GLOBAL MARKET TERMINAL is a macOS desktop application. Supported builds are arm64 only. Intel builds are not verified.
+GLOBAL MARKET TERMINAL is built on a unified cross-platform architecture supporting macOS Apple Silicon (ARM64) and Windows (x64).
 
-Use Node 22.19.0 arm64, native Python 3.11 (local verified runtime: 3.11.17 arm64) and Xcode Command Line Tools with N-API headers. Run `npm ci`, `npm run setup`, then `npm run build`. The committed JavaScript and Python locks remain in use. The build checks renderer and Electron TypeScript, builds Vite/esbuild and compiles the native macOS notification bridge.
+---
 
-`npm run package:mac`, `npm run package:stable` and `npm run package:public:mac` all build a native frozen Python backend and arm64 DMG/ZIP, blockmaps and latest-mac.yml. Set GMT_MAC_OUTPUT to a NEW absolute project-owned candidate directory. Existing output is rejected; no build publishes automatically. Packaging requires at least 2 GiB free; allow additional temporary headroom. Never remove an old release to make a build proceed without itemized approval.
+## 1. Prerequisites
 
-Signing defaults to ad-hoc; automatic updates remain blocked. Set GMT_SIGNED_RELEASE=1 only in a separately approved build environment with Developer ID and notarization credentials. Ad-hoc signatures are not trusted Developer ID or Gatekeeper acceptance. Never upload signing credentials or bypass system security.
+### Common Requirements
+- **Node.js:** Node.js v20.x or v22.x (LTS recommended)
+- **Python:** Python 3.11.x 64-bit
+- **Git:** Git 2.30+
 
-Public source and installers omit NSE CSV snapshots and user profiles. Tests use local official directory files obtained by `node scripts/download-test-directory.mjs`; downloads respect provider failures. Market data history stays in bounded RAM. See LICENSE-AUDIT.md for unchanged third-party and data rights obligations.
+### macOS Prerequisites
+- Apple Silicon Mac (M1/M2/M3/M4) running macOS Monterey or later.
+- Xcode Command Line Tools: `xcode-select --install`
+
+### Windows Prerequisites
+- Windows 10 or 11 64-bit (x64)
+- PowerShell 7+ (`pwsh`) or Windows PowerShell 5.1
+- Visual C++ Redistributable 2015–2022 x64 installed
+
+---
+
+## 2. Environment Setup
+
+```bash
+# Install Node dependencies
+npm ci
+
+# Set up Python virtual environment
+python3 -m venv backend/.venv
+# macOS:
+source backend/.venv/bin/activate
+# Windows PowerShell:
+# .\backend\.venv\Scripts\Activate.ps1
+
+pip install -r backend/requirements.txt
+node scripts/setup.mjs
+```
+
+---
+
+## 3. macOS Apple Silicon (ARM64) Packaging
+
+1. Build frontend and native Objective-C++ notification bridge:
+   ```bash
+   npm run build
+   ```
+2. Package native frozen backend and ARM64 DMG/ZIP:
+   ```bash
+   npm run package:public:mac
+   ```
+3. Signing defaults to ad-hoc. Gatekeeper on macOS requires right-click -> Open on first launch for unnotarized builds.
+
+---
+
+## 4. Windows x64 Portable Packaging
+
+On a native Windows 10/11 x64 machine:
+1. Freeze backend into standalone AMD64 executable:
+   ```powershell
+   pwsh scripts/build-windows-backend.ps1
+   ```
+2. Package Windows portable application directory:
+   ```powershell
+   pwsh scripts/package-personal-win.ps1
+   ```
+3. The portable application is launched via `GLOBAL-MARKET-TERMINAL-Portable.cmd` which stores all local settings inside `GMT-Portable-Data` for complete host system isolation.
+
+---
+
+## 5. Third-Party Data Compliance
+
+Public source and binary packaging omit official NSE CSV snapshots (`EQUITY_L.csv`, `SME_EQUITY_L.csv`) and user profiles. The application retrieves metadata directly from official exchange endpoints at runtime or allows users to import official files in Settings. Historical market data is held strictly in bounded memory.

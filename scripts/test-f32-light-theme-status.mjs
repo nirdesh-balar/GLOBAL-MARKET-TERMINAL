@@ -1,21 +1,31 @@
-import { _electron as electron, expect } from 'playwright/test';
+import { _electron as electron, expect } from './isolated-electron.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 
 const isPackaged = process.argv.includes('--packaged');
-const exe = isPackaged 
-  ? path.resolve('release-candidate-f32/win-unpacked/GLOBAL MARKET TERMINAL.exe')
-  : undefined;
+const defaultDevExe = process.platform === 'win32'
+  ? path.resolve('node_modules/electron/dist/electron.exe')
+  : path.resolve('node_modules/electron/dist/Electron.app/Contents/MacOS/Electron');
 
-const testRoot = path.resolve('D:/Project/gmt-f32-test-profile');
+const exe = isPackaged 
+  ? (process.platform === 'win32'
+      ? path.resolve('release-candidate-f32/win-unpacked/GLOBAL MARKET TERMINAL.exe')
+      : (process.env.GMT_MAC_TEST_EXE || '/tmp/gmt-f33-install-test/GLOBAL MARKET TERMINAL.app/Contents/MacOS/GLOBAL MARKET TERMINAL'))
+  : defaultDevExe;
+
+const testRoot = process.platform === 'win32' && existsSync('D:/Project')
+  ? path.resolve('D:/Project/gmt-f32-test-profile')
+  : path.join(os.tmpdir(), 'gmt-f32-test-profile');
 const profileDir = path.join(testRoot, 'profile');
 const tempDir = path.join(testRoot, 'temp');
-const artifactDir = 'C:/Users/Sir/.gemini/antigravity/brain/8f846995-2413-4f5e-8562-6282abaf07a7';
+const artifactDir = process.env.ARTIFACT_DIR || path.join(testRoot, 'artifacts');
 
 await mkdir(profileDir, { recursive: true });
 await mkdir(tempDir, { recursive: true });
+await mkdir(artifactDir, { recursive: true });
 await mkdir('test-results', { recursive: true });
 
 console.log('================================================================');
@@ -48,21 +58,13 @@ const launchApp = async (profilePath) => {
   delete launchEnv.IMT_UI_FIXTURE;
   delete launchEnv.GMT_TEST_APP_DATA_ROOT;
 
-  if (isPackaged) {
-    assert.ok(existsSync(exe), `Packaged executable must exist at ${exe}`);
-    return await electron.launch({
-      executablePath: exe,
-      args: [],
-      env: launchEnv,
-      timeout: 60000,
-    });
-  } else {
-    return await electron.launch({
-      args: ['.'],
-      env: launchEnv,
-      timeout: 60000,
-    });
-  }
+  assert.ok(existsSync(exe), `Executable must exist at ${exe}`);
+  return await electron.launch({
+    executablePath: exe,
+    args: isPackaged ? [] : ['.'],
+    env: launchEnv,
+    timeout: 60000,
+  });
 };
 
 try {
