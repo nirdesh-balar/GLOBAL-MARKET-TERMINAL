@@ -1,0 +1,785 @@
+[
+  {
+    "component": "TerminalHeader",
+    "control": "Theme Toggle (Light)",
+    "action": "Click theme toggle",
+    "expected": "Switches to theme-light",
+    "observed": "theme-light active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Theme Toggle (Dark)",
+    "action": "Click theme toggle again",
+    "expected": "Restores theme-dark",
+    "observed": "theme-dark restored",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Sidebar Toggle (Hide)",
+    "action": "Click toggle sidebar",
+    "expected": "Hides watchlist sidebar",
+    "observed": "Sidebar hidden",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Sidebar Toggle (Show)",
+    "action": "Click toggle sidebar again",
+    "expected": "Shows watchlist sidebar",
+    "observed": "Sidebar restored",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Layout 1 Charts",
+    "action": "Select layout 1",
+    "expected": "Renders 1 chart panes",
+    "observed": "Found 1 panes",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Layout 2 Charts",
+    "action": "Select layout 2",
+    "expected": "Renders 2 chart panes",
+    "observed": "Found 2 panes",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Layout 4 Charts",
+    "action": "Select layout 4",
+    "expected": "Renders 4 chart panes",
+    "observed": "Found 4 panes",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Layout 6 Charts",
+    "action": "Select layout 6",
+    "expected": "Renders 6 chart panes",
+    "observed": "Found 6 panes",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Layout 8 Charts",
+    "action": "Select layout 8",
+    "expected": "Renders 8 chart panes",
+    "observed": "Found 8 panes",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Sync Visible Dates Option",
+    "action": "Toggle sync visible dates",
+    "expected": "Updates sync_time preference",
+    "observed": "Checked: true",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Sync Crosshair Option",
+    "action": "Toggle sync crosshair",
+    "expected": "Updates sync_crosshair preference",
+    "observed": "Checked: true",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Focus Mode Toggle",
+    "action": "Click enter focus mode",
+    "expected": "Enters focus mode",
+    "observed": "focus-mode active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Focus Mode Exit",
+    "action": "Click exit focus mode",
+    "expected": "Exits focus mode",
+    "observed": "focus-mode exited",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Maximize Active Chart",
+    "action": "Click maximize active chart",
+    "expected": "Expands chart",
+    "observed": "Active chart maximized",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Restore Active Chart",
+    "action": "Click restore active chart",
+    "expected": "Restores chart",
+    "observed": "Active chart restored",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Symbol Color Flag Picker",
+    "action": "Click symbol flag button",
+    "expected": "Opens color flag picker popover",
+    "observed": "Flag picker opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 1m",
+    "action": "Click timeframe 1m",
+    "expected": "Sets active timeframe to 1m",
+    "observed": "1m active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 5m",
+    "action": "Click timeframe 5m",
+    "expected": "Sets active timeframe to 5m",
+    "observed": "5m active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 15m",
+    "action": "Click timeframe 15m",
+    "expected": "Sets active timeframe to 15m",
+    "observed": "15m active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 30m",
+    "action": "Click timeframe 30m",
+    "expected": "Sets active timeframe to 30m",
+    "observed": "30m active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 1h",
+    "action": "Click timeframe 1h",
+    "expected": "Sets active timeframe to 1h",
+    "observed": "1h active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 4h",
+    "action": "Click timeframe 4h",
+    "expected": "Sets active timeframe to 4h",
+    "observed": "4h active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 1D",
+    "action": "Click timeframe 1D",
+    "expected": "Sets active timeframe to 1D",
+    "observed": "1D active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 1W",
+    "action": "Click timeframe 1W",
+    "expected": "Sets active timeframe to 1W",
+    "observed": "1W active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Timeframe 1M",
+    "action": "Click timeframe 1M",
+    "expected": "Sets active timeframe to 1M",
+    "observed": "1M active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Chart Type line",
+    "action": "Select chart type line",
+    "expected": "Changes series type to line",
+    "observed": "line active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Chart Type area",
+    "action": "Select chart type area",
+    "expected": "Changes series type to area",
+    "observed": "area active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Chart Type candles",
+    "action": "Select chart type candles",
+    "expected": "Changes series type to candles",
+    "observed": "candles active",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Export Active Chart Screenshot",
+    "action": "Click export active chart",
+    "expected": "Invokes screenshot export API",
+    "observed": "Screenshot invoked without error",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Volume Toggle (ON)",
+    "action": "Click volume button ON",
+    "expected": "Shows volume pane; preserves candles",
+    "observed": "Panes: 2, Bars: 2534",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Volume Toggle (OFF)",
+    "action": "Click volume button OFF",
+    "expected": "Hides volume pane; preserves candles",
+    "observed": "Panes: 1, Bars: 2534",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Volume Toggle (ON Repeat)",
+    "action": "Click volume button ON again",
+    "expected": "Re-adds volume pane; preserves candles",
+    "observed": "Panes: 2, Bars: 2534",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Volume Independence with Hidden Indicators",
+    "action": "Hide indicators on drawing toolbar",
+    "expected": "Volume remains independent; indicators hidden",
+    "observed": "Volume panes: 2, indicators_hidden: true",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Volume Toggle OFF with Hidden Indicators",
+    "action": "Click volume OFF while indicators hidden",
+    "expected": "Removes volume pane cleanly",
+    "observed": "Panes: 1",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Auto Refresh Toggle",
+    "action": "Click Auto Refresh A",
+    "expected": "Toggles auto refresh",
+    "observed": "Auto refresh: false",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Manual History Refresh",
+    "action": "Click refresh icon",
+    "expected": "Refreshes history from provider",
+    "observed": "Refreshed without error",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Maximize Chart Pane",
+    "action": "Click pane maximize",
+    "expected": "Expands single chart pane",
+    "observed": "Pane maximized",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ChartToolbar",
+    "control": "Restore Chart Pane",
+    "action": "Click pane restore",
+    "expected": "Restores chart pane grid",
+    "observed": "Pane restored",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 1D",
+    "action": "Click range 1D",
+    "expected": "Sets visible range to 1D",
+    "observed": "Range 1D set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 5D",
+    "action": "Click range 5D",
+    "expected": "Sets visible range to 5D",
+    "observed": "Range 5D set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 1M",
+    "action": "Click range 1M",
+    "expected": "Sets visible range to 1M",
+    "observed": "Range 1M set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 3M",
+    "action": "Click range 3M",
+    "expected": "Sets visible range to 3M",
+    "observed": "Range 3M set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 6M",
+    "action": "Click range 6M",
+    "expected": "Sets visible range to 6M",
+    "observed": "Range 6M set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range YTD",
+    "action": "Click range YTD",
+    "expected": "Sets visible range to YTD",
+    "observed": "Range YTD set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 1Y",
+    "action": "Click range 1Y",
+    "expected": "Sets visible range to 1Y",
+    "observed": "Range 1Y set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range 5Y",
+    "action": "Click range 5Y",
+    "expected": "Sets visible range to 5Y",
+    "observed": "Range 5Y set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "RangeToolbar",
+    "control": "Range ALL",
+    "action": "Click range ALL",
+    "expected": "Sets visible range to ALL",
+    "observed": "Range ALL set",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Magnet Snap Toggle",
+    "action": "Click magnet snap",
+    "expected": "Toggles magnet snap price alignment",
+    "observed": "Magnet active: true",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Lock Drawings Toggle",
+    "action": "Click lock drawings",
+    "expected": "Toggles drawing lock on active pane",
+    "observed": "Locked: true",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Hide Drawings Toggle",
+    "action": "Click hide drawings",
+    "expected": "Toggles drawings_hidden flag",
+    "observed": "drawings_hidden: false",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category lines Flyout",
+    "action": "Open category lines",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category fibonacci Flyout",
+    "action": "Open category fibonacci",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category patterns Flyout",
+    "action": "Open category patterns",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category forecast Flyout",
+    "action": "Open category forecast",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category shapes Flyout",
+    "action": "Open category shapes",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category text Flyout",
+    "action": "Open category text",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Category measure Flyout",
+    "action": "Open category measure",
+    "expected": "Opens tool selection flyout",
+    "observed": "Flyout opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "DrawingToolbar",
+    "control": "Drawing Persistence (Save & Reload)",
+    "action": "Persist trendline drawing to SQLite and reload",
+    "expected": "Drawing set is restored",
+    "observed": "Restored drawings count: 1",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Undo Drawing Action",
+    "action": "Click undo drawing button",
+    "expected": "Undoes last drawing action",
+    "observed": "Undo dispatched",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "TerminalHeader",
+    "control": "Redo Drawing Action",
+    "action": "Click redo drawing button",
+    "expected": "Redoes last drawing action",
+    "observed": "Redo dispatched",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "IndicatorManager",
+    "control": "Open Indicator Manager Modal",
+    "action": "Click indicators on header",
+    "expected": "Opens indicator manager modal",
+    "observed": "Modal open",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "IndicatorManager",
+    "control": "Filter Catalog by RSI",
+    "action": "Type RSI in search input",
+    "expected": "Shows Relative Strength Index in results",
+    "observed": "RSI found",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "StudyWorkspace",
+    "control": "Multi-Oscillator Panes Layout",
+    "action": "Add EMA, RSI, MACD alongside Volume",
+    "expected": "Creates separate study panes for sub-window oscillators",
+    "observed": "Panes count: 4",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "StudyWorkspace",
+    "control": "Study Pane Controls Rendered",
+    "action": "Inspect study header controls",
+    "expected": "Rendered for each active study pane",
+    "observed": "Controls count: 3",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "StudyWorkspace",
+    "control": "Study Pane Collapse / Expand",
+    "action": "Click study collapse button",
+    "expected": "Collapses study pane height",
+    "observed": "Collapse toggled",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "IndicatorManager",
+    "control": "Remove Applied Indicator",
+    "action": "Click trash icon on applied indicator",
+    "expected": "Removes indicator from pane",
+    "observed": "Indicator removed",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Filter Watchlist Rows",
+    "action": "Filter by TATA",
+    "expected": "Shows matching quote rows",
+    "observed": "Rows matching: 4",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Refresh Watchlist Quotes",
+    "action": "Click refresh quotes button",
+    "expected": "Dispatches watchlist quotes refresh",
+    "observed": "Refreshed without error",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Sort by Symbol",
+    "action": "Click sort by symbol column header",
+    "expected": "Sorts watchlist items alphabetically",
+    "observed": "Sorted by symbol",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Sort by Price",
+    "action": "Click sort by price column header",
+    "expected": "Sorts watchlist items by last price",
+    "observed": "Sorted by price",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Watchlist Export Menu",
+    "action": "Click export button",
+    "expected": "Opens CSV and Excel export options",
+    "observed": "Export options visible",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Create New Watchlist",
+    "action": "Create watchlist \"Test UI1B List\"",
+    "expected": "Creates and selects new watchlist",
+    "observed": "Active watchlist: 38387ac8e0814d6faf59b7b3db3382d2",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Rename Watchlist",
+    "action": "Rename active watchlist",
+    "expected": "Updates watchlist name",
+    "observed": "Watchlist renamed",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "WatchlistSidebar",
+    "control": "Delete Test Watchlist",
+    "action": "Confirm delete test watchlist",
+    "expected": "Safely removes disposable test watchlist",
+    "observed": "Watchlist deleted",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ScreenerPage",
+    "control": "Open Screener Workspace",
+    "action": "Click Screener workspace button",
+    "expected": "Displays historical market screener",
+    "observed": "Screener rendered",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ScreenerPage",
+    "control": "Return to Charts from Screener",
+    "action": "Click Return to charts button",
+    "expected": "Restores chart workspace view",
+    "observed": "Charts restored",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "AlertsPage",
+    "control": "Open Alerts Workspace",
+    "action": "Click Alerts workspace button",
+    "expected": "Displays alert definitions and history",
+    "observed": "Alerts rendered",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "AlertsPage",
+    "control": "Return to Charts from Alerts",
+    "action": "Switch back to charts",
+    "expected": "Restores chart workspace",
+    "observed": "Charts restored",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "SettingsModal",
+    "control": "Open Application Settings Modal",
+    "action": "Click settings gear in header",
+    "expected": "Opens settings modal",
+    "observed": "Settings modal open",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ApplicationUpdates",
+    "control": "Updates Section Visibility",
+    "action": "Inspect updates section in settings modal",
+    "expected": "Displays version and updates status",
+    "observed": "Updates section visible",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "SettingsModal",
+    "control": "Close Settings Modal",
+    "action": "Click close button",
+    "expected": "Dismisses settings modal",
+    "observed": "Settings modal closed",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ReplayControls",
+    "control": "Launch Replay Mode",
+    "action": "Click historical replay button",
+    "expected": "Enters historical candle replay mode",
+    "observed": "Replay controls visible",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "ReplayControls",
+    "control": "Exit Replay Mode",
+    "action": "Click exit replay button",
+    "expected": "Restores live/historical chart mode",
+    "observed": "Replay exited",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "Shortcuts",
+    "control": "Meta+K (Symbol Search)",
+    "action": "Press Meta+K shortcut",
+    "expected": "Opens symbol search dialog",
+    "observed": "Search opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "Shortcuts",
+    "control": "Escape (Close Modal)",
+    "action": "Press Escape shortcut",
+    "expected": "Closes open modal dialog",
+    "observed": "Modal closed",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "Shortcuts",
+    "control": "I (Indicator Manager Shortcut)",
+    "action": "Press I key",
+    "expected": "Opens indicator manager modal",
+    "observed": "Indicators opened",
+    "status": "PASS",
+    "evidence": ""
+  },
+  {
+    "component": "Shortcuts",
+    "control": "F (Maximize Active Chart Shortcut)",
+    "action": "Press F key",
+    "expected": "Toggles maximized active chart",
+    "observed": "Maximized toggled",
+    "status": "PASS",
+    "evidence": ""
+  }
+]

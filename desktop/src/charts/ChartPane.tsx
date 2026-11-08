@@ -102,7 +102,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
   const rowsRef=useRef(rows);rowsRef.current=rows;const indexed=useMemo(()=>new Map(rows.map(r=>[r.time,r])),[rows]);const indexedRef=useRef(indexed);indexedRef.current=indexed;
   const candleIndexMap=useMemo(()=>new Map(rows.map((r,i)=>[r.time,i])),[rows]);
   const drawing=useDrawings({container,chart,primitive,pane,rows,interactionScope:liveIdentity+'/'+replay,tool:active?tool:'cursor',magnet,onChange,onActive,onTool});
-  const showVolume=pane.volume&&!pane.indicators_hidden;
+  const showVolume=pane.volume;
   const volumeInfo=useMemo(()=>volumeContext(pane),[pane.provider,pane.base_asset,pane.kind]);
   const referenceContext=useReferences(pane,pane.indicators_hidden?[]:pane.indicators,adjusted,`${refresh}/${data?.fetched_at??0}`,replay===null,replay===null&&refreshVisible&&!refreshPaused&&pane.auto_refresh);
   const studies=useRef(new LiveIndicators());
