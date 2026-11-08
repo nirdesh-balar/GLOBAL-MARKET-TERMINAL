@@ -13,7 +13,7 @@ export async function validateLaunch(options){
  assert.ok(env.GMT_MAC_TEST_EXE&&executable===await realpath(env.GMT_MAC_TEST_EXE),'Tests may not launch the protected stable Mac app; select a separate candidate explicitly');
  assert.ok(executable.endsWith('/GLOBAL MARKET TERMINAL.app/Contents/MacOS/GLOBAL MARKET TERMINAL'),'Unexpected executable');
  const root=dirname(dirname(dirname(executable))),id=execFileSync('plutil',['-extract','CFBundleIdentifier','raw',join(root,'Contents/Info.plist')],{encoding:'utf8'}).trim();
- const meta=JSON.parse(extractFile(join(root,'Contents/Resources/app.asar'),'package.json'));assert.ok(['1.0.0','1.1.0-rc.1','1.1.0-rc.2','1.1.0-rc.3','1.1.0-rc.4'].includes(meta.version),'Version must match release baseline or candidate');assert.equal(meta.releaseChannel,'stable');
+ const meta=JSON.parse(extractFile(join(root,'Contents/Resources/app.asar'),'package.json'));assert.ok(['1.0.0','1.1.0-rc.1','1.1.0-rc.2','1.1.0-rc.3','1.1.0-rc.4','1.1.0-rc.5'].includes(meta.version),'Version must match release baseline or candidate');assert.equal(meta.releaseChannel,'stable');
  assert.ok(!root.includes('release-v0.7.0')&&!root.includes('work/stage7/'),'Protected older apps may never launch from the public-release tests');
  assert.deepEqual(options.args,[],'Native test arguments may not redirect application/profile selection');
  assert.equal(id,bundle,'Archived previews cannot be launched by project tests');assert.equal(env.IMT_EXPECT_PREVIEW,marker,'Mismatched preview identity');

@@ -82,7 +82,7 @@ def restore_workspace(db,registry=None):
             if w['id'] in dict(MARKETS):w.setdefault('market',w['id'] if w['id']!='favourites' else None)
     all_rows=saved['panes']+saved.get('watchlist',[])+[r for w in saved['watchlists'] for r in w['items']]
     for row in all_rows:
-        security=(registry.resolve(row.get('instrument_id') or row['symbol']) or registry.resolve(row['token'])) if registry else db.resolve(row['symbol']) or db.instrument(row['token'])
+        security=(registry.resolve(row.get('canonical_id')) or registry.resolve(row.get('token')) or registry.resolve(row.get('instrument_id')) or registry.resolve(row.get('symbol'))) if registry else db.resolve(row['symbol']) or db.instrument(row['token'])
         if security:
             if not registry:security=InstrumentRegistry.equity(None,security)
             original=row['symbol']
@@ -185,7 +185,7 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
         return dict(status='ok',mode='DIRECT',database='preferences only',instruments=db.count(),
             catalogue=db.get('catalogue',dict(source='Official NSE directory pending',updated=0,count=0,mainboard=0,sme=0)),
             catalogue_error=db.get('catalogue_error'),directory_loading=db.get('directory_loading',False),
-            timezone='Asia/Kolkata',market_status='HISTORICAL',version='1.1.0-rc.4',api_version='1.0.0',provider=service.status())
+            timezone='Asia/Kolkata',market_status='HISTORICAL',version='1.1.0-rc.5',api_version='1.0.0',provider=service.status())
     @app.get('/api/securities/search')
     @app.get('/instruments')
     def securities(q:str='',limit:int=60): return db.search(q,max(1,min(limit,200)))
@@ -253,13 +253,18 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
     @app.put('/workspace')
     def save_workspace(value:Workspace):
         for row in [p.model_dump() for p in value.panes]+[r.model_dump() for r in value.watchlist]+[r.model_dump() for w in value.watchlists for r in w.items]:
-            security=registry.resolve(row.get('instrument_id') or row['token'])
+            security=registry.resolve(row.get('canonical_id')) or registry.resolve(row.get('token')) or registry.resolve(row.get('instrument_id')) or registry.resolve(row.get('symbol'))
             if row['token']=='0': continue # Preserve unavailable old selections, visibly unavailable in chart.
             if security:
                 from .market_router import MarketDataRouter
                 MarketDataRouter.validate(row,allow_legacy=True)
                 if row.get('provider')!=security['provider'] or row.get('canonical_id') and row['canonical_id']!=security['canonical_id']:raise HTTPException(422,'Canonical provider identity cannot be changed by a preference save.')
-            if not security or row['symbol'] not in (security['symbol'],security['yahoo_symbol'],security['base_symbol']) or security['token']!=row['token'] or security['kind']!=row['kind']: raise HTTPException(422,'Instrument metadata changed. Search and select the instrument again.')
+            base_sym = security.get('base_symbol') if security else None
+            allowed_symbols = {security['symbol'], security.get('yahoo_symbol'), security.get('base_symbol')} if security else set()
+            allowed_symbols.discard(None)
+            row_sym = row['symbol']
+            symbol_valid = security and (row_sym in allowed_symbols or (base_sym and row_sym.split('-')[0] == base_sym))
+            if not security or not symbol_valid or security['token']!=row['token'] or security['kind']!=row['kind']: raise HTTPException(422,'Instrument metadata changed. Search and select the instrument again.')
         fallback=restore_workspace(db,registry)
         with db.connect() as c:
             c.execute('BEGIN IMMEDIATE');old=load_workspace(c,fallback)

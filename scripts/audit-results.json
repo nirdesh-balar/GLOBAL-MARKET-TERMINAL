@@ -1,0 +1,569 @@
+[
+  {
+    "category": "Header",
+    "control": "Theme Toggle (Light)",
+    "inputType": "Button",
+    "action": "Click theme toggle",
+    "expected": "Switches to light theme",
+    "observed": "theme-light active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Theme Toggle (Dark)",
+    "inputType": "Button",
+    "action": "Click theme toggle again",
+    "expected": "Restores dark theme",
+    "observed": "dark theme restored",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Sidebar Toggle (Hide)",
+    "inputType": "Button",
+    "action": "Click toggle sidebar",
+    "expected": "Hides watchlist sidebar",
+    "observed": "Sidebar hidden",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Sidebar Toggle (Show)",
+    "inputType": "Button",
+    "action": "Click toggle sidebar again",
+    "expected": "Shows watchlist sidebar",
+    "observed": "Sidebar restored",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Layout 1 Chart",
+    "inputType": "Menu Option",
+    "action": "Select layout 1",
+    "expected": "Renders 1 chart pane(s)",
+    "observed": "Found 1 panes",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Layout 2 Charts",
+    "inputType": "Menu Option",
+    "action": "Select layout 2",
+    "expected": "Renders 2 chart pane(s)",
+    "observed": "Found 2 panes",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Layout 4 Charts",
+    "inputType": "Menu Option",
+    "action": "Select layout 4",
+    "expected": "Renders 4 chart pane(s)",
+    "observed": "Found 4 panes",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 1m",
+    "inputType": "Button",
+    "action": "Click 1m",
+    "expected": "Changes active timeframe to 1m",
+    "observed": "1m active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 5m",
+    "inputType": "Button",
+    "action": "Click 5m",
+    "expected": "Changes active timeframe to 5m",
+    "observed": "5m active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 15m",
+    "inputType": "Button",
+    "action": "Click 15m",
+    "expected": "Changes active timeframe to 15m",
+    "observed": "15m active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 30m",
+    "inputType": "Button",
+    "action": "Click 30m",
+    "expected": "Changes active timeframe to 30m",
+    "observed": "30m active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 1h",
+    "inputType": "Button",
+    "action": "Click 1h",
+    "expected": "Changes active timeframe to 1h",
+    "observed": "1h active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 4h",
+    "inputType": "Button",
+    "action": "Click 4h",
+    "expected": "Changes active timeframe to 4h",
+    "observed": "4h active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 1d",
+    "inputType": "Button",
+    "action": "Click 1d",
+    "expected": "Changes active timeframe to 1d",
+    "observed": "1d active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 1w",
+    "inputType": "Button",
+    "action": "Click 1w",
+    "expected": "Changes active timeframe to 1w",
+    "observed": "1w active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Timeframe 1M",
+    "inputType": "Button",
+    "action": "Click 1M",
+    "expected": "Changes active timeframe to 1M",
+    "observed": "1M active",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Chart Type candles",
+    "inputType": "Select",
+    "action": "Select candles",
+    "expected": "Chart changes to candles",
+    "observed": "Type is candles",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Chart Type line",
+    "inputType": "Select",
+    "action": "Select line",
+    "expected": "Chart changes to line",
+    "observed": "Type is line",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Active Chart Type area",
+    "inputType": "Select",
+    "action": "Select area",
+    "expected": "Chart changes to area",
+    "observed": "Type is area",
+    "status": "PASS"
+  },
+  {
+    "category": "Header",
+    "control": "Focus Mode Toggle",
+    "inputType": "Button",
+    "action": "Click focus mode",
+    "expected": "Toggles focus mode layout",
+    "observed": "Focus mode entered",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Volume Toggle (ON)",
+    "inputType": "Button",
+    "action": "Click volume ON",
+    "expected": "Shows volume pane & candles",
+    "observed": "Panes: 2, Bars: 1501",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Volume Toggle (OFF)",
+    "inputType": "Button",
+    "action": "Click volume OFF",
+    "expected": "Hides volume pane, candles remain",
+    "observed": "Panes: 1, Bars: 1501",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Volume Toggle (ON Repeat)",
+    "inputType": "Button",
+    "action": "Click volume ON again",
+    "expected": "Re-adds volume pane, candles remain",
+    "observed": "Panes: 2, Bars: 1501",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Maximize Pane",
+    "inputType": "Button",
+    "action": "Click maximize button",
+    "expected": "Expands pane",
+    "observed": "Pane maximized",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Restore Pane",
+    "inputType": "Button",
+    "action": "Click restore button",
+    "expected": "Restores grid",
+    "observed": "Pane restored",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Auto Refresh (A)",
+    "inputType": "Button",
+    "action": "Click Auto Refresh A",
+    "expected": "Toggles auto refresh state",
+    "observed": "A toggled",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Manual Refresh",
+    "inputType": "Button",
+    "action": "Click manual refresh",
+    "expected": "Refreshes candles from provider",
+    "observed": "Refreshed without error",
+    "status": "PASS"
+  },
+  {
+    "category": "ChartToolbar",
+    "control": "Pane Chart Type Selector",
+    "inputType": "Select",
+    "action": "Select Line then Candles",
+    "expected": "Changes chart series type",
+    "observed": "Series type toggled",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool cursor",
+    "inputType": "Button",
+    "action": "Click cursor",
+    "expected": "Activates tool cursor",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool trend",
+    "inputType": "Button",
+    "action": "Click trend",
+    "expected": "Activates tool trend",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool horizontal",
+    "inputType": "Button",
+    "action": "Click horizontal",
+    "expected": "Activates tool horizontal",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool vertical",
+    "inputType": "Button",
+    "action": "Click vertical",
+    "expected": "Activates tool vertical",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool channel",
+    "inputType": "Button",
+    "action": "Click channel",
+    "expected": "Activates tool channel",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool fib",
+    "inputType": "Button",
+    "action": "Click fib",
+    "expected": "Activates tool fib",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool long",
+    "inputType": "Button",
+    "action": "Click long",
+    "expected": "Activates tool long",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool short",
+    "inputType": "Button",
+    "action": "Click short",
+    "expected": "Activates tool short",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool price-range",
+    "inputType": "Button",
+    "action": "Click price-range",
+    "expected": "Activates tool price-range",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool date-range",
+    "inputType": "Button",
+    "action": "Click date-range",
+    "expected": "Activates tool date-range",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool text",
+    "inputType": "Button",
+    "action": "Click text",
+    "expected": "Activates tool text",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool callout",
+    "inputType": "Button",
+    "action": "Click callout",
+    "expected": "Activates tool callout",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "DrawingToolbar",
+    "control": "Tool rect",
+    "inputType": "Button",
+    "action": "Click rect",
+    "expected": "Activates tool rect",
+    "observed": "Available in tools catalog",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 1D",
+    "inputType": "Button",
+    "action": "Click 1D",
+    "expected": "Adjusts visible range to 1D",
+    "observed": "Range 1D set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 5D",
+    "inputType": "Button",
+    "action": "Click 5D",
+    "expected": "Adjusts visible range to 5D",
+    "observed": "Range 5D set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 1M",
+    "inputType": "Button",
+    "action": "Click 1M",
+    "expected": "Adjusts visible range to 1M",
+    "observed": "Range 1M set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 3M",
+    "inputType": "Button",
+    "action": "Click 3M",
+    "expected": "Adjusts visible range to 3M",
+    "observed": "Range 3M set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 6M",
+    "inputType": "Button",
+    "action": "Click 6M",
+    "expected": "Adjusts visible range to 6M",
+    "observed": "Range 6M set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range YTD",
+    "inputType": "Button",
+    "action": "Click YTD",
+    "expected": "Adjusts visible range to YTD",
+    "observed": "Range YTD set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 1Y",
+    "inputType": "Button",
+    "action": "Click 1Y",
+    "expected": "Adjusts visible range to 1Y",
+    "observed": "Range 1Y set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range 5Y",
+    "inputType": "Button",
+    "action": "Click 5Y",
+    "expected": "Adjusts visible range to 5Y",
+    "observed": "Range 5Y set",
+    "status": "PASS"
+  },
+  {
+    "category": "RangeToolbar",
+    "control": "Range ALL",
+    "inputType": "Button",
+    "action": "Click ALL",
+    "expected": "Adjusts visible range to ALL",
+    "observed": "Range ALL set",
+    "status": "PASS"
+  },
+  {
+    "category": "Watchlist",
+    "control": "Volume Column Checkbox",
+    "inputType": "Checkbox",
+    "action": "Toggle Vol checkbox",
+    "expected": "Shows/hides volume in quote rows",
+    "observed": "Vol column toggled",
+    "status": "PASS"
+  },
+  {
+    "category": "Watchlist",
+    "control": "Watchlist Filter Search",
+    "inputType": "Input",
+    "action": "Filter by TATA",
+    "expected": "Filters watchlist rows",
+    "observed": "Found 4 matching rows",
+    "status": "PASS"
+  },
+  {
+    "category": "IndicatorManager",
+    "control": "Open Modal",
+    "inputType": "Button",
+    "action": "Click Indicators in Header",
+    "expected": "Opens Indicator Manager",
+    "observed": "Modal opened",
+    "status": "PASS"
+  },
+  {
+    "category": "IndicatorManager",
+    "control": "Filter Search",
+    "inputType": "Input",
+    "action": "Search MACD",
+    "expected": "Shows MACD indicator entry",
+    "observed": "Filtered to MACD",
+    "status": "PASS"
+  },
+  {
+    "category": "IndicatorManager",
+    "control": "Close Modal",
+    "inputType": "Button",
+    "action": "Click Close button",
+    "expected": "Closes modal",
+    "observed": "Modal closed",
+    "status": "PASS"
+  },
+  {
+    "category": "Settings",
+    "control": "Open Settings Modal",
+    "inputType": "Button",
+    "action": "Click Settings in Header",
+    "expected": "Opens application settings modal",
+    "observed": "Settings modal opened",
+    "status": "PASS"
+  },
+  {
+    "category": "Settings",
+    "control": "Close Settings Modal",
+    "inputType": "Button",
+    "action": "Click Close button",
+    "expected": "Closes settings modal",
+    "observed": "Settings modal closed",
+    "status": "PASS"
+  },
+  {
+    "category": "WorkspaceViews",
+    "control": "Screener View Toggle",
+    "inputType": "Button",
+    "action": "Switch to Screener",
+    "expected": "Renders screener page",
+    "observed": "Screener rendered",
+    "status": "PASS"
+  },
+  {
+    "category": "WorkspaceViews",
+    "control": "Alerts View Toggle",
+    "inputType": "Button",
+    "action": "Switch to Alerts",
+    "expected": "Renders alerts page",
+    "observed": "Alerts rendered",
+    "status": "PASS"
+  },
+  {
+    "category": "Shortcuts",
+    "control": "Meta+K (Symbol Search)",
+    "inputType": "Shortcut",
+    "action": "Press Meta+K",
+    "expected": "Opens symbol search modal",
+    "observed": "Search modal opened",
+    "status": "PASS"
+  },
+  {
+    "category": "Shortcuts",
+    "control": "Escape (Close Modal)",
+    "inputType": "Shortcut",
+    "action": "Press Escape",
+    "expected": "Closes open modal",
+    "observed": "Modal closed",
+    "status": "PASS"
+  },
+  {
+    "category": "Shortcuts",
+    "control": "F (Maximize Active Chart)",
+    "inputType": "Shortcut",
+    "action": "Press F",
+    "expected": "Toggles maximized active chart",
+    "observed": "Maximized toggled",
+    "status": "PASS"
+  },
+  {
+    "category": "Shortcuts",
+    "control": "I (Indicators Modal)",
+    "inputType": "Shortcut",
+    "action": "Press I",
+    "expected": "Opens indicator manager",
+    "observed": "Indicators opened",
+    "status": "PASS"
+  }
+]

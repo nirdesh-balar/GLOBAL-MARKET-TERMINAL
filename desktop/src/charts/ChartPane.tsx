@@ -350,7 +350,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...(pane.chart_type==='candles'?{upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders}:pane.chart_type==='area'?{lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00'}:{color:candleColors.upColor})});
     const mark=createTextWatermark(c.panes()[0],{visible:a.watermark,horzAlign:'center',vertAlign:'center',lines:[{text:pane.kind==='index'?pane.name:symbolLabel(pane.symbol),color:theme==='dark'?'#ffffff0d':'#0000000d',fontSize:48,fontStyle:'bold'}]});
     return()=>{if(chart.current===c)mark.detach();};
-  },[pane.appearance,!!data,pane.chart_type,pane.volume,pane.timeframe,pane.symbol,theme]);
+  },[pane.appearance,!!data,pane.chart_type,pane.timeframe,pane.symbol,theme]);
   useEffect(()=>{
     const c=chart.current,m=mainSeries.current;if(!c||!m)return;
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;if(dataFor.current!==identity)return;
@@ -373,7 +373,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     if(primitive.current){const p=primitive.current;p.volumeSupported=pane.kind!=='index'&&pane.kind!=='forex';p.rows=rows;p.timezone=chartZone;p.interval=pane.timeframe;p.currency=data?.currency||pane.currency||"";p.precision=data?.precision??precision;p.update(pane.drawing_sets[drawingStorageKey(pane)]||[],drawing.selected,pane.drawings_hidden,p.preview);p.replayTime=replay!==null?rows.at(-1)?.time||null:null;const intraday=!['1d','1w','1M','1Y'].includes(pane.timeframe);p.sessionTimes=pane.appearance.session_separators&&intraday?rows.filter((r,i)=>i===0||(r.session||marketDay(r.time,chartZone))!==(rows[i-1].session||marketDay(rows[i-1].time,chartZone))).map(r=>r.time):[];p.requestUpdate();}
     if(data&&rows.length){const last=rows.at(-1)!,prev=rows.at(-2);onDataRef.current(instrumentKey,{candle:last,change:pane.timeframe==='1d'&&prev&&prev.close>0?(last.close/prev.close-1)*100:null,source:data.source,first:data.first_available,last:new Date(last.time*1000).toLocaleDateString('en-CA',{timeZone:displayZone}),interval:pane.timeframe,fetched_at:data.fetched_at});}
     let second=0;const frame=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>{pendingStudyView.current=null;});});return()=>{cancelAnimationFrame(frame);cancelAnimationFrame(second);};
-  },[rows,data,pane.symbol,pane.timeframe,pane.chart_type,pane.volume,theme,pane.appearance.session_separators]);
+  },[rows,data,pane.symbol,pane.timeframe,pane.chart_type,theme,pane.appearance.session_separators]);
   // Replace only study series. Main candles, horizontal zoom and a manual
   // logarithmic/linear price range remain on the same chart instance.
   useEffect(()=>{
