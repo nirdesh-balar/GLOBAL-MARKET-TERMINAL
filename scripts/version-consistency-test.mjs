@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
-const EXPECTED_VERSION = '1.1.0-rc.3';
+const EXPECTED_VERSION = '1.1.0-rc.4';
 const EXPECTED_API_VERSION = '1.0.0';
 
 console.log('=== Running Automated Version Consistency Test ===');

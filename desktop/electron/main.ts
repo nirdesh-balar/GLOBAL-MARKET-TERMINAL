@@ -16,7 +16,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell, Menu, powerMonitor } from '
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { basename, join } from 'node:path';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, appendFileSync } from 'node:fs';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 let backend:ChildProcess|undefined;
 let shutdown:Promise<void>|undefined;
@@ -79,7 +79,13 @@ async function startBackend(){
   const dataDir=process.env.IMT_TEST_DATA_DIR||app.getPath('userData');mkdirSync(dataDir,{recursive:true,mode:0o700});
   backend=spawn(executable,args,{cwd:dataDir,env:{...process.env,IMT_TOKEN:auth,IMT_DATA_DIR:dataDir,IMT_PREVIEW_SEED_DB:previewSeed,IMT_PARENT_PIPE:'1',PYTHONUNBUFFERED:'1'},shell:false,stdio:['pipe','pipe','pipe']});
   backend.on('error',()=>{/* Readiness reports spawn failures in the visible startup dialog. */});
-  backend.stderr?.on('data',()=>{/* Controlled provider errors go to UI, no raw responses in logs. */});
+  const logPath=join(dataDir,'backend.log');
+  backend.stderr?.on('data',chunk=>{
+    try{
+      const sanitized=chunk.toString().replaceAll(auth,'[REDACTED_AUTH_TOKEN]');
+      appendFileSync(logPath,sanitized);
+    }catch{/* ignore log recording failure */}
+  });
   await new Promise<void>((resolve,reject)=>{
     let output='';const timeout=setTimeout(()=>reject(new Error('Local backend did not start within 45 seconds.')),45000);
     backend!.once('error',e=>{clearTimeout(timeout);reject(e);});
@@ -96,15 +102,59 @@ async function startBackend(){
 function trusted(event:Electron.IpcMainInvokeEvent|Electron.IpcMainEvent){if(!window||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame)throw new Error('Untrusted renderer');}
 async function localFetch(path:string,method:string,body?:unknown,signal?:AbortSignal){
   await readiness;
-  const response=await fetch(`http://127.0.0.1:${port}${path}`,{method,headers:{Authorization:`Bearer ${auth}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(180000)]):AbortSignal.timeout(180000)});
-  const payload=await response.json();
-  const errorMsg = typeof payload.detail === 'string'
-    ? payload.detail
-    : Array.isArray(payload.detail)
-      ? payload.detail.slice(0, 5).map((e: { msg?: string }) => typeof e === 'object' && e && e.msg ? e.msg : String(e)).join('; ')
-      : (typeof payload.detail === 'object' && payload.detail ? JSON.stringify(payload.detail) : 'The local service rejected this request.');
-  if(!response.ok)throw Object.assign(new Error(errorMsg),{kind:payload.kind??(response.status===404?'missing':'source'),code:payload.code,retry_after:payload.retry_after??0,retryable:payload.retryable??['temporary','rate'].includes(payload.kind),http_status:payload.http_status??response.status});
-  return payload;
+  const endpoint=path.split('?')[0];
+  let response:Response;
+  try{
+    response=await fetch(`http://127.0.0.1:${port}${path}`,{method,headers:{Authorization:`Bearer ${auth}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(180000)]):AbortSignal.timeout(180000)});
+  }catch(err){
+    if(signal?.aborted)throw err;
+    const isTimeout=(err as Error)?.name==='TimeoutError'||String(err).includes('timeout');
+    const msg=isTimeout?`Local backend request timed out (${endpoint}).`:`Local backend connection failed (${endpoint}).`;
+    throw Object.assign(new Error(msg),{kind:isTimeout?'timeout':'connection',code:isTimeout?'timeout':'connection',retryable:true,http_status:503});
+  }
+  const contentType=(response.headers.get('content-type')||'').toLowerCase();
+  const isJson=contentType.includes('application/json');
+  if(!response.ok){
+    let payload:any=null;
+    if(isJson){
+      try{payload=await response.json();}catch{payload=null;}
+    }
+    if(payload&&typeof payload==='object'){
+      const errorMsg=typeof payload.detail==='string'
+        ? payload.detail
+        : Array.isArray(payload.detail)
+          ? payload.detail.slice(0,5).map((e:{msg?:string})=>typeof e==='object'&&e&&e.msg?e.msg:String(e)).join('; ')
+          : (typeof payload.detail==='object'&&payload.detail?JSON.stringify(payload.detail):`The local service rejected this request (HTTP ${response.status}).`);
+      throw Object.assign(new Error(errorMsg),{kind:payload.kind??(response.status===404?'missing':'source'),code:payload.code??(response.status===404?'missing':'source'),retry_after:payload.retry_after??0,retryable:payload.retryable??['temporary','rate'].includes(payload.kind),http_status:payload.http_status??response.status});
+    }
+    let rawText='';
+    try{rawText=(await response.text()).trim();}catch{rawText='';}
+    let friendly=`Local backend failed to load ${endpoint} (HTTP ${response.status}).`;
+    if(response.status===500){
+      friendly=`Local backend failed to load ${endpoint} (HTTP 500).`;
+    }else if(response.status===404){
+      friendly=`Local backend endpoint ${endpoint} not found (HTTP 404).`;
+    }else if(response.status===401){
+      friendly=`Local backend authentication failed (HTTP 401).`;
+    }else if(rawText&&rawText.length<120&&!rawText.includes('<html')){
+      friendly=`Local backend error: ${rawText} (HTTP ${response.status}).`;
+    }
+    throw Object.assign(new Error(friendly),{kind:response.status===404?'missing':'source',code:response.status===404?'missing':'server_error',retry_after:0,retryable:response.status>=500,http_status:response.status});
+  }
+  if(response.status===204)return {};
+  if(isJson){
+    try{
+      return await response.json();
+    }catch{
+      throw Object.assign(new Error(`Local backend returned invalid JSON for ${endpoint}.`),{kind:'data_format',code:'invalid_json',retryable:false,http_status:response.status});
+    }
+  }
+  try{
+    const text=await response.text();
+    try{return JSON.parse(text);}catch{return text;}
+  }catch{
+    return {};
+  }
 }
 ipcMain.handle('api',async(event,path:string,method='GET',body?:unknown,requestId?:string)=>{
   trusted(event);const url=new URL(path,'http://127.0.0.1');

@@ -439,6 +439,40 @@ class Workspace(BaseModel):
                         if entry not in archive:archive.append(entry)
                     else:retained.append(record)
                 item['indicators']=retained
+        if value.get('layout') not in (1, 2, 4, 6, 8):
+            value['layout'] = 2
+        DEFAULT_SYMBOLS = ['RELIANCE-EQ','TCS-EQ','INFY-EQ','HDFCBANK-EQ','ICICIBANK-EQ','SBIN-EQ','ITC-EQ','TMPV-EQ']
+        panes = value.get('panes')
+        if isinstance(panes, list):
+            valid_ids = {str(x) for x in range(8)}
+            has_all_8_ids = len(panes) == 8 and {str(p.get('id')) for p in panes if isinstance(p, dict)} == valid_ids
+            if not has_all_8_ids:
+                defaults = [
+                    dict(id=str(i), symbol=s, token='0', timeframe='1d', chart_type='candles',
+                         indicators=[dict(kind='EMA', period=20, visible=True, id=f'legacy-{i}-EMA20')], volume=True)
+                    for i, s in enumerate(DEFAULT_SYMBOLS)
+                ]
+                existing = {}
+                unassigned = []
+                for p in panes:
+                    if isinstance(p, dict):
+                        pid = str(p.get('id', ''))
+                        if pid in valid_ids and pid not in existing:
+                            existing[pid] = p
+                        else:
+                            unassigned.append(p)
+                new_panes = []
+                for i in range(8):
+                    sid = str(i)
+                    if sid in existing:
+                        new_panes.append(existing[sid])
+                    elif unassigned:
+                        p = unassigned.pop(0)
+                        p['id'] = sid
+                        new_panes.append(p)
+                    else:
+                        new_panes.append(defaults[i])
+                value['panes'] = new_panes
         return value
     watchlist_version:Literal[1]=1
     watchlist_revision:int=Field(default=0,ge=0)

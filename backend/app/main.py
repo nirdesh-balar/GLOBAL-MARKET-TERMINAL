@@ -38,9 +38,37 @@ def default_workspace(db):
 
 def restore_workspace(db,registry=None):
     saved=db.get('workspace') or default_workspace(db)
+    if not isinstance(saved, dict):
+        saved = default_workspace(db)
+    defaults = default_workspace(db)
+    if saved.get('layout') not in (1, 2, 4, 6, 8):
+        saved['layout'] = 2
+    raw_panes = saved.get('panes', []) if isinstance(saved.get('panes'), list) else []
+    valid_ids = {str(x) for x in range(8)}
+    existing = {}
+    unassigned = []
+    for p in raw_panes:
+        if isinstance(p, dict):
+            pid = str(p.get('id', ''))
+            if pid in valid_ids and pid not in existing:
+                existing[pid] = p
+            else:
+                unassigned.append(p)
+    new_panes = []
+    for i in range(8):
+        sid = str(i)
+        if sid in existing:
+            new_panes.append(existing[sid])
+        elif unassigned:
+            p = unassigned.pop(0)
+            p['id'] = sid
+            new_panes.append(p)
+        else:
+            new_panes.append(defaults['panes'][i])
+    saved['panes'] = new_panes
     if not saved.get('watchlists'):
         indices=registry.indices() if registry else []
-        saved['watchlists']=[dict(id='indices',name='Indian Indices',items=[entry(r) for r in indices]),dict(id='stocks',name='Indian Stocks',items=default_workspace(db)['watchlist']),dict(id='favourites',name='My Favourites',items=saved.get('watchlist',[]))]
+        saved['watchlists']=[dict(id='indices',name='Indian Indices',items=[entry(r) for r in indices]),dict(id='stocks',name='Indian Stocks',items=defaults['watchlist']),dict(id='favourites',name='My Favourites',items=saved.get('watchlist',[]))]
         saved['active_watchlist']='stocks'
     # Append missing market lists, preserving all existing names, IDs and selections.
     if registry:
@@ -157,7 +185,7 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
         return dict(status='ok',mode='DIRECT',database='preferences only',instruments=db.count(),
             catalogue=db.get('catalogue',dict(source='Official NSE directory pending',updated=0,count=0,mainboard=0,sme=0)),
             catalogue_error=db.get('catalogue_error'),directory_loading=db.get('directory_loading',False),
-            timezone='Asia/Kolkata',market_status='HISTORICAL',version='1.1.0-rc.3',api_version='1.0.0',provider=service.status())
+            timezone='Asia/Kolkata',market_status='HISTORICAL',version='1.1.0-rc.4',api_version='1.0.0',provider=service.status())
     @app.get('/api/securities/search')
     @app.get('/instruments')
     def securities(q:str='',limit:int=60): return db.search(q,max(1,min(limit,200)))

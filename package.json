@@ -1,7 +1,7 @@
 {
   "name": "global-market-terminal",
   "productName": "GLOBAL MARKET TERMINAL",
-  "version": "1.1.0-rc.3",
+  "version": "1.1.0-rc.4",
   "private": true,
   "type": "module",
   "description": "Personal global market analysis terminal with Yahoo Finance and public Hyperliquid data",
