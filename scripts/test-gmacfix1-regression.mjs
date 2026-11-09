@@ -122,7 +122,7 @@ res = client.get('/health', headers={'Authorization': 'Bearer ' + token})
 assert res.status_code == 200, f'Status {res.status_code}'
 data = res.json()
 assert data['status'] == 'ok'
-assert data['version'] in ('1.1.0-rc.4', '1.1.0-rc.5'), f"Expected 1.1.0-rc.4 or rc.5, got {data['version']}"
+assert data['version'] in ('1.1.0-rc.4', '1.1.0-rc.5', '1.1.0-rc.6'), f"Expected 1.1.0-rc.4, rc.5, or rc.6, got {data['version']}"
 print(f"Health status: {data['status']}, version: {data['version']}")
 `;
   const out = execFileSync('backend/.venv/bin/python', ['-c', pyCode], { encoding: 'utf8' });

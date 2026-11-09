@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_stable_package_identity():
     data = json.loads((ROOT / 'package.json').read_text())
     assert data['productName'] == data['build']['productName'] == 'GLOBAL MARKET TERMINAL'
-    assert data['version'] == '1.1.0-rc.5'
+    assert data['version'] == '1.1.0-rc.6'
     assert data['build']['appId'] == 'local.globalmarket.terminal'
     assert data['build']['mac']['extendInfo']['CFBundleDisplayName'] == 'GLOBAL MARKET TERMINAL'
 
@@ -22,7 +22,7 @@ def test_stable_backend_name_and_version(tmp_path):
         response = client.get('/health', headers={'Authorization': 'Bearer ' + 'test-stage7-' + 'x' * 48})
         assert response.status_code == 200
         payload = response.json()
-        assert payload['version'] == '1.1.0-rc.5'
+        assert payload['version'] == '1.1.0-rc.6'
         assert payload['api_version'] == '1.0.0'
 
 def test_branding_surfaces():
