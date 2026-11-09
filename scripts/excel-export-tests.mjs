@@ -248,7 +248,8 @@ with zipfile.ZipFile(path, 'r') as z:
 print('Python OpenXML Parser check passed successfully.')
 `;
 
-  const py = spawnSync('python3', ['-c', pyCode, testFilePath], { encoding: 'utf8' });
+  const pythonBin = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+  const py = spawnSync(pythonBin, ['-c', pyCode, testFilePath], { encoding: 'utf8' });
   if (py.status !== 0) {
     console.error('Python validation failed:', py.stderr);
     throw new Error('Python OpenXML validation failed: ' + py.stderr);
@@ -319,7 +320,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
     cells = {c.attrib['r']: c for c in r12.findall('m:c', ns)}
     assert cells['F12'].find('m:is/m:t', ns).text == sys.argv[2].upper()
 `;
-    const tfCheck = spawnSync('python3', ['-c', pyTfCode, tfFile, tf], { encoding: 'utf8' });
+    const tfCheck = spawnSync(pythonBin, ['-c', pyTfCode, tfFile, tf], { encoding: 'utf8' });
     assert.equal(tfCheck.status, 0, `Timeframe check failed for ${tf}: ${tfCheck.stderr}`);
   }
   console.log('PASS: All 10 intervals (1m, 5m, 15m, 30m, 1h, 4h, 1D, 1W, 1M, 1Y) verified!');

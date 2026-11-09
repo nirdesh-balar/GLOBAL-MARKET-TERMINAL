@@ -1,4 +1,4 @@
-$backendDir = "D:\Project\gmt-r2-release-candidate\backend\dist-windows\imt-backend"
+$backendDir = Join-Path $PSScriptRoot "..\backend\dist-windows\imt-backend"
 $backendExe = "$backendDir\imt-backend.exe"
 $testDataDir = Join-Path ([System.IO.Path]::GetTempPath()) ("gmt-backend-test-" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $testDataDir -Force | Out-Null

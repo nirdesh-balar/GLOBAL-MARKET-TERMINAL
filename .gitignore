@@ -43,6 +43,8 @@ approved-native-release/
 GMT-Portable-Data/
 gmt-*-desktop-profile/
 test-results/
+*-audit-results.json
+scripts/*-audit-results.json
 
 # PyInstaller specs (preserve committed windows-backend.spec)
 *.spec

@@ -1,21 +1,23 @@
-$workspace = "D:\Project\gmt-r2-release-candidate"
+$workspace = if ($env:GMT_WORKSPACE) { $env:GMT_WORKSPACE } else { (Split-Path -Parent $PSScriptRoot) }
 Set-Location $workspace
 
 Remove-Item env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
-$nodeDir = "D:\Project\tools\node-v22.19.0-win-x64"
-$gitDir = "D:\Project\tools\git\cmd"
-$pyDir = "D:\Project\tools\python311"
+# Python venv integration
 $venvDir = "$workspace\backend\.venv\Scripts"
-$env:PATH = "$nodeDir;$gitDir;$venvDir;$pyDir;$env:PATH"
-$env:PYTHON = "$venvDir\python.exe"
-$env:GMT_ARTIFACT_DIR = "C:\Users\Sir\.gemini\antigravity\brain\8f846995-2413-4f5e-8562-6282abaf07a7"
-
-if ($args[0] -eq "-Command" -or $args[0] -eq "-c") {
-    Invoke-Expression ($args[1..($args.Length-1)] -join " ")
-    exit $LASTEXITCODE
+if (Test-Path $venvDir) {
+    $env:PATH = "$venvDir;$env:PATH"
+    if (Test-Path "$venvDir\python.exe") {
+        $env:PYTHON = "$venvDir\python.exe"
+    }
 }
 
-& $args[0] $args[1..($args.Length-1)]
-exit $LASTEXITCODE
+if ($args.Length -gt 0) {
+    if ($args[0] -eq "-Command" -or $args[0] -eq "-c") {
+        Invoke-Expression ($args[1..($args.Length-1)] -join " ")
+        exit $LASTEXITCODE
+    }
 
+    & $args[0] $args[1..($args.Length-1)]
+    exit $LASTEXITCODE
+}

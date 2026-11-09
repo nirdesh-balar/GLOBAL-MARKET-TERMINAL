@@ -1,4 +1,4 @@
-$exePath = 'D:\Project\gmt-r2-release-candidate\backend\dist-windows\imt-backend\imt-backend.exe'
+$exePath = if ($args[0]) { $args[0] } else { Join-Path $PSScriptRoot "..\backend\dist-windows\imt-backend\imt-backend.exe" }
 $bytes = [System.IO.File]::ReadAllBytes($exePath)
 $peOffset = [System.BitConverter]::ToInt32($bytes, 0x3C)
 $machine = [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)

@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$workspace = "D:\Project\gmt-r2-release-candidate"
+$workspace = if ($env:GMT_WORKSPACE) { $env:GMT_WORKSPACE } else { (Split-Path -Parent $PSScriptRoot) }
 $exePath = "$workspace\release-candidate-r2\win-unpacked\GLOBAL MARKET TERMINAL.exe"
 $backendExe = "$workspace\release-candidate-r2\win-unpacked\resources\backend\imt-backend.exe"
 
@@ -19,7 +19,7 @@ if (!(Test-Path $backendExe)) {
 
 # 1. Clean Environment: strip dev tools from PATH
 $cleanPath = "C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem"
-$testDir = "C:\Users\Sir\AppData\Local\Temp\gmt-r2-standalone-test"
+$testDir = Join-Path ([System.IO.Path]::GetTempPath()) "gmt-r2-standalone-test"
 if (Test-Path $testDir) {
     Remove-Item -Path $testDir -Recurse -Force
 }
