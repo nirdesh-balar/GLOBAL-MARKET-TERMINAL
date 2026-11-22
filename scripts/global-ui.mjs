@@ -43,6 +43,7 @@ try{
  await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.getByLabel('Search market').selectOption('crypto');
  await expect(page.locator('.search-result')).toHaveCount(0);await expect(page.locator('.watch-row')).toHaveCount(4);await page.getByLabel('Close search',{exact:true}).click();
  assert.equal(await page.locator('[data-testid="stock-details"],.symbol-details').count(),0);
+ await page.setViewportSize({width:1440,height:900});
  const geometry=await page.getByTestId('watchlist-rows').evaluate(el=>({rows:el.getBoundingClientRect().height,aside:el.closest('aside').getBoundingClientRect().height,scroll:getComputedStyle(el).overflowY}));
  assert.ok(geometry.rows/geometry.aside>.65);assert.equal(geometry.scroll,'auto');
  await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/global-four-markets-fixture.png'});
