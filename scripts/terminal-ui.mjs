@@ -50,8 +50,50 @@ try{
  await page.setViewportSize({width:1280,height:800});
  const proportions=await page.evaluate(()=>Object.fromEntries(['terminal-header','drawing-toolbar','professional-watchlist','bottom-chart-toolbar','chart-canvas'].map(c=>{const r=document.querySelector('.'+c).getBoundingClientRect();return [c,{x:r.x,y:r.y,width:r.width,height:r.height}];})));assert.equal(proportions['terminal-header'].height,44);assert.ok(await page.locator('.terminal-header').evaluate(el=>el.lastElementChild.getBoundingClientRect().right<=innerWidth),'Top toolbar fits at 1280px');assert.equal(proportions['drawing-toolbar'].width,48);assert.equal(proportions['bottom-chart-toolbar'].height,36);assert.ok(proportions['chart-canvas'].height>600);assert.ok(proportions['professional-watchlist'].x>proportions['chart-canvas'].x);await page.screenshot({path:'test-results/professional-13-inch.png'});
  // Cold panes fetch on visibility; revisiting eight cached charts adds no provider calls.
- await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel('Layout 8',{exact:true}).click();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});const warmRequests=(await status()).provider_requests;
- await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel('Layout 1',{exact:true}).click();const warmStart=Date.now();await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel('Layout 8',{exact:true}).click();await expect(page.locator('.chart-pane')).toHaveCount(8);await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});const warmMs=Date.now()-warmStart;assert.equal((await status()).provider_requests,warmRequests);assert.ok(warmMs<2000,`Warm eight-chart layout took ${warmMs}ms`);console.log('Warm eight-chart restore:',warmMs+'ms');await page.screenshot({path:'test-results/professional-eight-charts.png'});await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel('Layout 1',{exact:true}).click();
+ await page.getByLabel('Chart layout',{exact:true}).click();
+ await page.getByLabel('Layout 8',{exact:true}).click();
+ await expect(page.locator('.chart-canvas[data-rendered-bars]:not([data-rendered-bars="0"])')).toHaveCount(8,{timeout:30000});
+ await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
+ const warmRequests=(await status()).provider_requests;
+ await page.getByLabel('Chart layout',{exact:true}).click();
+ await page.getByLabel('Layout 1',{exact:true}).click();
+ await expect(page.locator('.chart-pane')).toHaveCount(1);
+ await page.getByLabel('Chart layout',{exact:true}).click();
+ const restoreEight=page.getByLabel('Layout 8',{exact:true});
+ // Measure from the real layout click to a renderer frame with all eight histories.
+ // Playwright's menu actionability and polling times are outside the app's budget.
+ await restoreEight.evaluate(button=>{
+  window.warmChartRestore=new Promise((resolve,reject)=>{
+   button.addEventListener('click',()=>{
+    const start=performance.now();
+    const grid=document.querySelector('.chart-grid');
+    const observer=new MutationObserver(()=>{
+     const charts=[...grid.querySelectorAll('.chart-canvas')];
+     if(charts.length!==8||charts.some(chart=>!(Number(chart.dataset.renderedBars)>0))||grid.querySelector('.chart-overlay'))return;
+     observer.disconnect();
+     requestAnimationFrame(()=>{
+      clearTimeout(timeout);
+      resolve(performance.now()-start);
+     });
+    });
+    const timeout=setTimeout(()=>{
+     observer.disconnect();
+     reject(new Error('Eight cached charts did not render within 30 seconds'));
+    },30000);
+    observer.observe(grid,{childList:true,subtree:true,attributes:true,attributeFilter:['data-rendered-bars','class']});
+   },{once:true,capture:true});
+  });
+ });
+ await restoreEight.click();
+ const warmMs=await page.evaluate(()=>window.warmChartRestore);
+ await expect(page.locator('.chart-pane')).toHaveCount(8);
+ await expect(page.locator('.chart-overlay')).toHaveCount(0);
+ assert.equal((await status()).provider_requests,warmRequests);
+ assert.ok(warmMs<2000,`Warm eight-chart layout took ${Math.round(warmMs)}ms`);
+ console.log('Warm eight-chart restore:',Math.round(warmMs)+'ms');
+ await page.screenshot({path:'test-results/professional-eight-charts.png'});
+ await page.getByLabel('Chart layout',{exact:true}).click();
+ await page.getByLabel('Layout 1',{exact:true}).click();
  await page.getByTestId('drawing-category-fibonacci').click();await expect(page.getByLabel('Fibonacci Retracement',{exact:true})).toBeEnabled();await page.keyboard.press('Escape');await page.getByTestId('drawing-category-text').click();await expect(page.getByLabel('Text',{exact:true})).toBeEnabled();await page.keyboard.press('Escape');await page.getByTestId('drawing-category-measure').click();await expect(page.getByLabel('Ruler',{exact:true})).toBeEnabled();await page.keyboard.press('Escape');
  await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();await app.close();app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});const restored=await workspace();assert.equal(Object.values(restored.panes[0].drawing_sets).flat().length,4);assert.equal(restored.panes[0].appearance.grid_opacity,.2);assert.ok(restored.sidebar.width<300);assert.equal((await status()).provider_requests,1,'Restart fetches only the visible chart');
  assert.deepEqual(errors,[]);console.log('PASS: core drawings, drag/edit/delete/undo/redo, zoom-safe anchors, timeframe isolation, lock/hide, appearance, replay prefix/play/speed/exit, PNG primitives, right sidebar resize, themes, 13-inch proportions, sync preferences and restart.');console.log('Measured 1280px layout:',JSON.stringify(proportions));
