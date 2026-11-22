@@ -25,6 +25,8 @@ jobs:
           python-version: '3.11.9'
           architecture: arm64
       - run: npm ci
+      - name: Install the locked Electron runtime
+        run: npm exec --no -- install-electron
       - run: python -m venv backend/.venv
       - run: backend/.venv/bin/python -m pip install -r backend/requirements-lock.txt
       - run: node scripts/download-test-directory.mjs
