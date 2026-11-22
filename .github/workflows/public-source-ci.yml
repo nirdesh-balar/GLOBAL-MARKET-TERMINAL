@@ -2,6 +2,8 @@ name: Source safety and regressions
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,14 +21,19 @@ jobs:
           node-version: 22.19.0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: 3.11.13
+          # Cached on macos-15-arm64 and published as a Darwin arm64 release asset.
+          python-version: '3.11.9'
+          architecture: arm64
       - run: npm ci
       - run: python -m venv backend/.venv
       - run: backend/.venv/bin/python -m pip install -r backend/requirements-lock.txt
       - run: node scripts/download-test-directory.mjs
       - run: backend/.venv/bin/python -m pytest backend/tests -q
       - run: npm run build
-      - run: node scripts/verify-macos.mjs --math
-      - run: node scripts/release-ui.mjs
+      - run: npm run test:platform
+      - run: npm run test:package:config
+      - run: node scripts/version-consistency-test.mjs
+      - run: npm run test:macos -- --math
+      - run: caffeinate -di npm run test:macos -- --ui
       # Candidate binaries and raw test output remain on the ephemeral runner.
       # No artifact upload is permitted until a separate evidence policy is reviewed.
