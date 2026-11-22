@@ -29,6 +29,8 @@ jobs:
       - run: backend/.venv/bin/python -m pip install -r backend/requirements-lock.txt
       - run: node scripts/download-test-directory.mjs
       - run: backend/.venv/bin/python -m pytest backend/tests -q
+        env:
+          IMT_OFFLINE: '1'
       - run: npm run build
       - run: npm run test:platform
       - run: npm run test:package:config
