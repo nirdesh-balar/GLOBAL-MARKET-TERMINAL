@@ -11,9 +11,15 @@ const env={...process.env,IMT_TEST_DATA_DIR:profile};
 if(!packaged){env.IMT_OFFLINE='1';env.IMT_UI_FIXTURE='1';}
 let app,page;const errors=[];
 const launch=()=>electron.launch({executablePath,args:packaged?[]:['.'],env,timeout:60000});
+const firstWindow=async()=>{
+ const window=await app.firstWindow();
+ // Measure the desktop sidebar at a known renderer size on every host.
+ if(!packaged)await window.setViewportSize({width:1440,height:900});
+ return window;
+};
 await mkdir('test-results',{recursive:true});
 try{
- app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));
+ app=await launch();page=await firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));
  await expect(page.getByTestId('watchlist-sidebar')).toBeVisible({timeout:60000});
  await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:packaged?120000:30000});
  const sidebar=()=>page.getByTestId('watchlist-sidebar');
@@ -74,7 +80,7 @@ try{
   for(const n of [2,4,6,8]){await layout(n);await absent();await geometry();}
   await layout(2);await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();
   const saved=await workspace();assert.equal(saved.active_watchlist,'sidebar-regression');assert.equal(saved.watchlists.at(-1).items.length,40);assert.equal(saved.panes[0].scale.logarithmic,true);
-  await app.close();app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));await expect(sidebar()).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
+  await app.close();app=await launch();page=await firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));await expect(sidebar()).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
   assert.deepEqual(await workspace(),saved,'Watchlists, chart/layout/sidebar/appearance/drawing settings survive restart');await absent();await geometry();
   assert.equal((await status()).provider_requests,2,'Restart fetches exactly the two visible charts');await expect(page.getByTestId('pane-0').locator('.pane-symbol')).toHaveText('NIFTY 50');await expect(page.getByTestId('pane-0').locator('.ohlc b')).toHaveCount(4);
   assert.deepEqual(errors,[]);console.log('PASS: details absent, full-height independent watchlist scrolling, fixed header/Add Symbol, SBIN/index selection and OHLC, resize/collapse, all layouts, no bulk fetch, themes and exact restart persistence.');console.log('Measured sidebar:',JSON.stringify(measured));

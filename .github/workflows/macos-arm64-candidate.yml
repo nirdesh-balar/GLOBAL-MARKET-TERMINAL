@@ -27,12 +27,18 @@ jobs:
           node-version: 22.19.0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: 3.11.13
+          # Keep this aligned with the source workflow's macos-15-arm64 toolchain.
+          python-version: '3.11.9'
+          architecture: arm64
       - run: npm ci
+      - name: Install the locked Electron runtime
+        run: npm exec --no -- install-electron
       - run: python -m venv backend/.venv
       - run: backend/.venv/bin/python -m pip install -r backend/requirements-lock.txt
       - run: node scripts/download-test-directory.mjs
       - run: backend/.venv/bin/python -m pytest backend/tests -q
+        env:
+          IMT_OFFLINE: '1'
       - run: npm run package:public:mac
       # Candidate binaries and raw test output remain on the ephemeral runner.
       # No artifact upload is permitted until a separate evidence policy is reviewed.
