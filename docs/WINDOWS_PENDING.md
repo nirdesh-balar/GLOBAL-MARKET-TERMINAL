@@ -1,0 +1,18 @@
+# Windows pending
+
+Use the official GitHub `main` as the shared source on native Windows 10/11 x64. Historical Windows bundles are evidence and recovery material. The initial macOS audit checked the Windows configuration but did not execute Windows binaries. Commit references identify the shared source under review.
+
+| ID | Source and affected modules | State and impact | Remaining native work |
+| --- | --- | --- | --- |
+| WIN-BASE | `5a3c0713e08e9fbb739272f2363acfd45465b377` · Electron/preload, React workspace, Python launcher/analytics/providers | Shared source updated. Windows native testing pending for the exact unified SHA. The Mac audit passed 23 Windows platform checks and 45 Windows packaging configuration checks. | Build and run with native dependencies. Verify backend startup/shutdown, watchlists and settings persistence, Yahoo and Hyperliquid chart data, indicators, drawings, replay, alerts, fullscreen and exports. |
+| WIN-UI4 | `ee67a6b9f642800b536b15aea080898f4f865546`, consolidated at `5a3c071` · workspace navigation, responsive styles, Windows UI matrix | Shared source updated. Windows native testing pending for the consolidated revision. A historical Windows validation branch exists at `144bd2e`, with its own provenance. | Run the native viewport/DPI matrix and keyboard navigation. Verify layout, alert/screener navigation, watchlist selection and the independently controlled volume series. Check legacy startup and saved state with disposable fixtures. |
+| WIN-PKG | `5a3c071` · `backend/windows-backend.spec`, `scripts/build-windows-backend.ps1`, `scripts/package-personal-win.ps1`, `build/personal-win.config.cjs`, rc.6 portable helpers | Shared source updated. Windows review and native testing pending. NSIS and portable outputs require separate evidence. The portable staging helper recreates its staging directory. | Verify AMD64 PE, installer/profile isolation, standalone startup, exit, restart and uninstall retention. Test portable archive contents, same-folder `GMT-Portable-Data` persistence, and no writes to the installed profile. Keep disposable staging separate from any active portable folder. Review resource redistribution before publishing any package. |
+
+## Native commands
+
+1. Verify the source SHA and use native Node 22.19.0 or a compatible version with npm and Python 3.11 x64. Run `npm ci`, create `backend\.venv`, and install `backend\requirements-lock.txt` with the venv Python. Prepare test directory resources through the documented official-source path.
+2. Run `npm run build`, `npm test`, `npm run test:platform:windows`, and `npm run test:package:config`.
+3. Run `powershell -File scripts/check-windows-prereqs.ps1`, then `powershell -File scripts/package-personal-win.ps1 -OutputDir <fresh-output-directory>` for a native personal candidate. Use `scripts/build-windows-backend.ps1` for a backend-only build.
+4. Review path and fixture parameters in `scripts/test-standalone-backend.ps1`, `scripts/test-standalone-packaged.ps1`, `scripts/test-windows-ui4b-responsive-matrix.mjs` and `scripts/test-portable-rc6-acceptance.mjs` before targeting the exact new candidate. Several helpers are version-specific. Use an isolated test profile and a native desktop session.
+
+For future changes, record the ID, source SHA and files, shared-source status, expected Windows impact, implementation and test commands, and blockers. Use **Windows review pending**, **Windows implementation pending**, **Windows native testing pending**, and **Windows verified** as applicable. Record the native machine class, exact candidate, date and results before marking a row verified.
