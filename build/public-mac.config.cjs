@@ -1,6 +1,6 @@
 const signed=process.env.GMT_SIGNED_RELEASE==='1';
 module.exports={
- extends:null,appId:'local.globalmarket.terminal',productName:'GLOBAL MARKET TERMINAL',buildVersion:'1.1.0.1',
+ extends:null,appId:'local.globalmarket.terminal',productName:'GLOBAL MARKET TERMINAL',buildVersion:'1.1.0.2',
  directories:{output:process.env.GMT_MAC_OUTPUT||'../../release-v1.0.0-global-market-terminal/mac-candidate'},
  files:['desktop/dist/**/*','desktop/dist-electron/main.cjs','desktop/dist-electron/preload.cjs','desktop/dist-electron/notification-status.node','package.json','NOTICE','LICENSE','THIRD_PARTY_NOTICES/**/*'],
  extraResources:[{from:'backend/dist-public/imt-backend',to:'backend'}],
