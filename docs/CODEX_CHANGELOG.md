@@ -1,5 +1,12 @@
 # Codex development log
 
+## 2026-11-22 — Electron security remediation
+
+- Replace Electron 44.7.2 with the exact stable 44.11.5 pin to address [CVE-2026-115570](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9). Retain Node 22.19.0 for development and bump the desktop candidate to 1.1.0-rc.7.
+- Keep the API contract, bundle identity, and updater policy. Validate the frozen backend, packaged Electron and native notification bridge on Apple Silicon. Keep source checks, isolated live candidate checks, and installed-profile evidence associated with their actual revisions.
+- The npm lockfile audit reported seven moderate and one high development-tooling findings and zero findings in the production dependency graph. The Electron advisory was absent after the exact pin update.
+- Record the Windows-native follow-up under WIN-ELECTRON44. Local installation and public installer publication have separate gates.
+
 ## 2026-11-22 — Integrate the CI foundation
 
 - PR #2 head `c1bec30f77921c304f3a8899fbffad46554d8aa8` entered official `main` at `901540d084e995d12974dfe8ed1ed1244bca7fb2`. The source workflow now runs on main pushes as well as pull requests. The candidate and source runners use the available Python 3.11.9 ARM64 image build, provision locked Electron, and test using prepared official NSE fixtures.

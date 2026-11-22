@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
-const EXPECTED_VERSION = '1.1.0-rc.6';
+const EXPECTED_VERSION = '1.1.0-rc.7';
 const EXPECTED_API_VERSION = '1.0.0';
 
 console.log('=== Running Automated Version Consistency Test ===');
@@ -48,6 +48,11 @@ const lock = JSON.parse(await readFile(resolve('package-lock.json'), 'utf8'));
 assert.equal(lock.version, EXPECTED_VERSION, `package-lock.json version must be ${EXPECTED_VERSION}`);
 assert.equal(lock.packages[''].version, EXPECTED_VERSION, `package-lock.json packages[""].version must be ${EXPECTED_VERSION}`);
 console.log('✔ package-lock.json version and packages[""].version match:', lock.version);
+
+// The installed runtime and the packaging download must use the exact reviewed pin.
+assert.equal(lock.packages[''].devDependencies.electron, pkg.devDependencies.electron);
+assert.equal(lock.packages['node_modules/electron'].version, pkg.devDependencies.electron);
+console.log('✔ Electron manifest and lockfile agree:', pkg.devDependencies.electron);
 
 console.log('=== All Version Consistency Checks Passed Successfully ===');
 

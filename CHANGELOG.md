@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-rc.7 — security candidate
+
+- Pin Electron to 44.11.5 on the existing Electron 44 release line. This includes the fix for [GHSA-jr5w-w6x2-84p9 / CVE-2026-115570](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9) involving compromised intermediate certificates.
+- Synchronize the renderer, backend health response, manifests, and packaged acceptance guard with rc.7. Advance the macOS bundle build to 1.1.0.2.
+
 ## 1.0.0 — candidate, unpublished
 
 - Retained the existing verified macOS application; development and packaging now target Apple Silicon arm64 only.

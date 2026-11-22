@@ -1,5 +1,9 @@
 # macOS release status
 
+## 1.1.0-rc.7 security candidate
+
+Electron 44.11.5 includes the upstream fix for [CVE-2026-115570](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9). The candidate keeps bundle ID `local.globalmarket.terminal` and native version `1.1.0`, with bundle build `1.1.0.2`. Its acceptance record must identify the exact integrated source, artifact checksums, packaged Electron and backend versions, disposable live-market and notification checks, and installed-profile continuity. Keep the acceptance record with the private candidate artifacts.
+
 ## Integrated CI foundation
 
 PR #2 merged into `main` at `901540d084e995d12974dfe8ed1ed1244bca7fb2`. Its [hosted source run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45017424968) passed all 18 numerical and 31 UI fixture scripts. Focused native source tests also passed at the exact PR head. These results cover the updated version assertion and persisted Ichimoku settings across restart. A local release candidate requires fresh artifact and packaged acceptance evidence at the final integrated SHA.
@@ -23,7 +27,7 @@ The tested build produced these SHA-256 fingerprints.
 
 Use `package.json` as the application SemVer authority. Keep the root lockfile version, `desktop/src/brand.ts` and `/health` in sync. `scripts/version-consistency-test.mjs` checks these fields and representative artifact names. The API contract is independently `1.0.0`. Preserve the package identity, stable feed, native build-version rules and updater policy until a release explicitly changes them.
 
-README displays `1.1.0-rc.3`, CHANGELOG ends at the unpublished `1.0.0` candidate, and the default public Mac output and workflow retain a `v1.0.0` directory label. `TRANSFER_AND_BUILD_GUIDE.md` describes a historical Windows bundle and `1.0.0` installer. The draft-release gate has a version/tag allowlist ending at `rc.3` and a `v1.0.0` draft title. The locked Electron 44.7.2 toolchain requires Node 22.12 or newer. Use the verified Node 22.19.0. The stable marker identifies the package and unsigned candidates remain blocked by update readiness. Reconcile release metadata and the bundled NSE CSV redistribution policy before publication.
+The default public Mac output and workflow retain a historical `v1.0.0` directory label. `TRANSFER_AND_BUILD_GUIDE.md` describes a historical Windows bundle and `1.0.0` installer. The draft-release gate has a version/tag allowlist ending at `rc.3` and a `v1.0.0` draft title. The locked Electron 44.11.5 toolchain requires Node 22.12 or newer. Use the verified Node 22.19.0. The stable marker identifies the package and unsigned candidates remain blocked by update readiness. Reconcile release metadata and the bundled NSE CSV redistribution policy before publication.
 
 ## Build, installation and retention
 

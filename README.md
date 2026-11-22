@@ -4,7 +4,7 @@ Free and open-source desktop market chart analysis project for supported financi
 
 **Architecture:** Electron + React + TypeScript / Python + FastAPI  
 **Chart Engine:** TradingView Lightweight Charts™  
-**Version:** 1.1.0-rc.3 (API Contract 1.0.0)
+**Version:** 1.1.0-rc.7 (API Contract 1.0.0)
 
 ---
 
