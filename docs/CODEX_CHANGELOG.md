@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-22 — Integrate the CI foundation
+
+- PR #2 head `c1bec30f77921c304f3a8899fbffad46554d8aa8` entered official `main` at `901540d084e995d12974dfe8ed1ed1244bca7fb2`. The source workflow now runs on main pushes as well as pull requests. The candidate and source runners use the available Python 3.11.9 ARM64 image build, provision locked Electron, and test using prepared official NSE fixtures.
+- The [exact PR #2 hosted run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45017424968) passed 2,419 backend tests (one optional skip), the build, platform and version checks, 18 numerical scripts, and 31 UI scripts. The Mac comparison worktree at that PR head also passed the build, release-version UI and Ichimoku autosave/restart checks. The release test reads the manifest version, and the Ichimoku test asserts stored settings before and after restart.
+- The permanent checkout is `~/Projects/GLOBAL-MARKET-TERMINAL`. The final documentation merge revision requires a fresh full native run and its own candidate record. Keep source, fixture, package, installation, and public release evidence labeled with their actual revisions. Windows native validation and trusted Mac distribution remain pending.
+
 ## 2026-11-22 — Mac-first baseline and workflow
 
 - Audited the official `main` at `5a3c0713e08e9fbb739272f2363acfd45465b377`. Added the project map, Mac release record, Windows queue and contributor instructions through a documentation-only change.
