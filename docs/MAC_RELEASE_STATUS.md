@@ -1,5 +1,9 @@
 # macOS release status
 
+## Phase 1 Chart Grid source review
+
+The Phase 1 source review uses version 1.1.0-rc.7 and Electron 44.11.5. The installed build remains the integrated rc.7 at `f53b57f84b7ff4cac784f54856a47292cc4a8a9c`. Phase 1 fixture screenshots and timings come from a native source launch in a temporary profile. The proposed 1.1.0-rc.8 candidate requires approved integration, version synchronization and a fresh unique signed or ad-hoc artifact set with exact SHA and checksums. Packaged/live acceptance and the application swap are pending. Prepare the rollback bundle and consistent profile backups before obtaining installation approval. Public binary distribution has a separate gate.
+
 ## 1.1.0-rc.7 security candidate
 
 Electron 44.11.5 includes the upstream fix for [CVE-2026-115570](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9). The candidate keeps bundle ID `local.globalmarket.terminal` and native version `1.1.0`, with bundle build `1.1.0.2`. Its acceptance record must identify the exact integrated source, artifact checksums, packaged Electron and backend versions, disposable live-market and notification checks, and installed-profile continuity. Keep the acceptance record with the private candidate artifacts.

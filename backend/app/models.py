@@ -414,7 +414,32 @@ class IndicatorPreset(BaseModel):
         if not self.name:raise ValueError('Enter a preset name')
         if len({i.id for i in self.indicators})!=len(self.indicators):raise ValueError('Duplicate preset indicator IDs')
         return self
+class GridCard(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    canonical_id: str = Field(min_length=7, max_length=180, pattern=r'^(yahoo|hyperliquid):\S+$')
+    timeframe: Timeframe = '1d'
+    sma: bool = False
+    ema: bool = False
+
+
+class GridPreferences(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    version: Literal[1] = 1
+    source_label: str = Field(default='', max_length=96)
+    timeframe: Timeframe = '1d'
+    columns: Literal[1, 2, 3, 4] = 4
+    size: Literal['compact', 'comfortable'] = 'compact'
+    cards: list[GridCard] = Field(default_factory=list, max_length=128)
+
+    @model_validator(mode='after')
+    def unique_cards(self):
+        if len({card.canonical_id for card in self.cards}) != len(self.cards):
+            raise ValueError('Chart Grid instruments must be unique')
+        return self
+
+
 class Workspace(BaseModel):
+    chart_grid: GridPreferences = Field(default_factory=GridPreferences)
     unsupported_indicator_archive:list[dict]=Field(default_factory=list,max_length=1024)
     @model_validator(mode='before')
     @classmethod

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add a dedicated Chart Grid with paginated watchlist and screener handoffs, symbol and timeframe controls, responsive cards, SMA/EMA, native fullscreen, and a return path to Charts.
+- Store only versioned Grid preferences and canonical identities in the local workspace. Use existing Yahoo Finance and Hyperliquid historical snapshots, bounded request ownership and existing caches.
+
 ## 1.1.0-rc.7 — security candidate
 
 - Pin Electron to 44.11.5 on the existing Electron 44 release line. This includes the fix for [GHSA-jr5w-w6x2-84p9 / CVE-2026-115570](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9) involving compromised intermediate certificates.

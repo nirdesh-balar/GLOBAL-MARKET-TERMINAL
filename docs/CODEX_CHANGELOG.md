@@ -1,5 +1,12 @@
 # Codex development log
 
+## 2026-11-23 · Phase 1 Advanced Chart Grid
+
+- Add a separate workspace with ordered canonical watchlist and scanner inputs, per-card and global timeframes, selectable columns and card sizes, and 20-candle SMA/EMA overlays. Preserve the normal chart pane state when switching.
+- Mount at most eight Grid charts per page and one when maximized. Limit Grid history to two active leases, remove invisible charts and release old history owners. Preserve shared requests needed by another consumer and use the existing backend cache and provider limits.
+- Store Grid settings in a versioned profile field with legacy defaults. Rehydrate display metadata from exact registry matches. Existing source/version/profile boundaries remain in effect.
+- Add backend repair/validation tests and the Grid numerical and native UI suites. The new benchmark records cold and cached timings, upstream counts and memory independently of the existing Charts gate. Windows native acceptance is tracked by WIN-CHARTGRID.
+
 ## 2026-11-22 — Electron security remediation
 
 - Replace Electron 44.7.2 with the exact stable 44.11.5 pin to address [CVE-2026-115570](https://github.com/electron/electron/security/advisories/GHSA-jr5w-w6x2-84p9). Retain Node 22.19.0 for development and bump the desktop candidate to 1.1.0-rc.7.

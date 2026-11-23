@@ -74,3 +74,50 @@ def test_restore_workspace_with_user_db_copy(tmp_path):
     assert len(ws['panes'][0]['indicators']) == 5
     assert len(ws['watchlists']) == 15
     assert ws['layout'] == 1
+
+
+@pytest.mark.parametrize('grid', [
+    {'version': 2},
+    {'columns': 5},
+    {'cards': [{'canonical_id': 'BTC-USD'}]},
+    {'cards': [{'canonical_id': 'yahoo:BTC-USD:CCC:crypto', 'candles': [1]}]},
+    {'cards': [{'canonical_id': 'yahoo:AAPL:NMS:equity'}] * 2},
+    {'cards': [{'canonical_id': f'yahoo:ITEM{i}:NMS:equity'} for i in range(129)]},
+])
+def test_workspace_rejects_invalid_chart_grid(grid):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        Workspace.model_validate({'panes': [], 'chart_grid': grid})
+
+
+def test_chart_grid_hydrates_exact_identity_and_repairs_legacy(tmp_path):
+    db = Database(tmp_path / 'terminal.sqlite3')
+    registry = InstrumentRegistry(db, Path(__file__).resolve().parents[1] / 'resources')
+    saved = default_workspace(db)
+    saved['layout'] = 1
+    db.put('workspace', saved)
+    legacy = restore_workspace(db, registry)
+    assert legacy['chart_grid']['cards'] == []
+    assert legacy['layout'] == 1
+
+    index = registry.indices()[0]
+    saved['chart_grid'] = {'columns': 3, 'cards': [
+        {'canonical_id': index['canonical_id'], 'timeframe': '1w', 'ema': True},
+        {'canonical_id': 'hyperliquid:perpetual:unknown', 'timeframe': '1d'},
+    ]}
+    db.put('workspace', saved)
+    prefs = restore_workspace(db, registry, hydrate_grid=True)['chart_grid']
+    assert prefs['columns'] == 3
+    assert prefs['cards'][0]['instrument']['canonical_id'] == index['canonical_id']
+    assert prefs['cards'][0]['timeframe'] == '1w' and prefs['cards'][0]['ema']
+    assert 'instrument' not in prefs['cards'][1]
+    assert all('instrument' not in card for card in restore_workspace(db, registry)['chart_grid']['cards'])
+    assert db.get('workspace') == saved
+
+    saved['chart_grid'] = {'version': 99, 'cards': []}
+    db.put('workspace', saved)
+    repaired = restore_workspace(db, registry)
+    assert repaired['chart_grid'] == legacy['chart_grid']
+    assert repaired['panes'] == legacy['panes']
+    assert repaired['watchlists'] == legacy['watchlists']

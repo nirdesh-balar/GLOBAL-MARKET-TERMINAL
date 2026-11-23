@@ -7,8 +7,8 @@ export const api = <T>(path:string,method='GET',body?:unknown,requestId?:string)
 type Pending={promise:Promise<HistoryResult>;id:string;users:number;settled:boolean;cancelTimer?:ReturnType<typeof setTimeout>};
 const pending=new Map<string,Pending>();
 const updates=new Map<string,Set<(data:HistoryResult)=>void>>();
-const requestKey=(path:string)=>{const url=new URL(path,'http://127.0.0.1');url.searchParams.delete('priority');url.searchParams.sort();return url.pathname+'?'+url.searchParams.toString();};
-const canonical=(path:string)=>{const url=new URL(path,'http://127.0.0.1');url.searchParams.delete('refresh');return requestKey(url.pathname+url.search);};
+export const historyRequestKey=(path:string)=>{const url=new URL(path,'http://127.0.0.1');url.searchParams.delete('priority');url.searchParams.sort();return url.pathname+'?'+url.searchParams.toString();};
+const canonical=(path:string)=>{const url=new URL(path,'http://127.0.0.1');url.searchParams.delete('refresh');return historyRequestKey(url.pathname+url.search);};
 export function subscribeHistory(path:string,callback:(data:HistoryResult)=>void){
   const key=canonical(path);const listeners=updates.get(key)||new Set();listeners.add(callback);updates.set(key,listeners);
   return()=>{listeners.delete(callback);if(!listeners.size)updates.delete(key);};
@@ -16,7 +16,7 @@ export function subscribeHistory(path:string,callback:(data:HistoryResult)=>void
 // Renderer leases deduplicate identical pane requests. Cancelling one pane
 // does not abort a request still used by another pane. No renderer disk cache.
 export function acquireHistory(path:string){
-  const key=requestKey(path);let item=pending.get(key);
+  const key=historyRequestKey(path);let item=pending.get(key);
   if(!item){
     const id=crypto.randomUUID();
     item={id,users:0,settled:false,promise:api<HistoryResult>(path,'GET',undefined,id)};
