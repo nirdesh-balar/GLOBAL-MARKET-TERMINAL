@@ -4,8 +4,10 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
-const EXPECTED_VERSION = '1.1.0-rc.7';
+const EXPECTED_VERSION = '1.1.0-rc.8';
 const EXPECTED_API_VERSION = '1.0.0';
+const EXPECTED_MAC_BUNDLE_VERSION = '1.1.0';
+const EXPECTED_MAC_BUILD_VERSION = '1.1.0.3';
 
 console.log('=== Running Automated Version Consistency Test ===');
 console.log(`Target Release Version: ${EXPECTED_VERSION}`);
@@ -31,6 +33,9 @@ console.log('✔ backend/app/main.py health endpoint exposes matching version an
 
 // 4. Check macOS build config artifact naming
 const macConfig = require(resolve('build/public-mac.config.cjs'));
+assert.equal(macConfig.mac.extendInfo.CFBundleShortVersionString, EXPECTED_MAC_BUNDLE_VERSION);
+assert.equal(macConfig.buildVersion, EXPECTED_MAC_BUILD_VERSION);
+console.log('✔ macOS native version and build match:', EXPECTED_MAC_BUNDLE_VERSION, EXPECTED_MAC_BUILD_VERSION);
 const macZipTemplate = macConfig.mac.artifactName;
 const macZipResolved = macZipTemplate.replace('${version}', pkg.version).replace('${ext}', 'zip');
 assert.equal(macZipResolved, `GLOBAL-MARKET-TERMINAL-${EXPECTED_VERSION}-mac-arm64.zip`);

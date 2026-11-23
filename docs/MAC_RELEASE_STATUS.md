@@ -1,8 +1,20 @@
 # macOS release status
 
-## Phase 1 Chart Grid source review
+## 1.1.0-rc.8 Phase 1 candidate preparation
 
-The Phase 1 source review uses version 1.1.0-rc.7 and Electron 44.11.5. The installed build remains the integrated rc.7 at `f53b57f84b7ff4cac784f54856a47292cc4a8a9c`. Phase 1 fixture screenshots and timings come from a native source launch in a temporary profile. The proposed 1.1.0-rc.8 candidate requires approved integration, version synchronization and a fresh unique signed or ad-hoc artifact set with exact SHA and checksums. Packaged/live acceptance and the application swap are pending. Prepare the rollback bundle and consistent profile backups before obtaining installation approval. Public binary distribution has a separate gate.
+Phase 1 source is integrated at `3f044d65fcc3dc78177aeddcadc65e436fa4c673`. The [PR source verification](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45131060334) passed all 32 macOS UI scripts, including native fullscreen, and measured the normal eight-chart warm restore at 1,719 ms with zero additional provider requests. The [post-merge run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45135294940) tracks integrated main. The installed ARM64 app is 1.1.0-rc.7 at `f53b57f84b7ff4cac784f54856a47292cc4a8a9c`.
+
+The proposed 1.1.0-rc.8 revision uses Electron 44.11.5, API 1.0.0, bundle ID `local.globalmarket.terminal`, native short version `1.1.0`, and build `1.1.0.3`. Source integration approval is required before packaging. Build from the approved, verified official main with the existing private candidate workflow and a fresh `GMT_MAC_OUTPUT`. Record the exact version, embedded source SHA, app and frozen-backend ARM64 identities, signature, DMG, ZIP, updater metadata, blockmaps and checksums. [Release procedure](RELEASING.md)
+
+### Native fullscreen limitation
+
+On local macOS 27.2.1 arm64, Electron 44.11.5 intermittently started a native fullscreen transition and returned to normal bounds without an `enter-full-screen` event. The same cancellation reproduced with direct `BrowserWindow.setFullScreen(true)` in a minimal Electron window without GMT code, renderer or IPC. In GMT, the renderer request reached main and the app reset the pending state; a separate run completed enter, exit and the Escape sequence. The underlying native cause remains open. Preserve the 15-second UI timeout and all fullscreen assertions.
+
+### Packaged acceptance and installation
+
+1. Use disposable profiles to verify watchlists, indicators, drawings, scanners, alerts, restart persistence and owned backend exit. Verify real Yahoo Finance and Hyperliquid data with canonical instruments in Charts and Grid. Record Grid pagination, timeframe changes, maximize/restore, cache reuse and upstream deltas. Preserve the strict under-2,000 ms Charts limit and zero extra provider requests on warm restoration.
+2. Run bounded native fullscreen enter, exit and Escape checks in normal Charts and Chart Grid on the maintainer's Mac. Record each transition, focus, chart restoration and renderer errors. If transitions remain intermittent, retain the candidate for preview and include the limitation in the installation decision.
+3. Before requesting the swap at `/Applications/GLOBAL MARKET TERMINAL.app`, provide the candidate version, approved SHA, artifact and bundle verification, native acceptance results and rollback location. Retain the verified rc.7 artifacts and existing profile backups. During the approved installation window, take fresh consistent copies of the production, development and legacy profiles and record their verification. If rc.8 fails installation acceptance, restore the verified rc.7 bundle and restore the pre-install profile snapshot if required for continuity. Preserve both release sets, exports and all earlier evidence.
 
 ## 1.1.0-rc.7 security candidate
 
