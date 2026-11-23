@@ -20,6 +20,12 @@ The left end of the header combines product mark, instrument and interval. Chart
 
 Representative reference pixels: canvas `#14151A`, rail `#17191F`, separator `#21232E`, grid `#1C1C21`, axis text `#CDD1DE`, icons `#8B90A1`, up candle `#64A994`, down candle `#D13946`, blue EMA `#507BF2` and green EMA `#90F781`. Samples reflect this still and may include blending. A01 in the private evidence index marks the regions. A02–A11 annotate the overlays and control families. [Timeline and frame index](HEATCHARTING_VIDEO_ANALYSIS.md)
 
+### Supplemental chart and dialog measurements
+
+On B04 at 01:07, the full frame is 2940 × 1608. Approximate plot separators in source coordinates are y≈98, 979, 1241 and 1500, giving the price pane, RSI and Stochastic RSI approximately 63%, 19% and 18% of plotted height. All three share one time axis and a vertical crosshair. Each study pane shows its own hover values, local scale and series actions. Use these ratios as observed reference geometry. GMT should preserve saved pane heights and provide independent minimum heights where space is limited.
+
+On B07 and B10, the modal spans about 73.5% of frame width and 87.6% of frame height. The study and alert forms organize inputs and settings near the top. Timestamps and individual controls are listed in the inventory. GMT’s original settings layout can size dialogs by their contents and keep actions visible during scroll. [Supplemental timeline and evidence IDs](HEATCHARTING_VIDEO_ANALYSIS.md#supplemental-recording-timeline)
+
 ## Proposed GMT desktop composition
 
 | Region | Placement and sizing | GMT behavior |
@@ -39,6 +45,9 @@ Workspace modes and analysis panels use explicit text. Icons use the existing li
 - Search preserves canonical provider identity, distinguishes Hyperliquid spot/perpetual from Yahoo instruments and shows exchange/source alongside the symbol. Escape restores focus, Enter selects a row and duplicate symbols remain distinguishable. Limit categories to the supported catalogue.
 - Settings open against a snapshot of the active target. Preview scope, explicit apply and cancel semantics must be consistent with the existing persistence model. Theme, target, settings and panel changes must avoid unrelated provider requests.
 - Pointer interactions support pan, time/price scaling, inspection and measurement. Use explicit drawing mode and edit focus. Keyboard shortcuts respect open input fields and native menu conflicts. Keep measure values and units in an accessible representation.
+- Indicator editing may group inputs and series styling with a local preview. Preserve existing instance IDs, pane heights and visibility. Showing or removing an oscillator must update the shared timeline without moving unrelated drawings or changing their anchors. Reuse loaded history when study settings change and preserve existing cache and request limits.
+- A contextual price alert can seed the existing local rule editor with the active instrument’s canonical identity, timeframe and raw price with its precision. A percent-mode cursor must resolve to the actual underlying price. Preserve existing validation, repeat/expiry semantics and native delivery. Support cancel and restore focus to the initiating chart.
+- Keep display time, venue sessions and UTC timestamps explicit. A proposed display-zone picker must preserve stored candle and drawing timestamps, aggregation/session logic, and the visible range. Reuse current percentage scaling and disclose its anchor semantics. A local keyboard help dialog may list the actual GMT shortcuts by platform.
 - Inspectors present persistent watchlist sections, scanner presets, alerts and visible studies with meaningful pending/offline/empty status. Local alerts retain current rule and native-notification lifecycle.
 - Replay uses existing recorded candle data with deterministic prefix calculation. A future depth layer needs its own documented coverage and remains hidden when an instrument or stored window has no supported depth.
 - Use separate display names and navigation for a market-wide return heatmap and a price/time liquidity layer. Each shows metric, source and time-basis. Preserve missing intervals and disconnected or stale states.

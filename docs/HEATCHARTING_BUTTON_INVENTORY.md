@@ -63,6 +63,23 @@ Reference coverage is defined in the [video analysis](HEATCHARTING_VIDEO_ANALYSI
 
 The guide documents additional shortcuts, replay and analysis behavior. Menu visibility, a tooltip, or a rendered level does not verify an underlying algorithm, a provider claim, a persisted change or an authentication/payment flow. Use the inventory statuses when weighing roadmap claims. [Official guide](https://heatcharting.com/guide)
 
+## Supplemental recording controls
+
+These timestamps use the second video. B-series frame IDs refer to the [private evidence index](HEATCHARTING_VIDEO_ANALYSIS.md#private-annotated-frame-index).
+
+| Control or surface | Child controls and visible result | Evidence |
+| --- | --- | --- |
+| Technicals and Smart money | List opened and study rows **Used**. Smart Money Concepts and Liquidity Pools & Sweeps were added repeatedly, with toasts and additional legend entries. **Shown** Order Blocks + Liquidity, Market Structure, Fair Value Gaps, Equal Highs/Lows, Supply & Demand Zones, and favorites. Individual algorithms, provider inputs and study equivalence remain unverified. | 00:09–00:16 / B01–B02 |
+| Drawing visibility and study legend | Drawing-visibility affordance **Used** while bands remain; study controls later remove the bands. Study count expand/collapse, per-row gear and removal **Used**. Per-row visibility scope and persistence remain unverified. | 00:17–00:34, 00:45–00:53 |
+| EMA settings | Gear **Used** to open two instances. Length 9/20 and Close source **Shown**; plot checkbox, swatch, width and line style, Cancel, Save and close. State after a changed Save remains unverified. | 00:35–00:44 / B03 |
+| RSI search and oscillator panes | Query `rsi`, RSI and Stochastic RSI additions **Used**; RSI Divergences and Connors RSI **Shown**. Two panes appear with current/hover values, scale and legend actions. Moving across panes and later removing the studies **Used**. | 00:54–01:23, 02:00–02:21 / B04 |
+| Stochastic RSI and RSI settings | Gears **Used**. Stochastic RSI **Shown** RSI/Stoch lengths, K/D smoothing, source, per-series plot/color/width/style and reference-level toggle with 80/20. RSI **Shown** length, Close source, plot options, upper/lower 70/30 and reference-level toggle. Both expose Cancel, Save and close. Applying a changed setting and durable save remain unverified. | 01:24–01:36 / B05–B06 |
+| Price-scale alert plus | **Used** twice and opens a different chart-derived threshold each time. **Shown** symbol picker, interval field, condition fields (operand, comparator, value type/value), add/remove condition, repeat, expiry, message, in-app sound, Telegram, webhook and URL, Cancel, Create and close. Valid subscription, server evaluator behavior, alert save and delivery remain unverified. | 01:52–01:59 / B07 |
+| Help / Keyboard shortcuts | Help opens a shortcut list and the modal closes. **Shown** typing for symbol and interval, time/price zoom and price-axis drag/reset, measurement, channel baseline lock, temporary snap, drawing tool keys, delete, undo/redo, Escape and replay keys. B08 records the visible list. Shortcut execution remains unverified. | 02:22–02:25 / B08 |
+| Price percentage and auto | Percent control **Used** with percent labels and return to absolute prices. Auto remains **Shown**; percentage anchoring and a separate Auto click outcome remain unverified. | 02:26–02:44 / B09 |
+| Chart clock and time zone | Click and list scroll **Used**. **Shown** search by place/zone/offset, local time, UTC and IANA zones with offsets, selection highlight, Cancel, Apply and close. Search results after typing, a changed timezone and restart persistence remain unverified. | 02:45–02:55 / B10 |
+| Order book & time and sales | Hover **Used** to expose the label on the staggered-bar rail icon. Panel content and depth or trade updates remain unverified. | 02:58 / B11 |
+
 ## Still-image positional coverage
 
 Use positions to identify icon buttons with no witnessed label or activation. Coordinates below use the half-size 1470 × 804 still. They are image locations for A01.
@@ -73,5 +90,5 @@ Use positions to identify icon buttons with no witnessed label or activation. Co
 | Header, x≈981–1461 | Layout, arrangement count, workspace name/save and chevron, theme, camera, overflow, install, avatar with unread badge and Trade. The avatar badge destination and actions remain unverified. |
 | Left rail, x≈22 | y≈72 cursor, 108 lines, 144 pitchforks, 180 Fib/Gann, 216 patterns, 251 forecast/measurement family, 288 shapes, 324 text, 360 measure, 630 stay in drawing mode, 666 lock, 702 magnet, 738 visibility and 774 delete. Flyout selections and toggles without observed effects retain the status above. |
 | Right rail, x≈1447 | y≈72 list, 108 clock, 144 linked squares, 180 staggered bars, 216 line graph, 265 columns, 301 funnel, 337 code brackets, 373 table, 409 speech bubble, 445 sparkle, 481 radar, 517 document, 553 four squares, 781 help. Observed panels and tooltips are enumerated above. The screenshot alone does not establish an unshown label or activation for any glyph. |
-| Chart top and axis | Instrument legend with venue/interval and OHLCV, bid/ask buttons with spread readout, study-count collapse affordance, two study rows, price marker, plus on crosshair scale and a countdown. Click behavior of collapse, scale plus and countdown remains unverified. |
+| Chart top and axis | Instrument legend with venue/interval and OHLCV, bid/ask buttons with spread readout, study-count collapse affordance, two study rows, price marker, plus on crosshair scale and a countdown. Supplemental video verifies collapse and price-seeded alert opening. Countdown interaction remains unverified. |
 | Chart bottom | Presets, calendar/range button, Strategy Tester, Screener, Option Chain, Pine Editor, Trading Panel, displayed clock/timezone, percent and auto switches. Navigation and action coverage is recorded above. |
