@@ -50,9 +50,11 @@ try {
       chart:box('.chart-canvas'), watchlist:document.querySelector('.professional-watchlist')?box('.professional-watchlist'):null,
     };
   });
+  await expect(page.locator('.watch-row').first()).toHaveAttribute('data-quote-state','ready',{timeout:30000});
+  await more.evaluate(element=>element.blur());
   const expandedDock=await measure();
   await capture('expanded');
-  const dock = page.getByRole('button', { name: 'Watchlist dock', exact: true });
+  const dock = page.getByRole('button', { name: 'Toggle sidebar', exact: true });
   await dock.click();
   await expect(dock).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.professional-watchlist')).toHaveCount(0);

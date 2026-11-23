@@ -12,7 +12,7 @@ interface WorkspaceRailProps {
 export function WorkspaceRail({ watchlistOpen, onWatchlist, onScanner, onAlerts, onGrid, onData }: WorkspaceRailProps) {
   return (
     <nav className="analysis-rail" aria-label="Chart analysis">
-      <button type="button" title="Watchlist" aria-label="Watchlist dock" aria-expanded={watchlistOpen} onClick={onWatchlist}>
+      <button type="button" title="Show or hide watchlist" aria-label="Toggle sidebar" aria-expanded={watchlistOpen} onClick={onWatchlist}>
         <List size={19} />
       </button>
       <button type="button" title="Market scanner" aria-label="Screener workspace" onClick={onScanner}>

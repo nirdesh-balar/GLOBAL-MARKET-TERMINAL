@@ -1,5 +1,5 @@
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
-  Play, Maximize2, Expand, Shrink, Camera, PanelRightClose, PanelRightOpen, SlidersHorizontal,
+  Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
   Minimize2, Scan, Bell, Save, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
@@ -18,7 +18,6 @@ export function command(id: string, action: string, value?: unknown) {
 interface HeaderProps {
   workspace: Workspace;
   pane: Pane;
-  sidebar: boolean;
   layoutMenu: boolean;
   onSearch: () => void;
   onChange: (value: Partial<Pane>) => void;
@@ -31,7 +30,6 @@ interface HeaderProps {
   saved: boolean;
   onData: () => void;
   onChartSettings: () => void;
-  onSidebar: () => void;
   onSync: (key: 'sync_time' | 'sync_crosshair') => void;
   onAlert: () => void;
   focused: boolean;
@@ -42,8 +40,8 @@ interface HeaderProps {
 }
 
 export function TerminalHeader({
-  workspace, pane, sidebar, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
-  onLayout, onTheme, onSettings, onChartSettings, onSidebar, onSync, onAlert, focused,
+  workspace, pane, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
+  onLayout, onTheme, onSettings, onChartSettings, onSync, onAlert, focused,
   expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
 }: HeaderProps) {
   const { flags, assignFlag, removeFlag } = useFlags();
@@ -159,7 +157,6 @@ export function TerminalHeader({
       <button data-testid="macos-fullscreen" aria-label={nativeState.fullscreen ? `Exit ${OS_NAME} Fullscreen` : `Enter ${OS_NAME} Fullscreen`}
         aria-pressed={nativeState.fullscreen} title={`Native ${OS_NAME} fullscreen · ${FULLSCREEN_HINT}`}
         disabled={nativeState.transitioning} onClick={onNativeFullscreen}>{nativeState.fullscreen ? <Shrink size={16} /> : <Expand size={16} />}</button>
-      <button aria-label="Toggle sidebar" title="Show / hide watchlist" onClick={onSidebar}>{sidebar ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}</button>
     </header>
   );
 }
