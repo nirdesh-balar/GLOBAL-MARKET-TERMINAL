@@ -1,5 +1,28 @@
 # Codex development log
 
+## 2026-11-23 · Stage 4 drawing persistence synchronization
+
+- `drawing-stage4-ui.mjs` now waits for the expected count of distinct replacement drawing IDs from the persisted workspace and verifies that every old ID is gone. The bounded wait completes before the snapshot used for the invalid-import equality assertion. Template replacement intentionally creates new IDs, while workspace saves are debounced. The previous count-only wait could compare different saves of the same-size drawing set.
+- The same drawing assertion failed on the Phase 0 post-merge run and the corrected Phase 1 main-target run. Neither run showed a drawing renderer error. The test correction leaves application persistence, restart, drawing security and history assertions intact. [Phase 0 job](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45120305418/job/137512300672) · [Phase 1 job](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45120427073/job/137512686413)
+
+- With a controlled workspace write, the old test captured the old IDs and failed the equality assertion. The corrected script read the old set while the write was held and passed once the replacement IDs persisted. Three additional isolated runs passed all nine Stage 4 tools and restart checks. A rejected replacement save timed out at the new wait, and a deliberate persisted drawing change after rejected import still failed the original equality assertion.
+
+### Hosted normal eight-chart warm restore
+
+| Run | Time | Existing latency gate |
+| --- | ---: | --- |
+| rc.7 main, [attempt 1](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45036636194/attempts/1) | 2,173 ms | Failed |
+| rc.7 main, [attempt 2](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45036636194/attempts/2) | 1,930 ms | Passed |
+| Phase 0 documentation [PR #4](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45107048542) | 1,649 ms | Passed |
+| Phase 1 exact head, [attempt 1](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45107055210/attempts/1) | 2,641 ms | Failed |
+| Phase 1 same head, [attempt 2](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45107055210/attempts/2) | 1,714 ms | Passed |
+| Phase 0 documentation [post-merge main](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45120305418) | 3,641 ms | Failed |
+| Phase 1 recovery [main-target PR #5](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45120427073) | 1,853 ms | Passed |
+
+All seven measurements cleared the zero-additional-provider-requests assertion, which runs before the strict latency assertion. Phase 0 post-merge did not contain Chart Grid. Its diagnostics showed eight rendered panes with 8,000 bars each and no renderer errors. Phase 1's 2,641 ms failure likewise rendered all eight panes with no renderer errors. The hosted logs do not isolate the delay among cached history handling, IPC and render scheduling.
+
+In prior matched Apple Silicon tests, Phase 0 measured 760, 782 and 800 ms, and Phase 1 measured 757, 801 and 769 ms. Both native traces returned seven cached 8,000-bar responses after the restore click, with the final responses decoded at approximately 552 and 549 ms, respectively. The hosted outliers were not reproduced within those controlled local samples. Preserve the strict below-2,000 ms and zero-additional-provider assertions. Native Windows verification remains pending under `WIN-CHARTGRID` and `WIN-ELECTRON44`.
+
 ## 2026-11-23 · Phase 1 Advanced Chart Grid
 
 - Recover malformed or unsupported stored Grid settings when loading the workspace. A subsequent valid watchlist operation or workspace save preserves the original Grid payload for recovery and commits the supported settings in the same SQLite transaction. Workspace loading does not write to the profile.
