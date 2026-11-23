@@ -1,0 +1,29 @@
+# HeatCharting to GMT feature matrix
+
+Reference labels and actions are traceable to the [inventory](HEATCHARTING_BUTTON_INVENTORY.md). GMT status is based on the rc.8 source and established acceptance. “Proposed” requires implementation approval. “Feasibility gate” requires provider and data-definition evidence before feature commitment.
+
+| Reference feature | Evidence | Existing GMT equivalent | GMT disposition |
+| --- | --- | --- | --- |
+| Search by symbol/asset/market | NIFTY search and selection observed | Provider-aware search, canonical IDs, manual discovery and existing imported directory metadata | Preserve. Show supported categories and source; gate exact external symbol mapping. |
+| Interval chooser, favorites and compact shortcuts | Quick switches observed; custom/tick menu visible | Supported Yahoo and Hyperliquid timeframe sets, provider/session limits | Preserve and reorganize. Evaluate favorites separately. Gate custom aggregations, seconds and ticks with market-specific data. |
+| Chart types and settings | Type menu/settings tabs visible; candles used | Existing candle/area/line modes and chart appearance, scale, time, status and settings | Preserve current modes. Validate derived types independently; Footprint/TPO conditional. |
+| Study browser, legend, favorites, templates | Search and add/remove/hide demonstrated; template dialog visible | 69 indicators, study settings and local workspace persistence | Preserve all IDs, parameters and numeric parity. Propose categories, local favorites and templates with migration checks. |
+| Tool rail and drawing settings | Place/measure/delete and flyouts visible | 86 tools, selected editor, undo/redo, style, drawings scoped to instruments | Preserve 86 and their behavior; reorganize labels and grouping after review. |
+| Layout matrix and chart sync | Picker shown; crosshair display observed | Normal chart layouts and Advanced Chart Grid, independent state, concurrency/cancellation, existing synchronization | Preserve both routes and limits. Offer clear per-chart/workspace scope. |
+| Watchlist and symbol detail | Open, scroll, select and switch list observed | Local watchlists, quote refresh, handoffs, existing organization controls, Grid handoff | Preserve existing operations, source and state. Gate new columns against per-instrument availability. |
+| Screener, categories and handoff | Panel opened with result rows; filter and handoff outcomes unverified | 59 conditions, presets, sorting, source-aware results, chart/Grid handoffs | Preserve conditions and calculation semantics. Expose in a labeled dock. |
+| Alerts | Unavailable/offline states observed | Local alert rules, history and native notifications | Preserve; distinguish fired, delayed, suspended and offline. Cloud accounts outside scope. |
+| Object tree and Data Window | EMA/instrument rows visible | Drawing/indicator selection and OHLC inspectors | Proposed consolidated local layers/data inspector. Reuse per-chart controls and stable IDs. |
+| Date navigation, range presets and scale | Date dialog and plot shifts observed | Fit/reset, date/range and replay controls | Preserve provider truncation and date zones. Candidate presets must state the actual returned coverage. |
+| Replay | Control visible; guide documents behavior | Candle replay with prefix-only study calculation | Preserve current causal behavior. Optional captured depth replay needs independent approval and coverage. |
+| Chart export, themes, settings | Menu and controls visible; export outcome unverified | Local chart export, theme, workspace settings and backups | Preserve safe local exports. Review CSV and metadata scope separately. |
+| Market-wide heatmap | Product link visible | Existing quotes/scans can supply selected return/volume metrics | Proposed read-only analysis. Define tree grouping, coverage, stale thresholds and comparable interval baselines. |
+| Price/time liquidity and book/tape | NIFTY unsupported warning; book tooltip only | Public Hyperliquid trades and candle stream; no audited resident L2 feature | Feasibility gate. Hyperliquid public depth permits scoped observed snapshots. Yahoo has no approved depth. |
+| Footprint and volume profile | Footprint feed warning; range profile tool visible | Existing bar-derived volume/profile tools have a different basis than trade-at-price | Preserve clearly labeled bar estimates. Future Hyperliquid footprint needs sufficient captured trades, documented bucketing and coverage. |
+| Flow screen, walls and event indicators | Filter labels and radar visible | Existing public crypto streams can support measured price/size statistics | Feasibility gate for observed large prints, sweeps and resting depth. Exclude unsupported hidden order intent, guaranteed liquidation attribution and inferred executions. |
+| Option chain, Greeks and OI | NIFTY panel displayed; provider verification absent | No corresponding approved chain coverage in this audit | Defer pending Yahoo per-instrument evidence, timestamp/units, measured Greeks and policy review. |
+| Strategy tester and script/community editor | Panels open, executions unverified | Built-in static indicators, scanner and replay | Preserve built-ins and replay. Reference account, trade simulation, hosted scripts and arbitrary execution fall outside scope. |
+| News, macro map and calendar | Product labels shown; data unverified | Existing catalogue/session data where supported | Defer. Additional feeds and embedded external content outside scope. |
+| Trading, account, wallet, subscription, journal | Controls/labeled panels visible | No approved equivalent | Excluded. Preserve read-only operation without mandatory account, keys or payments. |
+
+Reference research did not validate live counterpart data, reference provider algorithms, or save/restart behavior. See [provider capability matrix](PROVIDER_CAPABILITY_MATRIX.md) for source attribution and requirements.
