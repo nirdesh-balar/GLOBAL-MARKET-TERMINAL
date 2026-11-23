@@ -177,7 +177,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
 
     const { flags, counts, aliases, assignFlag, removeFlag, clearColor, setAlias, getSymbolsForColor } = useFlags();
 
- const resizing=useRef(false),widthRef=useRef(width),rows=useRef<HTMLDivElement>(null),menuRef=useRef<HTMLDivElement>(null);widthRef.current=width;
+ const resizing=useRef<{pointerId:number;startX:number;startWidth:number}|null>(null),rows=useRef<HTMLDivElement>(null),menuRef=useRef<HTMLDivElement>(null);
  const [resortEpoch, setResortEpoch] = useState(0);
  const triggerResort = useCallback(() => setResortEpoch(e => e + 1), []);
 
@@ -577,7 +577,37 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
 
  const choosingGrid=gridSelection?.list===current.id;
  const selectedForGrid=choosingGrid?items.filter(({row})=>gridSelection.ids.has(identity(row))).map(({row})=>row):[];
- return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}><div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical" onPointerDown={e=>{resizing.current=true;e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{if(resizing.current){const next=Math.round(Math.max(220,Math.min(480,window.innerWidth-e.clientX)));widthRef.current=next;setWidth(next);}}} onPointerUp={e=>{if(!resizing.current)return;resizing.current=false;e.currentTarget.releasePointerCapture(e.pointerId);onChange({...workspace,sidebar:{...workspace.sidebar,width:Math.round(widthRef.current)}});}} onPointerCancel={()=>resizing.current=false}/>
+ const boundedWidth=(value:number)=>Math.round(Math.max(220,Math.min(480,value)));
+ const persistWidth=(value:number)=>{
+  setWidth(value);
+  onChange({...workspace,sidebar:{...workspace.sidebar,width:value}});
+ };
+ return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}>
+  <div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical"
+    tabIndex={0} aria-valuemin={220} aria-valuemax={480} aria-valuenow={width}
+    onPointerDown={event=>{
+      const startWidth=event.currentTarget.parentElement?.getBoundingClientRect().width??width;
+      resizing.current={pointerId:event.pointerId,startX:event.clientX,startWidth};
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }}
+    onPointerMove={event=>{
+      const drag=resizing.current;
+      if(drag?.pointerId!==event.pointerId)return;
+      setWidth(boundedWidth(drag.startWidth+drag.startX-event.clientX));
+    }}
+    onPointerUp={event=>{
+      const drag=resizing.current;
+      if(drag?.pointerId!==event.pointerId)return;
+      resizing.current=null;
+      if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
+      if(event.clientX!==drag.startX)persistWidth(boundedWidth(drag.startWidth+drag.startX-event.clientX));
+    }}
+    onPointerCancel={()=>{resizing.current=null;setWidth(workspace.sidebar.width);}}
+    onKeyDown={event=>{
+      if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+      event.preventDefault();
+      persistWidth(boundedWidth(width+(event.key==='ArrowLeft'?16:-16)));
+    }}/>
  <header data-testid="watchlist-header">
   {isColored && activeColor && <span className="watchlist-header-flag" title={`${current.name}`}><FlagIcon color={activeColor} filled={true} size={15}/></span>}
   <select data-testid="watchlist-dropdown" aria-label="Active watchlist" value={current.id} disabled={busy} onChange={e=>onChange({...workspace,active_watchlist:e.target.value})}>

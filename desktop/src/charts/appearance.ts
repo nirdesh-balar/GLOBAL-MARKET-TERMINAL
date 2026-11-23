@@ -21,23 +21,23 @@ export const LIGHT_THEME = {
 };
 
 export const DARK_THEME = {
-  background: '#0d131c',
-  grid: '#19212d',
-  textColor: '#78879b',
+  background: '#0e1723',
+  grid: '#27384b',
+  textColor: '#a9bbd0',
   secondaryText: '#617087',
-  borderColor: '#263040',
+  borderColor: '#2b3c50',
   borderSubtle: '#1c2634',
   hover: '#1c2635',
   selected: '#1c2e49',
   accent: '#75a6f8',
-  bullish: '#37c5a2',
-  bearish: '#ee6a79',
+  bullish: '#28bea8',
+  bearish: '#e77e94',
   bullishText: '#3bccab',
   bearishText: '#f07d89',
-  volBullish: '#37c5a255',
-  volBearish: '#ee6a7955',
-  crosshair: '#61748e',
-  crosshairLabel: '#34445c'
+  volBullish: '#28bea855',
+  volBearish: '#e77e9455',
+  crosshair: '#7d9ab6',
+  crosshairLabel: '#304d66'
 };
 
 export function getCandleColors(a: ChartAppearance | undefined, theme: 'dark' | 'light') {

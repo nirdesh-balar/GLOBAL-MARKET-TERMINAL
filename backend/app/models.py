@@ -376,6 +376,17 @@ class Pane(SymbolEntry):
     volume:bool=True
     scale:ScaleSettings=Field(default_factory=ScaleSettings)
     appearance:ChartAppearance=Field(default_factory=ChartAppearance)
+    display_timezone:str|None=Field(default=None,max_length=80)
+
+    @field_validator('display_timezone')
+    @classmethod
+    def valid_display_timezone(cls,value):
+        if value is None:return value
+        from zoneinfo import ZoneInfo
+        try:ZoneInfo(value)
+        except (KeyError,ValueError):raise ValueError('Use a valid IANA timezone') from None
+        return value
+
     drawing_sets:dict[str,list[Drawing]]=Field(default_factory=dict,max_length=100)
     drawings_locked:bool=False
     drawings_hidden:bool=False

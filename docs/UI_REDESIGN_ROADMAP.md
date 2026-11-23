@@ -13,3 +13,11 @@ Baseline `1.1.0-rc.8` at `a63a96cbff1b72c7cbc2e710cf3cab93d68689e2`. This propos
 | Private release readiness | Source CI, Mac ARM64 validation, Windows x64 pending tests, version and rollback review | Exact SHA, artifact and test evidence, known fullscreen/focus limitation reported, profile backups and separate installation decision. |
 
 The CI stability diagnosis proceeds independently. Confirm the normal eight-chart warm restore remains strictly under 2,000 ms with zero additional provider requests. Keep Grid's active/concurrent limits and its independent warm-cache assertion. Record the installed baseline and Windows pending items without changing release state. [Acceptance matrix](UI_ACCEPTANCE_TEST_MATRIX.md)
+
+## Local workspace preview
+
+The first implementation increment uses GMT's own slate-blue palette, labeled analytical rail, condensed chart controls and an instrument-aware chart dock. Workspace links open the existing scanner, alerts and Advanced Chart Grid. The drawing rail uses the existing tool catalogue and anchors each flyout to its category while keeping it inside the window.
+
+The existing indicator controls retain independent oscillator panes, resize, collapse, hide and removal. The price-scale alert action carries the active chart's canonical instrument, interval and quote-precision price to the existing local alert dialog. The display-zone preference is stored independently of instrument metadata. Intraday labels use the selected zone, higher-period candles keep their session dates, and candle and drawing timestamps stay unchanged. The reference recording established opening the alert and zone dialogs. Delivery and reference-zone persistence were unverified.
+
+Use a disposable profile for the development preview. Keep native Windows x64 visual validation under WIN-CHARTGRID and WIN-ELECTRON44. Preserve the existing macOS fullscreen and focus limitations and all current source assertions. The ordinary source and UI checks still apply. Run the focused workspace check with `node scripts/workspace-redesign-ui.mjs` after a development build.
