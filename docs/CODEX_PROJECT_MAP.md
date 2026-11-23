@@ -2,7 +2,7 @@
 
 The initial audit used the official `main` at `5a3c0713e08e9fbb739272f2363acfd45465b377`. Its 624 tracked files include application source, staged regression scripts, platform resources and third-party notices. This map traces primary execution paths. See [testing](TESTING.md), [build](BUILD.md), [release gates](RELEASING.md) and [storage](STORAGE.md) for established procedures.
 
-Phase 1 Chart Grid entered official main at `3f044d65fcc3dc78177aeddcadc65e436fa4c673`. The rc.8 release-preparation revision covers version and release metadata while the installed app is rc.7. [macOS release status](MAC_RELEASE_STATUS.md)
+Phase 1 Chart Grid entered official main at `3f044d65fcc3dc78177aeddcadc65e436fa4c673`. The private Mac app is installed as 1.1.0-rc.8 from `a63a96cbff1b72c7cbc2e710cf3cab93d68689e2`. [macOS release status](MAC_RELEASE_STATUS.md)
 
 ## Startup, requests and shutdown
 

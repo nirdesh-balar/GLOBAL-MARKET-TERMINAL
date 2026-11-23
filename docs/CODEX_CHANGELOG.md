@@ -1,5 +1,12 @@
 # Codex development log
 
+## 2026-11-23 · Private rc.8 Mac installation
+
+- Installed the approved `1.1.0-rc.8` ARM64 candidate at `/Applications/GLOBAL MARKET TERMINAL.app` from `a63a96cbff1b72c7cbc2e710cf3cab93d68689e2`. Verified the signed Mac build 1.1.0.3, Electron 44.11.5, API 1.0.0, embedded source and blocked updater state.
+- Retained the rc.7 original and rollback release set. Verified three backups after shutdown, normal installed restart, production profile continuity and clean backend exit. Installed disposable-profile testing covered live providers, Chart Grid and supported saved workspaces. [macOS release status](MAC_RELEASE_STATUS.md)
+- Charts reproduced the known macOS fullscreen cancellation. Grid entered and exited native fullscreen and its focus check timed out after exit. A leftover empty directory from installed disposable testing initially blocked the next normal launch. The normal restart passed after preserving the test-only directory with the private evidence.
+- Generated a read-only cleanup proposal for regenerable packaging output. Windows native `WIN-CHARTGRID` and `WIN-ELECTRON44` remain pending.
+
 ## 2026-11-23 · Phase 1 integration and rc.8 preparation
 
 - Merged [PR #5](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/pull/5) as `3f044d65fcc3dc78177aeddcadc65e436fa4c673` with both parents preserved. The merged tree matched the [first successful main-target attempt](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45131060334). See the [post-merge run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45135294940) for the integrated SHA.
