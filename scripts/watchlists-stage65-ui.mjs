@@ -19,8 +19,43 @@ try{app=await launch();await load();await create('Research');let w=await request
  await page.getByLabel('Manage watchlists',{exact:true}).click();await page.getByLabel('Delete watchlist',{exact:true}).click();await expect(page.getByRole('dialog',{name:'Delete watchlist?',exact:true})).toContainText('2 item memberships');await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(page.locator('.watch-row')).toHaveCount(2);await page.getByLabel('Manage watchlists',{exact:true}).click();await page.getByLabel('Delete watchlist',{exact:true}).click();await page.getByRole('button',{name:'Confirm delete watchlist',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.getByLabel('Active watchlist',{exact:true})).toHaveValue('stocks');await page.getByLabel('Manage watchlists',{exact:true}).click();await expect(page.getByLabel('Delete watchlist',{exact:true})).toBeDisabled();await page.keyboard.press('Escape');
  // Configure eight independent panes, with real persisted indicator/drawing identities.
  await saved();w=await request('/workspace');const security=w.watchlists.find(l=>l.id==='stocks').items[0];w.layout=8;w.sync_time=false;w.sync_crosshair=false;for(const [i,p] of w.panes.entries()){Object.assign(p,security);p.timeframe='1d';p.scale={logarithmic:i%2===0,auto:false,percentage:i%2!==0};const key=security.canonical_id+'/1d';p.drawing_sets={[key]:[{id:'layout-line-'+i,kind:'horizontal',version:2,anchors:[{time:1704067200,price:100+i}],color:'#f4bd61',width:1,params:{}}]};}await request('/workspace','PUT',w);await page.reload();await load();await expect(page.locator('.chart-pane:visible')).toHaveCount(8);const baseline=await request('/workspace'),historyCount=(await request('/api/history/status')).history_requests;
- for(const count of [1,2,4,6,8]){await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel(`Layout ${count}`,{exact:true}).click();await expect(page.locator('.chart-pane:visible')).toHaveCount(count);await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});for(let i=0;i<count;i++){const pane=page.getByTestId(`pane-${i}`),canvas=pane.locator('.chart-canvas');await page.mouse.move((await canvas.boundingBox()).x+90,(await canvas.boundingBox()).y+90);await page.mouse.wheel(0,-100);await page.waitForTimeout(100);const requestsBeforeMax=(await request('/api/history/status')).history_requests;await expect.poll(()=>canvas.evaluate(e=>Number.isFinite(Number(e.dataset.viewFrom))&&Number.isFinite(Number(e.dataset.viewTo)))).toBe(true);
-const view=await canvas.evaluate(e=>({from:Number(e.dataset.viewFrom),to:Number(e.dataset.viewTo),bars:e.dataset.renderedBars,mode:e.dataset.priceMode}));await pane.getByTestId(`pane-maximize-${i}`).click();await expect(page.locator('.chart-pane:visible')).toHaveCount(1);await expect(page.locator('.chart-pane')).toHaveCount(count);await expect.poll(async()=>{const b=await canvas.boundingBox();return b.width;}).toBeGreaterThan(600);await expect.poll(async()=>Math.abs(Number(await canvas.getAttribute('data-view-from'))-view.from)).toBeLessThan(.1);await pane.getByTestId(`pane-maximize-${i}`).click();await expect(page.locator('.chart-pane:visible')).toHaveCount(count);await expect.poll(async()=>Math.abs(Number(await canvas.getAttribute('data-view-to'))-view.to)).toBeLessThan(.1);assert.equal(await canvas.getAttribute('data-rendered-bars'),view.bars);assert.equal(await canvas.getAttribute('data-price-mode'),view.mode);assert.equal((await request('/api/history/status')).history_requests,requestsBeforeMax,'Maximize/restore must never refetch history');} }
+ for(const count of [1,2,4,6,8]){
+   await page.getByLabel('Chart layout',{exact:true}).click();
+   await page.getByLabel(`Layout ${count}`,{exact:true}).click();
+   await expect(page.locator('.chart-pane:visible')).toHaveCount(count);
+   await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
+   for(let i=0;i<count;i++){
+     const pane=page.getByTestId(`pane-${i}`),canvas=pane.locator('.chart-canvas');
+     const rangeWidth=()=>canvas.evaluate(element=>{
+       const range=element.__chart?.timeScale().getVisibleLogicalRange();
+       return range ? range.to-range.from : Number.POSITIVE_INFINITY;
+     });
+     await expect.poll(rangeWidth).toBeLessThan(Number.POSITIVE_INFINITY);
+     const beforeZoom=await rangeWidth();
+     // Use the main plot dimensions so narrow panes keep the wheel off study controls and price scales.
+     const point=await canvas.evaluate(element=>{
+       const box=element.getBoundingClientRect(),plot=element.__chart.paneSize(0);
+       return {x:box.x+plot.width*.55,y:box.y+plot.height*.68};
+     });
+     await page.mouse.move(point.x,point.y);
+     await page.mouse.wheel(0,-100);
+     await expect.poll(rangeWidth).toBeLessThan(beforeZoom);
+     const requestsBeforeMax=(await request('/api/history/status')).history_requests;
+     const view=await canvas.evaluate(e=>({from:Number(e.dataset.viewFrom),to:Number(e.dataset.viewTo),bars:e.dataset.renderedBars,mode:e.dataset.priceMode}));
+     assert.ok(Number.isFinite(view.from)&&Number.isFinite(view.to));
+     await pane.getByTestId(`pane-maximize-${i}`).click();
+     await expect(page.locator('.chart-pane:visible')).toHaveCount(1);
+     await expect(page.locator('.chart-pane')).toHaveCount(count);
+     await expect.poll(async()=>{const box=await canvas.boundingBox();return box.width;}).toBeGreaterThan(600);
+     await expect.poll(async()=>Math.abs(Number(await canvas.getAttribute('data-view-from'))-view.from)).toBeLessThan(.1);
+     await pane.getByTestId(`pane-maximize-${i}`).click();
+     await expect(page.locator('.chart-pane:visible')).toHaveCount(count);
+     await expect.poll(async()=>Math.abs(Number(await canvas.getAttribute('data-view-to'))-view.to)).toBeLessThan(.1);
+     assert.equal(await canvas.getAttribute('data-rendered-bars'),view.bars);
+     assert.equal(await canvas.getAttribute('data-price-mode'),view.mode);
+     assert.equal((await request('/api/history/status')).history_requests,requestsBeforeMax,'Maximize/restore must never refetch history');
+   }
+ }
  const final=await request('/workspace');assert.deepEqual(final.panes,baseline.panes);assert.equal(final.layout,8);
  await page.getByLabel('Historical replay',{exact:true}).click();await expect(page.getByTestId('pane-7').locator('.chart-canvas')).toHaveAttribute('data-replay','true');const replayBefore=await page.getByTestId('pane-7').locator('.chart-canvas').getAttribute('data-rendered-bars');await page.getByTestId('maximize-active-chart').click();await page.getByLabel('Enter focus mode',{exact:true}).click();await expect(page.getByTestId('watchlist-sidebar')).not.toBeVisible();await page.keyboard.press('Escape');await expect(page.getByTestId('watchlist-sidebar')).toBeVisible();await expect(page.locator('.chart-pane:visible')).toHaveCount(1);await page.keyboard.press('Escape');await expect(page.locator('.chart-pane:visible')).toHaveCount(8);assert.equal(await page.getByTestId('pane-7').locator('.chart-canvas').getAttribute('data-rendered-bars'),replayBefore);
  // Actual Electron setFullScreen, never a mock of window-control IPC.
