@@ -29,3 +29,7 @@ The native title area stays available for dragging and window controls. Native C
 The neutral palette reduces grid contrast and highlights active controls with amber. The default volume pane is 52 px; explicitly saved heights, chart colors and study colors keep their existing values. Chart settings, watchlist persistence, drawing anchor prices, and alert conditions use their existing storage. Save Workspace flushes the same serialized queue as autosave. Provider status and chart attribution remain available in the status bar.
 
 The source version and update policy are unchanged. Native Windows acceptance under WIN-CHARTGRID and WIN-ELECTRON44 and the known intermittent local macOS fullscreen and focus limitations remain open.
+
+### Final workspace polish
+
+The wide primary toolbar uses a chevron for the full timeframe menu beside the selected shortcut. Narrow toolbars continue to show the interval in the full menu. Multi-chart panes retain their contextual controls; the primary toolbar continues to edit the active pane at compact widths. The legend omits repeated labels when the pane header can show them. Axis type uses the system font and scale width can grow beyond its lower minimum to fit the formatted values. The chart canvas, price precision, stored appearance settings, and licensed attribution continue to use their existing paths.

@@ -8,8 +8,7 @@ import type { Pane, Workspace, Timeframe } from '../types';
 import { useFlags } from '../flags/useFlags';
 import { FlagIcon } from './FlagIcon';
 import { ColorFlagPicker } from './ColorFlagPicker';
-
-const intervals: Timeframe[] = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M', '1Y'];
+import { frames, timeframeLabel } from '../charts/TimeframeSelector';
 
 export function command(id: string, action: string, value?: unknown) {
   window.dispatchEvent(new CustomEvent('terminal-command', { detail: { id, action, value } }));
@@ -89,13 +88,16 @@ export function TerminalHeader({
       <span className="header-exchange header-provider" title={providerLabel(pane)}>{providerLabel(pane)}</span>
       <div className="toolbar-divider" />
       <div className="timeframe-toolbar">
-        {intervals.map(interval => <button key={interval} aria-label={`Active timeframe ${interval}`}
+        {frames.map(interval => <button key={interval} aria-label={`Active timeframe ${interval}`}
           aria-pressed={pane.timeframe === interval} className={pane.timeframe === interval ? 'selected' : ''}
-          onClick={() => onChange({ timeframe: interval })}>{interval === '1d' ? '1D' : interval === '1w' ? '1W' : interval}</button>)}
-        <select className="timeframe-menu" aria-label="Active timeframe menu" title="All supported timeframes"
-          value={pane.timeframe} onChange={e => onChange({ timeframe: e.target.value as Timeframe })}>
-          {intervals.map(interval => <option key={interval}>{interval}</option>)}
-        </select>
+          onClick={() => onChange({ timeframe: interval })}>{timeframeLabel(interval)}</button>)}
+        <div className="timeframe-picker">
+          <select className="timeframe-menu" aria-label="Active timeframe menu" title="All supported timeframes"
+            value={pane.timeframe} onChange={e => onChange({ timeframe: e.target.value as Timeframe })}>
+            {frames.map(interval => <option key={interval} value={interval}>{timeframeLabel(interval)}</option>)}
+          </select>
+          <ChevronDown aria-hidden="true" size={12} />
+        </div>
       </div>
       <select aria-label="Active chart type" value={pane.chart_type} onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
         <option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option>

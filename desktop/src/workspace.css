@@ -203,6 +203,8 @@
 }
 .terminal-shell .study-pane-controls button:hover { background: var(--hover); }
 .terminal-shell .bottom-chart-toolbar { height: 32px; min-height: 32px; background: var(--surface); }
+.terminal-shell .bottom-chart-toolbar :is(.range-toolbar, .price-controls) { font-variant-numeric: tabular-nums; }
+.terminal-shell .range-toolbar .go-date { padding-inline-start: 3px; border-inline-start: 1px solid var(--border); }
 .terminal-shell .price-controls button[aria-pressed=true],
 .terminal-shell .range-toolbar .selected { color: var(--workspace-accent); background: var(--workspace-selected); }
 .terminal-shell .chart-zone-button {
@@ -319,6 +321,29 @@
   padding-inline: 7px;
 }
 .terminal-shell .terminal-header .header-symbol strong { font-weight: 590; }
+.terminal-shell .terminal-header .timeframe-picker { position: relative; display: flex; align-items: center; }
+.terminal-shell .terminal-header .timeframe-picker .timeframe-menu {
+  appearance: none;
+  padding: 0 17px 0 5px;
+  background-image: none;
+}
+.terminal-shell .terminal-header .timeframe-picker .timeframe-menu option {
+  color: var(--text);
+  background: var(--surface);
+}
+.terminal-shell .terminal-header .timeframe-picker > svg {
+  position: absolute;
+  inset-inline-end: 5px;
+  color: var(--muted);
+  pointer-events: none;
+}
+@media (min-width: 981px) and (forced-colors: none) {
+  .terminal-shell .terminal-header .timeframe-picker .timeframe-menu {
+    width: 25px;
+    min-width: 25px;
+    color: transparent;
+  }
+}
 .terminal-shell .terminal-header .header-provider {
   max-width: 92px;
   overflow: hidden;
@@ -364,8 +389,8 @@
 .terminal-shell .chart-pane.active:has(.pane-toolbar:hover) { border-color: var(--muted); }
 .terminal-shell .pane-toolbar {
   background: var(--canvas);
-  height: 25px;
-  min-height: 25px;
+  height: 24px;
+  min-height: 24px;
   padding-inline: 7px;
 }
 .terminal-shell .pane-toolbar button,
@@ -377,6 +402,11 @@
 .terminal-shell .ohlc,
 .terminal-shell .studies-legend { font-size: 10px; }
 .terminal-shell .legend-title .demo-mini { font-size: 9px; }
+.terminal-shell .chart-legend .ohlc { gap: 2px 7px; }
+.terminal-shell .chart-grid:not([data-count="1"]) .legend-timeframe { display: none; }
+@container (min-width: 420px) {
+  .terminal-shell .chart-grid:not([data-count="1"]) .legend-symbol { display: none; }
+}
 .terminal-shell .range-toolbar button,
 .terminal-shell .price-controls button { font-size: 10px; padding-block: 3px; }
 .terminal-shell .history-controls.open,

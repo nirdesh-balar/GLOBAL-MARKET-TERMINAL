@@ -18,6 +18,16 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  const display = await page.context().newCDPSession(page);
+  await display.send('Emulation.setDeviceMetricsOverride', {
+    width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
+  });
+  const nativeWindow = await app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    return { fullScreen: window.isFullScreen(), controls: window.getWindowButtonPosition() };
+  });
+  assert.equal(nativeWindow.fullScreen, false);
+  assert.ok(nativeWindow.controls && nativeWindow.controls.y < 26, 'Native macOS window controls fit within the title strip');
   await page.getByLabel('Chart layout', { exact: true }).click();
   await page.getByLabel('Layout 1', { exact: true }).click();
   const pane = page.getByTestId('pane-0');
@@ -45,6 +55,7 @@ try {
     };
     return {
       viewport:{width:innerWidth,height:innerHeight,scale:devicePixelRatio},
+      title:box('.titlebar'),
       toolbar:box('.terminal-header'), drawing:box('.drawing-toolbar'),
       analytical:box('.analysis-rail'), bottom:box('.bottom-chart-toolbar'),
       chart:box('.chart-canvas'), watchlist:document.querySelector('.professional-watchlist')?box('.professional-watchlist'):null,
@@ -63,12 +74,44 @@ try {
   assert.equal(collapsedDock.toolbar.height,46);
   assert.equal(collapsedDock.drawing.width,46);
   assert.equal(collapsedDock.bottom.height,32);
+  assert.equal(collapsedDock.title.height,26);
+  assert.equal(collapsedDock.toolbar.y,26);
   assert.ok(collapsedDock.chart.width>expandedDock.chart.width);
-  console.log('Workspace geometry:',JSON.stringify({expanded:expandedDock,collapsed:collapsedDock}));
+  const axis = await canvas.evaluate(el => {
+    const chart = el.__chart;
+    const priceScale = chart.priceScale('right');
+    const context = document.createElement('canvas').getContext('2d');
+    const { fontFamily, fontSize } = chart.options().layout;
+    context.font = `${fontSize}px ${fontFamily}`;
+    const label = el.__mainSeries.priceFormatter().format(Number(el.dataset.lastClose));
+    return { priceWidth: priceScale.width(), labelWidth: context.measureText(label).width, timeHeight: chart.timeScale().height(), label };
+  });
+  assert.ok(axis.priceWidth >= 60 && axis.priceWidth > axis.labelWidth);
+  console.log('Workspace geometry:',JSON.stringify({expanded:expandedDock,collapsed:collapsedDock,axis,nativeWindow}));
   await page.mouse.move(4,4);
   await capture('collapsed');
   await dock.click();
   await expect(page.locator('.professional-watchlist')).toBeVisible();
+  await page.getByLabel('Chart layout', { exact: true }).click();
+  await page.getByLabel('Layout 2', { exact: true }).click();
+  await page.getByLabel('Open symbol in pane', { exact: true }).selectOption('1');
+  const tcs = page.locator('.watch-select').filter({ has: page.getByText('TCS', { exact: true }) });
+  await expect(tcs).toHaveCount(1);
+  await tcs.click();
+  const secondPane = page.getByTestId('pane-1');
+  await expect(secondPane.locator('.pane-symbol')).toHaveText('TCS');
+  await expect(secondPane.locator('.chart-canvas')).toHaveAttribute('data-rendered-bars', /^[1-9]/);
+  await expect(page.locator('.chart-overlay')).toHaveCount(0, { timeout: 30000 });
+  await expect(secondPane.getByLabel('Timeframe pane 1')).toBeVisible();
+  const activeType = page.getByLabel('Active chart type', { exact: true });
+  await activeType.selectOption('line');
+  await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('line');
+  await activeType.selectOption('candles');
+  await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('candles');
+  await page.mouse.move(4,4);
+  await capture('two-charts');
+  await page.getByLabel('Chart layout', { exact: true }).click();
+  await page.getByLabel('Layout 1', { exact: true }).click();
   const separatesQuote = () => page.locator('.watch-select').first().evaluate(row => {
     const name = row.querySelector('span:first-child strong').getBoundingClientRect();
     const quote = row.querySelector('.quote > strong').getBoundingClientRect();
