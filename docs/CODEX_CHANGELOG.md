@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-23 · Phase 1 integration and rc.8 preparation
+
+- Merged [PR #5](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/pull/5) as `3f044d65fcc3dc78177aeddcadc65e436fa4c673` with both parents preserved. The merged tree matched the [first successful main-target attempt](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45131060334). See the [post-merge run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45135294940) for the integrated SHA.
+- Prepare 1.1.0-rc.8 in a separate source revision. Set the native Mac build to 1.1.0.3, retain native short version 1.1.0, Electron 44.11.5 and API 1.0.0, and include rc.8 in the isolated packaged acceptance guard.
+- Keep the local fullscreen result open after reproducing the transition cancellation in a standalone Electron window. The fullscreen assertion, 15-second timeout, strict under-2,000 ms Charts gate and zero additional provider request assertion still apply. [Candidate gates](MAC_RELEASE_STATUS.md)
+
 ## 2026-11-23 · Stage 4 drawing persistence synchronization
 
 - `drawing-stage4-ui.mjs` now waits for the expected count of distinct replacement drawing IDs from the persisted workspace and verifies that every old ID is gone. The bounded wait completes before the snapshot used for the invalid-import equality assertion. Template replacement intentionally creates new IDs, while workspace saves are debounced. The previous count-only wait could compare different saves of the same-size drawing set.

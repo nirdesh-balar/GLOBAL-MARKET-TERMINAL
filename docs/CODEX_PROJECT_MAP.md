@@ -2,6 +2,8 @@
 
 The initial audit used the official `main` at `5a3c0713e08e9fbb739272f2363acfd45465b377`. Its 624 tracked files include application source, staged regression scripts, platform resources and third-party notices. This map traces primary execution paths. See [testing](TESTING.md), [build](BUILD.md), [release gates](RELEASING.md) and [storage](STORAGE.md) for established procedures.
 
+Phase 1 Chart Grid entered official main at `3f044d65fcc3dc78177aeddcadc65e436fa4c673`. The rc.8 release-preparation revision covers version and release metadata while the installed app is rc.7. [macOS release status](MAC_RELEASE_STATUS.md)
+
 ## Startup, requests and shutdown
 
 1. `scripts/dev.mjs` runs Vite and builds the Electron main/preload bundles with esbuild. `npm run build` checks renderer and Electron TypeScript, builds the Vite assets and compiles the native notification helper on macOS. Packaged Electron starts from `desktop/dist-electron/main.cjs`.

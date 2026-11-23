@@ -23,7 +23,7 @@ Phase 1 has deterministic backend, numerical and native fixture scripts in the m
 
 ## Phase 1 · Advanced Chart Grid
 
-Run `node scripts/chart-grid-unit.mjs`, `node scripts/chart-grid-ui.mjs` and `backend/.venv/bin/python -m pytest backend/tests/test_workspace_repair.py -q -rs`. The macOS runner includes both Grid scripts. The UI benchmark writes `test-results/chart-grid-performance.json` with initial and new-timeframe measurements, navigation and page returns from cache, provider deltas, chart counts, and renderer memory before and after 20 cycles. The diagnostics use synthetic market data in disposable profiles. The final packaged candidate requires its own live acceptance.
+Run `node scripts/chart-grid-unit.mjs`, `node scripts/chart-grid-ui.mjs` and `backend/.venv/bin/python -m pytest backend/tests/test_workspace_repair.py -q -rs`. The macOS runner includes both Grid scripts. The UI benchmark writes `test-results/chart-grid-performance.json` with initial and new-timeframe measurements, navigation and page returns from cache, provider deltas, chart counts, and renderer memory before and after 20 cycles. The diagnostics use synthetic market data in disposable profiles. The [main-target Phase 1 run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45131060334) passed 2,431 Python tests with one optional skip, 19/19 numerical and 32/32 UI scripts. Normal Charts warm restore took 1,719 ms with zero additional provider requests. The candidate needs separate live-provider acceptance and bounded native fullscreen checks for both Charts and Grid. [macOS release status](MAC_RELEASE_STATUS.md)
 
 | ID | Deterministic case and pass condition | Surface |
 | --- | --- | --- |

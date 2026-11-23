@@ -1,6 +1,6 @@
 # Advanced Development Roadmap
 
-Phase 0 roadmap with Phase 1 implementation scope · 23 November 2026
+Phase 0 roadmap with Phase 1 source integrated · 23 November 2026
 
 The starting point is official main `f53b57f84b7ff4cac784f54856a47292cc4a8a9c` and the verified installed 1.1.0-rc.7 ARM64 bundle with Electron 44.11.5. The roadmap adds increments to GMT's current project and profile model. Feature boundaries and source evidence are in the [gap analysis](ADVANCED_FEATURE_GAP_ANALYSIS.md). Acceptance and release evidence are in the [test matrix](ADVANCED_FEATURE_TEST_MATRIX.md).
 
@@ -11,7 +11,7 @@ Numbers describe review order. A technically blocked phase can remain open while
 | Phase | Proposed increment and exit | Dependencies and approval | Complexity |
 | --- | --- | --- | --- |
 | 0 · Research | Compare current code and test evidence to requirements, document gaps and propose acceptance. | Local research branch review. | Complete on delivery |
-| 1 · Chart Grid | Dedicated paged Grid, typed watchlist/scanner handoff, card controls, lightweight studies, maximize and lifecycle budgets. | Approved for implementation. Source review and packaged acceptance pending. | Medium |
+| 1 · Chart Grid | Dedicated paged Grid, typed watchlist/scanner handoff, card controls, lightweight studies, maximize and lifecycle budgets. | Integrated on main. rc.8 source approval and packaged acceptance pending. | Medium |
 | 2 · Heatmap | Equal-weight category view first. Add sector, historical horizons and cap weight only for covered data with verified semantics. | Provider metadata/terms review. Phase 1 supplies optional Grid handoff. | Medium to high |
 | 3 · Patterns | Weekday and exchange-local session windows with statistics, coverage, occurrence navigation and export. | Validated calendars and available historical resolution. | Medium-high |
 | 4 · Scanner | Extend existing nested conditions and asynchronous jobs with new typed comparisons, durable history and Grid handoff. | Phase 1 for Grid. History and custom typed rules use the existing screener. | Medium |
@@ -67,4 +67,4 @@ Implementation starts by identifying the smallest reusable renderer and history 
 4. Update project records and Windows pending entries for changed behavior. Prepare the reviewed official PR after source push approval and require applicable CI. Keep platform configuration evidence and native Windows execution evidence distinct. [Windows pending](WINDOWS_PENDING.md)
 5. Obtain applicable integration approval and verify the exact integrated main SHA. Build a uniquely named, checksummed native candidate only when a package is required. Preview the install, profile protections and rollback path, then obtain installation approval. Keep approved deletion and public binary publication separate. [Build](BUILD.md) · [Release gates](RELEASING.md) · [Mac release status](MAC_RELEASE_STATUS.md)
 
-The Phase 0 branch contains documentation only. The local Phase 1 branch stacks the research commit on the verified main baseline. The approved push and integration workflow applies to both revisions. Current native Windows backlog includes `WIN-ELECTRON44` for integrated rc.7 and Electron 44.11.5. Use dedicated future entries for Grid DPI, file handling, containment and local transport after those changes exist. [Windows pending](WINDOWS_PENDING.md)
+Phase 0 documentation and Phase 1 Chart Grid are integrated on official main at `3f044d65fcc3dc78177aeddcadc65e436fa4c673`. The reviewed Phase 1 source passed [main-target CI](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45131060334). The rc.8 release-preparation revision requires separate source approval and verified main before private packaging. Native Windows `WIN-CHARTGRID` and `WIN-ELECTRON44` remain pending. Phase 2 awaits separate authorization. [Windows pending](WINDOWS_PENDING.md)

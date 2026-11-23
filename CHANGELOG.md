@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-rc.8 — release preparation
 
 - Add a dedicated Chart Grid with paginated watchlist and screener handoffs, symbol and timeframe controls, responsive cards, SMA/EMA, native fullscreen, and a return path to Charts.
 - Store only versioned Grid preferences and canonical identities in the local workspace. Use existing Yahoo Finance and Hyperliquid historical snapshots, bounded request ownership and existing caches.
+- Recover malformed or unsupported Grid settings during atomic watchlist saves while archiving their original JSON. Wait for replacement drawing IDs before evaluating invalid-import persistence in the Stage 4 UI regression.
+- Advance the native Mac build to 1.1.0.3 and retain Electron 44.11.5 and API contract 1.0.0. Local native fullscreen on macOS 27.2.1 remains intermittent.
 
 ## 1.1.0-rc.7 — security candidate
 

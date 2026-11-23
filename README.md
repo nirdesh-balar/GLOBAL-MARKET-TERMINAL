@@ -4,7 +4,7 @@ Free and open-source desktop market chart analysis project for supported financi
 
 **Architecture:** Electron + React + TypeScript / Python + FastAPI  
 **Chart Engine:** TradingView Lightweight Charts™  
-**Version:** 1.1.0-rc.7 (API Contract 1.0.0)
+**Version:** 1.1.0-rc.8 (API Contract 1.0.0)
 
 ---
 
@@ -20,6 +20,7 @@ All market quotes and analytical calculations run locally or via direct public r
 
 - **Advanced Charting:** Candlestick charts powered by TradingView Lightweight Charts™, supporting Linear, Logarithmic, and Automatic price-scale modes, vertical price-scale mouse wheel zoom, and timeframe synchronization.
 - **Multi-Chart Layouts:** Flexible 1, 2, 4, 6, and 8-pane chart workspaces with synchronized crosshair cursor and timeframe controls.
+- **Advanced Chart Grid:** Browse paged watchlist and screener results in a separate workspace with up to eight active charts, independent timeframes, SMA/EMA overlays, and maximize and restore controls.
 - **Technical Indicators:** Over 69 analytical indicators (Moving Averages, RSI, MACD, Bollinger Bands, ATR, SuperTrend, AlphaTrend, HalfTrend, Volume Profile, Stochastic, etc.) with up to 20 concurrent studies per chart.
 - **Drawing Tools:** Over 86 interactive geometric and technical drawing tools with automatic return to cursor on completion, editable anchors, and persistent styling.
 - **Stock Watchlists:** Multi-list watchlist management with color flag tagging, fast keyboard navigation, dynamic quote streaming, stable selection, and drag/sort capabilities.
