@@ -118,6 +118,29 @@
 .grid-source-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 8px; border-block: 1px solid var(--border); }
 .grid-source-actions button { padding: 4px 5px; border-radius: 3px; font-size: 11px; white-space: nowrap; }
 .grid-source-actions button[aria-pressed="true"] { background: var(--hover); }
+.watchlist-grid-picker { display: flex; position: relative; }
+.watchlist-grid-picker > button[data-selecting="true"] { color: #86aff8; background: var(--hover); }
+.theme-light .watchlist-grid-picker > button[data-selecting="true"] { color: #285cb5; }
+.watchlist-grid-popup {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 14;
+  min-width: 176px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px #0004;
+}
+.watchlist-grid-picker .watchlist-grid-popup button {
+  width: 100%;
+  justify-content: flex-start;
+  white-space: nowrap;
+  padding: 5px 7px;
+  min-height: 27px;
+  text-align: left;
+}
 .watch-row .grid-source-choice { margin: 0 4px; align-self: center; }
 .screener-result-symbol { display: flex; align-items: center; gap: 7px; }
 .screener-result-symbol > span { min-width: 0; }

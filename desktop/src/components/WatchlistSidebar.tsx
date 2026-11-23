@@ -2,7 +2,7 @@ import {legacyCrypto} from '../providers/legacy';
 import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,QuoteRow,RefreshPreferences} from '../refresh/hooks';
 import React, {useEffect,useLayoutEffect,useRef,useState,useCallback} from 'react';
-import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check} from 'lucide-react';
+import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check,LayoutGrid} from 'lucide-react';
 import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist,Timeframe} from '../types';
 import {symbolLabel,price,api} from '../services/api';
 import type {ExcelWatchlistRow,ExcelExportPayload} from '../export/excelWorkbook';
@@ -104,6 +104,27 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     const [aliasInput, setAliasInput] = useState('');
     const [showHidden, setShowHidden] = useState(false);
     const [gridSelection, setGridSelection] = useState<{ list: string; ids: Set<string> } | null>(null);
+    const [gridMenuOpen, setGridMenuOpen] = useState(false);
+    const gridMenu = useRef<HTMLDivElement>(null);
+    const gridMenuButton = useRef<HTMLButtonElement>(null);
+    const closeGridMenu = () => { setGridMenuOpen(false); gridMenuButton.current?.focus(); };
+
+    useEffect(() => {
+        if (!gridMenuOpen) return;
+        gridMenu.current?.querySelector<HTMLButtonElement>('.watchlist-grid-popup button:not(:disabled)')?.focus();
+        const outside = (event: PointerEvent) => {
+            if (!gridMenu.current?.contains(event.target as Node)) setGridMenuOpen(false);
+        };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') { event.stopPropagation(); closeGridMenu(); }
+        };
+        document.addEventListener('pointerdown', outside);
+        document.addEventListener('keydown', escape, true);
+        return () => {
+            document.removeEventListener('pointerdown', outside);
+            document.removeEventListener('keydown', escape, true);
+        };
+    }, [gridMenuOpen]);
  const [exportMenu,setExportMenu]=useState<{x:number;y:number}|null>(null);
  const [exporting,setExporting]=useState<{progress:string;current:number;total:number}|null>(null);
  const [noticeType,setNoticeType]=useState<'success'|'cancelled'|'notice'>('notice');
@@ -588,7 +609,22 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
    </button>
   </div>
  )}
- <div className="watch-search"><button aria-label="Refresh watchlist prices" title="Fetch latest available historical prices" onClick={onQuoteRefresh} disabled={!!snapshots?.pending||refreshPaused}><RefreshCw size={14} className={snapshots?.pending&&!refreshPaused?'spin':''}/></button><input aria-label="Search current watchlist" placeholder="Search this watchlist" value={query} onChange={e=>setQuery(e.target.value)}/><button aria-label="Add watchlist symbol" title="Search global instruments" onClick={onSearch}><Plus size={16}/></button></div>
+ <div className="watch-search"><button aria-label="Refresh watchlist prices" title="Fetch latest available historical prices" onClick={onQuoteRefresh} disabled={!!snapshots?.pending||refreshPaused}><RefreshCw size={14} className={snapshots?.pending&&!refreshPaused?'spin':''}/></button><input aria-label="Search current watchlist" placeholder="Search this watchlist" value={query} onChange={e=>setQuery(e.target.value)}/><div className="watchlist-grid-picker" ref={gridMenu}>
+    <button ref={gridMenuButton} aria-label="Watchlist Chart Grid actions" aria-expanded={gridMenuOpen} data-selecting={choosingGrid}
+      title={choosingGrid ? selectedForGrid.length+' symbols selected for Chart Grid' : 'Open symbols in Chart Grid'}
+      onClick={()=>setGridMenuOpen(open=>!open)}><LayoutGrid size={15}/></button>
+    {gridMenuOpen&&<div className="watchlist-grid-popup" role="group" aria-label="Watchlist Grid actions">
+      <button disabled={!items.length} onClick={()=>{
+        closeGridMenu();setGridSelection(null);onGrid(items.map(({row})=>row),current.name);
+      }}>Open watchlist in Grid</button>
+      <button aria-pressed={choosingGrid} disabled={!items.length&&!choosingGrid} onClick={()=>{
+        setGridSelection(choosingGrid?null:{list:current.id,ids:new Set()});closeGridMenu();
+      }}>{choosingGrid?'Cancel symbol selection':'Select symbols'}</button>
+      {choosingGrid&&<button disabled={!selectedForGrid.length} onClick={()=>{
+        closeGridMenu();setGridSelection(null);onGrid(selectedForGrid,current.name+' · selection');
+      }}>Open selected ({selectedForGrid.length}) in Grid</button>}
+    </div>}
+  </div><button aria-label="Add watchlist symbol" title="Search global instruments" onClick={onSearch}><Plus size={16}/></button></div>
  <div className="watchlist-options">
   <select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select>
   <select aria-label="Watchlist sort" data-testid="watchlist-sort-select" value={workspace.sidebar.sort} onChange={e=>{const nextSort=e.target.value as Workspace['sidebar']['sort'];onChange({...workspace,sidebar:{...workspace.sidebar,sort:nextSort}});triggerResort();}}>
@@ -604,11 +640,6 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   </select>
   <label title="Show supplied volume"><input aria-label="Watchlist volume" type="checkbox" checked={workspace.sidebar.volume} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,volume:e.target.checked}})}/>Vol</label>
   {hasHidden&&<label title="Show or hide locally hidden tickers" className="watch-hidden-toggle" style={{display:'inline-flex',alignItems:'center',gap:'3px',fontSize:'10px',cursor:'pointer'}}><input aria-label="Show hidden symbols" type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/>Hidden ({hiddenSymbols.length})</label>}
- </div>
- <div className="grid-source-actions">
-  <button disabled={!items.length} title="Open the visible watchlist symbols in Chart Grid" onClick={()=>onGrid(items.map(({row})=>row),current.name)}>Open watchlist in Grid</button>
-  <button aria-pressed={choosingGrid} disabled={!items.length&&!choosingGrid} onClick={()=>setGridSelection(choosingGrid?null:{list:current.id,ids:new Set()})}>Select symbols</button>
-  {choosingGrid&&<button disabled={!selectedForGrid.length} onClick={()=>{onGrid(selectedForGrid,current.name+' · selection');setGridSelection(null);}}>Open selected ({selectedForGrid.length}) in Grid</button>}
  </div>
 
  {(error||notice||busy||exporting)&&(

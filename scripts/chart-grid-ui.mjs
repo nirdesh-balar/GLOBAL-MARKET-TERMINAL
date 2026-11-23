@@ -104,15 +104,24 @@ try {
   await back();
 
   const watchlist = page.getByTestId('watchlist-sidebar');
+  const watchlistGrid = watchlist.getByRole('button', { name: 'Watchlist Chart Grid actions', exact: true });
+  await watchlistGrid.focus();
+  await watchlistGrid.press('Enter');
+  await expect(button('Open watchlist in Grid')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(watchlistGrid).toBeFocused();
+  await watchlistGrid.press('Enter');
   await watchlist.getByRole('button', { name: 'Select symbols', exact: true }).click();
   for (const row of list.slice(0, 2)) {
     await watchlist.getByRole('checkbox', { name: 'Select ' + row.symbol + ' for Chart Grid', exact: true }).check();
   }
+  await watchlistGrid.click();
   await button('Open selected (2) in Grid').click();
   await ready(2);
   assert.deepEqual(await tiles().evaluateAll(nodes => nodes.map(node => node.dataset.gridId)), list.slice(0, 2).map(row => row.canonical_id));
   await back();
 
+  await watchlistGrid.click();
   const openWatchlist = button('Open watchlist in Grid');
   await measure(openWatchlist, 'click', () => openWatchlist.click(), 'cold', 8, 'daily source first page');
   await expect(shell().getByText('Page 1 / 2')).toBeVisible();
