@@ -30,10 +30,41 @@ try {
   const historyStatus = () => page.evaluate(() => window.terminal.request('/api/history/status'));
   await ready();
 
+  await page.getByRole('button',{name:'Save workspace',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Save workspace',exact:true})).toHaveAttribute('data-saved','true');
+  const more = page.getByLabel('More chart options',{exact:true});
+  await more.click();
+  await expect(page.getByRole('button',{name:'Chart data and source'})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button',{name:'Chart data and source'})).toHaveCount(0);
+  const capture = label => page.screenshot({path:`test-results/neutral-${label}.png`});
+  const measure = () => page.evaluate(() => {
+    const box = selector => {
+      const {x,y,width,height}=document.querySelector(selector).getBoundingClientRect();
+      return {x,y,width,height};
+    };
+    return {
+      viewport:{width:innerWidth,height:innerHeight,scale:devicePixelRatio},
+      toolbar:box('.terminal-header'), drawing:box('.drawing-toolbar'),
+      analytical:box('.analysis-rail'), bottom:box('.bottom-chart-toolbar'),
+      chart:box('.chart-canvas'), watchlist:document.querySelector('.professional-watchlist')?box('.professional-watchlist'):null,
+    };
+  });
+  const expandedDock=await measure();
+  await capture('expanded');
   const dock = page.getByRole('button', { name: 'Watchlist dock', exact: true });
   await dock.click();
   await expect(dock).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.professional-watchlist')).toHaveCount(0);
+  const collapsedDock=await measure();
+  assert.equal(collapsedDock.analytical.width,45);
+  assert.equal(collapsedDock.toolbar.height,46);
+  assert.equal(collapsedDock.drawing.width,46);
+  assert.equal(collapsedDock.bottom.height,32);
+  assert.ok(collapsedDock.chart.width>expandedDock.chart.width);
+  console.log('Workspace geometry:',JSON.stringify({expanded:expandedDock,collapsed:collapsedDock}));
+  await page.mouse.move(4,4);
+  await capture('collapsed');
   await dock.click();
   await expect(page.locator('.professional-watchlist')).toBeVisible();
   const separatesQuote = () => page.locator('.watch-select').first().evaluate(row => {
@@ -164,13 +195,13 @@ try {
   await expect(page.getByTestId('drawing-flyout').getByRole('button', { name: 'Horizontal line', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('drawing-flyout')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Open market scanner' }).click();
+  await page.getByRole('button', { name: 'Screener workspace' }).click();
   await expect(page.getByTestId('screener-page')).toBeVisible();
   await page.getByRole('button', { name: 'Return to charts', exact: true }).click();
-  await page.getByRole('button', { name: 'Open local alerts' }).click();
+  await page.getByRole('button', { name: 'Alerts workspace' }).click();
   await expect(page.getByTestId('alerts-page')).toBeVisible();
   await page.getByTestId('alerts-page').getByRole('button', { name: /Return to charts/i }).click();
-  await page.getByRole('button', { name: 'Open analysis grid' }).click();
+  await page.getByRole('button', { name: 'Chart Grid workspace' }).click();
   await expect(page.getByRole('heading', { name: 'Chart Grid', exact: true })).toBeVisible();
   const controls = await page.evaluate(() => [...document.querySelectorAll('button')].filter(button => button.getClientRects().length).map(button => button.textContent.trim()));
   assert.ok(!controls.some(label => /^(buy|sell|trade|trading panel|strategy tester)$/i.test(label)));

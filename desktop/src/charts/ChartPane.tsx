@@ -10,7 +10,7 @@ import {useStreamStatus,useStreamFeed,mergeLive,streamView,type StreamFeed} from
 import {useRefreshTask} from '../refresh/hooks';
 import {updatedView,mergeCandles} from '../refresh/scheduler';
 import { memo,useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
+import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, CrosshairMode, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
 import { getCandleColors, getVolumeColors, LIGHT_THEME, DARK_THEME } from './appearance';
 import { BellPlus, CandlestickChart, Clock3, EyeOff, SlidersHorizontal, RefreshCw, Trash2, X, Upload } from 'lucide-react';
 import type { Candle, Pane, Indicator, Timeframe, HistoryResult, ChartQuote } from '../types';
@@ -321,7 +321,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     const crosshairColor=isLight?LIGHT_THEME.crosshair:DARK_THEME.crosshair;
     const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
     const candleColors=getCandleColors(pane.appearance,theme);
-    const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',fontSize:11,attributionLogo:true,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:70,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>timeFormatter.format(date(time))},crosshair:{vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
+    const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',fontSize:11,attributionLogo:true,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:70,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>timeFormatter.format(date(time))},crosshair:{mode:CrosshairMode.Normal,vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
     chart.current=c;chartDisplayZone.current=displayZone;(container.current as any).__chart=c;setChartEpoch(v=>v+1);container.current.dataset.chartCreations=String(Number(container.current.dataset.chartCreations??0)+1);if(container.current){container.current.dataset.priceMode=String(c.priceScale('right').options().mode);container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);}
     let main:ISeriesApi<SeriesType>;
     if(pane.chart_type==='candles')main=c.addSeries(CandlestickSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders});
@@ -349,7 +349,10 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
         const quoted=value!==null&&Number.isFinite(value)?Number(value.toFixed(data?.precision??precision)):0;
         cursorPrice.current=quoted>0?quoted:null;
         alert.hidden=cursorPrice.current===null;
-        if(cursorPrice.current!==null)alert.style.top=`${Math.max(13,Math.min(c.paneSize(0).height-13,p.point.y))}px`;
+        if(cursorPrice.current!==null){
+          alert.style.setProperty('--chart-axis-width',`${c.priceScale('right').width()}px`);
+          alert.style.top=`${Math.max(13,Math.min(c.paneSize(0).height-13,p.point.y))}px`;
+        }
       }
       const time=!p.sourceEvent&&!syncRef.current.active&&syncRef.current.syncCrosshair&&syncedCrosshair.current!==undefined?syncedCrosshair.current:p.time;
       const row=time?indexedRef.current.get(Number(time))||rowsRef.current.at(-1)||null:rowsRef.current.at(-1)||null;
@@ -374,7 +377,7 @@ export const ChartPane=memo(function ChartPane({refreshPaused=false,refreshSecon
     const c=chart.current,m=mainSeries.current;if(!c||!m)return;const a=pane.appearance;
     const isLight=theme==='light';
     const bg=a.background||(isLight?LIGHT_THEME.background:DARK_THEME.background);
-    const grid=a.grid_color?(a.grid_color+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0')):(isLight?LIGHT_THEME.grid:('#334155'+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0')));
+    const grid=a.grid_color?(a.grid_color+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0')):(isLight?LIGHT_THEME.grid:('#292a33'+Math.round(a.grid_opacity*255).toString(16).padStart(2,'0')));
     const borderColor=isLight?LIGHT_THEME.borderColor:DARK_THEME.borderColor;
     const textColor=isLight?LIGHT_THEME.textColor:DARK_THEME.textColor;
     const crosshairColor=isLight?LIGHT_THEME.crosshair:DARK_THEME.crosshair;

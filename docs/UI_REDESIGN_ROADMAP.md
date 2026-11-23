@@ -21,3 +21,11 @@ The first implementation increment uses GMT's own slate-blue palette, labeled an
 The existing indicator controls retain independent oscillator panes, resize, collapse, hide and removal. The price-scale alert action carries the active chart's canonical instrument, interval and quote-precision price to the existing local alert dialog. The display-zone preference is stored independently of instrument metadata. Intraday labels use the selected zone, higher-period candles keep their session dates, and candle and drawing timestamps stay unchanged. The reference recording established opening the alert and zone dialogs. Delivery and reference-zone persistence were unverified.
 
 Use a disposable profile for the development preview. Keep native Windows x64 visual validation under WIN-CHARTGRID and WIN-ELECTRON44. Preserve the existing macOS fullscreen and focus limitations and all current source assertions. The ordinary source and UI checks still apply. Run the focused workspace check with `node scripts/workspace-redesign-ui.mjs` after a development build.
+
+### Neutral workspace refinement
+
+The native title area stays available for dragging and window controls. Native Charts fullscreen uses the 46 px chart bar as the top application row. At single-chart desktop widths, compact per-chart actions sit beside the legend; multi-chart panes retain their regular per-pane row. The 46 px drawing rail and 45 px icon-only analysis rail keep their keyboard names and existing actions. The dock can be expanded, resized, or collapsed from Charts. The bottom range and scale bar is 32 px.
+
+The neutral palette reduces grid contrast and highlights active controls with amber. The default volume pane is 52 px; explicitly saved heights, chart colors and study colors keep their existing values. Chart settings, watchlist persistence, drawing anchor prices, and alert conditions use their existing storage. Save Workspace flushes the same serialized queue as autosave. Provider status and chart attribution remain available in the status bar.
+
+The source version and update policy are unchanged. Native Windows acceptance under WIN-CHARTGRID and WIN-ELECTRON44 and the known intermittent local macOS fullscreen and focus limitations remain open.

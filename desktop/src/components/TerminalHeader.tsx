@@ -1,6 +1,6 @@
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, PanelRightClose, PanelRightOpen, SlidersHorizontal,
-  Minimize2, Scan, Bell } from 'lucide-react';
+  Minimize2, Scan, Bell, Save, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
 import { providerLabel } from '../providers/label';
@@ -27,6 +27,9 @@ interface HeaderProps {
   onLayout: (n: Workspace['layout']) => void;
   onTheme: () => void;
   onSettings: () => void;
+  onSave: () => void;
+  saved: boolean;
+  onData: () => void;
   onChartSettings: () => void;
   onSidebar: () => void;
   onSync: (key: 'sync_time' | 'sync_crosshair') => void;
@@ -41,11 +44,12 @@ interface HeaderProps {
 export function TerminalHeader({
   workspace, pane, sidebar, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
   onLayout, onTheme, onSettings, onChartSettings, onSidebar, onSync, onAlert, focused,
-  expanded, nativeState, onNativeFullscreen, onFocus,
+  expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
 }: HeaderProps) {
   const { flags, assignFlag, removeFlag } = useFlags();
   const [headerPicker, setHeaderPicker] = useState<{ x: number; y: number } | null>(null);
   const layout = useRef<HTMLDivElement>(null);
+  const more = useRef<HTMLDetailsElement>(null);
   const layoutButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!layoutMenu) return;
@@ -55,6 +59,13 @@ export function TerminalHeader({
     document.addEventListener('pointerdown', dismiss);
     return () => document.removeEventListener('pointerdown', dismiss);
   }, [layoutMenu, onLayoutMenu]);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (more.current?.open && !more.current.contains(event.target as Node)) more.current.open = false;
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, []);
   const cid = pane.canonical_id || pane.instrument_id || pane.symbol;
   const flagColor = flags[cid]?.color;
 
@@ -77,7 +88,7 @@ export function TerminalHeader({
       ><FlagIcon color={flagColor} filled={Boolean(flagColor)} size={15} /></button>
       {headerPicker && <ColorFlagPicker symbolName={pane.symbol} currentColor={flagColor} position={headerPicker}
         onSelectColor={col => void assignFlag(pane, col)} onRemoveFlag={() => void removeFlag(cid)} onClose={() => setHeaderPicker(null)} />}
-      <span className="header-exchange">{providerLabel(pane)}</span>
+      <span className="header-exchange header-provider" title={providerLabel(pane)}>{providerLabel(pane)}</span>
       <div className="toolbar-divider" />
       <div className="timeframe-toolbar">
         {intervals.map(interval => <button key={interval} aria-label={`Active timeframe ${interval}`}
@@ -95,12 +106,12 @@ export function TerminalHeader({
         <SlidersHorizontal size={15} /><span>Studies</span>
       </button>
       <div className="toolbar-divider" />
-      <button aria-label="Undo drawing" title={`Undo drawing · ${UNDO_HINT}`} onClick={() => command(pane.id, 'undo')}><Undo2 size={16} /></button>
-      <button aria-label="Redo drawing" title={`Redo drawing · ${REDO_HINT}`} onClick={() => command(pane.id, 'redo')}><Redo2 size={16} /></button>
+      <button aria-label="Create alert from active chart" title="Create local analytical alert" onClick={onAlert}><Bell size={16} /></button>
       <button aria-label="Historical replay" title="Historical candle replay" onClick={() => command(pane.id, 'replay')}>
         <Play size={15} /><span className="replay-word">Replay</span>
       </button>
-      <button aria-label="Create alert from active chart" title="Create local analytical alert" onClick={onAlert}><Bell size={16} /></button>
+      <button aria-label="Undo drawing" title={`Undo drawing · ${UNDO_HINT}`} onClick={() => command(pane.id, 'undo')}><Undo2 size={16} /></button>
+      <button aria-label="Redo drawing" title={`Redo drawing · ${REDO_HINT}`} onClick={() => command(pane.id, 'redo')}><Redo2 size={16} /></button>
       <div className="grow" />
       <div className="layout-control" ref={layout} onKeyDown={event => {
         if (event.key !== 'Escape' || !layoutMenu) return;
@@ -129,12 +140,25 @@ export function TerminalHeader({
         {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
       </button>
       <button aria-label={focused ? 'Exit focus mode' : 'Enter focus mode'} aria-pressed={focused} title="Focus mode · Escape exits" onClick={onFocus}><Scan size={15} /></button>
+      <button className="workspace-save" aria-label="Save workspace" title={saved ? 'Workspace saved locally' : 'Save workspace locally'} data-saved={saved} onClick={onSave}><Save size={15} /></button>
+      <button aria-label="Toggle theme" title="Dark / light appearance" onClick={onTheme}>{workspace.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
+      <button aria-label="Export active chart" title="Export chart PNG" onClick={() => command(pane.id, 'screenshot')}><Camera size={17} /></button>
+      <details className="tool-more" ref={more} onKeyDown={event => {
+        if (event.key !== 'Escape' || !event.currentTarget.open) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.open = false;
+        event.currentTarget.querySelector('summary')?.focus();
+      }}>
+        <summary aria-label="More chart options" title="More chart options"><Ellipsis size={17} /></summary>
+        <div className="tool-more-panel">
+          <button aria-label="Settings" onClick={() => { if (more.current) more.current.open = false; onSettings(); }}><Settings2 size={14} /> Application settings</button>
+          <button onClick={() => { if (more.current) more.current.open = false; onData(); }}><Database size={14} /> Chart data and source</button>
+        </div>
+      </details>
       <button data-testid="macos-fullscreen" aria-label={nativeState.fullscreen ? `Exit ${OS_NAME} Fullscreen` : `Enter ${OS_NAME} Fullscreen`}
         aria-pressed={nativeState.fullscreen} title={`Native ${OS_NAME} fullscreen · ${FULLSCREEN_HINT}`}
         disabled={nativeState.transitioning} onClick={onNativeFullscreen}>{nativeState.fullscreen ? <Shrink size={16} /> : <Expand size={16} />}</button>
-      <button aria-label="Export active chart" title="Export chart PNG" onClick={() => command(pane.id, 'screenshot')}><Camera size={17} /></button>
-      <button aria-label="Toggle theme" title="Dark / light appearance" onClick={onTheme}>{workspace.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
-      <button aria-label="Settings" title="Data provider and app preferences" onClick={onSettings}><Settings2 size={16} /></button>
       <button aria-label="Toggle sidebar" title="Show / hide watchlist" onClick={onSidebar}>{sidebar ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}</button>
     </header>
   );
