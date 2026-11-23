@@ -2,6 +2,9 @@
 
 ## 2026-11-23 · Phase 1 Advanced Chart Grid
 
+- Recover malformed or unsupported stored Grid settings when loading the workspace. A subsequent valid watchlist operation or workspace save preserves the original Grid payload for recovery and commits the supported settings in the same SQLite transaction. Workspace loading does not write to the profile.
+- Hosted source CI at `12a0f0b8a359fd482cae716c37f0e2ab5e5f7efc` initially failed the ordinary eight-chart warm restore at 2,641 ms. Attempt 2 passed at 1,714 ms on the same revision. Both recorded zero additional provider requests. The strict limit remains below 2,000 ms. The cause of the first timing remains unresolved. [First attempt](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45107055210/attempts/1) · [Successful retry](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45107055210/attempts/2)
+
 - Add a separate workspace with ordered canonical watchlist and scanner inputs, per-card and global timeframes, selectable columns and card sizes, and 20-candle SMA/EMA overlays. Preserve the normal chart pane state when switching.
 - Mount at most eight Grid charts per page and one when maximized. Limit Grid history to two active leases, remove invisible charts and release old history owners. Preserve shared requests needed by another consumer and use the existing backend cache and provider limits.
 - Store Grid settings in a versioned profile field with legacy defaults. Rehydrate display metadata from exact registry matches. Existing source/version/profile boundaries remain in effect.

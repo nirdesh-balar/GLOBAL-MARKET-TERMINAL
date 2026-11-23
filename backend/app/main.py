@@ -12,7 +12,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 from .refresh import WatchlistRefresh, routes as refresh_routes
 from .crypto_migration import MigrationService,routes as migration_routes
 from .screener import Screener,routes as screener_routes
@@ -92,10 +92,8 @@ def restore_workspace(db,registry=None,*,hydrate_grid=False):
             row['symbol']=security['symbol'] if security['id'].startswith('equity:') and not db.resolve(original.removesuffix('.NS')) else original # Preserve saved symbols unless the official directory records a rename.
         else:row['token']='0'
         if 'timeframe' in row and row['timeframe'] not in ('1m','5m','15m','30m','1h','4h','1d','1w','1M'):row['timeframe']='1d'
-    try:
-        saved['chart_grid'] = GridPreferences.model_validate(saved.get('chart_grid', {})).model_dump()
-    except ValidationError:
-        saved['chart_grid'] = GridPreferences().model_dump()
+    grid = GridPreferences.from_storage(saved.get('chart_grid', {}))
+    saved['chart_grid'] = grid if grid is not None else GridPreferences()
     result=Workspace.model_validate(saved).model_dump()
     if registry and hydrate_grid:
         for card in result['chart_grid']['cards']:

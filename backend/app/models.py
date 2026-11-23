@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel,Field,model_validator,field_validator,ConfigDict
+from pydantic import BaseModel,Field,model_validator,field_validator,ConfigDict,ValidationError
 Timeframe=Literal['1m','5m','15m','30m','1h','4h','1d','1w','1M','1Y']
 IndicatorKind=Literal['SMA','EMA','WMA','VWMA','RSI','MACD','STOCHRSI','BB','ATR','SUPERTREND','VWAP','HMA','ICHIMOKU','SAR','ADX','ZIGZAG','AROON','LINREG','CMO','DPO','KAMA','LSMA','MCGINLEY','SMMA','TEMA','DEMA','VORTEX','STOCH','CCI','ROC','AO','MOM','WILLR','ULTOSC','TSI','FISHER','PPO','KST','COPPOCK','CKS','KC','DC','STDDEV','HV','CHAIKIN_VOL','CHOP','MASS','OBV','CMF','MFI','ADL','VO','EOM','NVI','PVI','PVT','TMF','VROC','PIVOT','SWING_PIVOT','CPR','CPR_MTF','ORB','PREV_OHLC','ALPHATREND','HALFTREND','RELATIVE_STRENGTH','VRVP','INDIA_VIX']
 Source=Literal['close','open','high','low','HL2','HLC3','OHLC4']
@@ -430,6 +430,13 @@ class GridPreferences(BaseModel):
     columns: Literal[1, 2, 3, 4] = 4
     size: Literal['compact', 'comfortable'] = 'compact'
     cards: list[GridCard] = Field(default_factory=list, max_length=128)
+
+    @classmethod
+    def from_storage(cls, value: object) -> 'GridPreferences | None':
+        try:
+            return cls.model_validate(value)
+        except ValidationError:
+            return None
 
     @model_validator(mode='after')
     def unique_cards(self):
