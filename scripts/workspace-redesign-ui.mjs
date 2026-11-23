@@ -36,6 +36,12 @@ try {
   await expect(page.locator('.professional-watchlist')).toHaveCount(0);
   await dock.click();
   await expect(page.locator('.professional-watchlist')).toBeVisible();
+  const separatesQuote = () => page.locator('.watch-select').first().evaluate(row => {
+    const name = row.querySelector('span:first-child strong').getBoundingClientRect();
+    const quote = row.querySelector('.quote > strong').getBoundingClientRect();
+    return name.width > 40 && name.right <= quote.left;
+  });
+  await expect.poll(separatesQuote).toBe(true);
   const resizeDock = page.getByRole('separator', { name: 'Resize watchlist' });
   const dockWidth = (await workspace()).sidebar.width;
   await resizeDock.focus();

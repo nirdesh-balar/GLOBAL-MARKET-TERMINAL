@@ -126,30 +126,55 @@
 .terminal-shell .professional-watchlist > header { background: var(--surface); }
 .terminal-shell .professional-watchlist > header select { min-width: 0; }
 .terminal-shell .professional-watchlist .watch-select {
-  grid-template-columns: minmax(68px, 1fr) minmax(53px, .78fr) minmax(41px, .64fr) minmax(42px, .66fr);
+  grid-template-columns: minmax(68px, 1fr) minmax(64px, .78fr) minmax(41px, .64fr) minmax(42px, .66fr);
 }
 .terminal-shell .professional-watchlist .watch-columns {
-  grid-template-columns: 24px minmax(68px, 1fr) minmax(53px, .78fr) minmax(41px, .64fr) minmax(42px, .66fr) 46px;
+  grid-template-columns: 24px minmax(68px, 1fr) minmax(64px, .78fr) minmax(41px, .64fr) minmax(42px, .66fr) 46px;
 }
+.terminal-shell .professional-watchlist .watch-select .quote,
+.terminal-shell .professional-watchlist .watch-select .watch-num-change {
+  min-width: 0;
+  overflow: hidden;
+}
+.terminal-shell .professional-watchlist .watch-select .quote > strong {
+  max-width: 100%;
+  font-size: 11px;
+}
+.terminal-shell .professional-watchlist .quote-currency { font-size: 8px; }
 .terminal-shell .professional-watchlist .watch-select:focus-visible {
   outline: 1px solid var(--workspace-focus) !important;
   outline-offset: -2px;
 }
 @container (max-width: 300px) {
   .terminal-shell .professional-watchlist .watch-select {
-    grid-template-columns: minmax(58px, 1fr) minmax(49px, .8fr) minmax(40px, .6fr);
+    grid-template-columns: minmax(58px, 1fr) minmax(58px, .8fr) minmax(40px, .6fr);
   }
   .terminal-shell .professional-watchlist .watch-columns {
-    grid-template-columns: 18px minmax(58px, 1fr) minmax(49px, .8fr) minmax(40px, .6fr) 46px;
+    grid-template-columns: 18px minmax(58px, 1fr) minmax(58px, .8fr) minmax(40px, .6fr) 46px;
   }
   .terminal-shell .professional-watchlist .watch-num-change,
   .terminal-shell .professional-watchlist .watch-col-change-abs { display: none; }
 }
 
+@container (max-width: 245px) {
+  .terminal-shell .professional-watchlist .watch-select { grid-template-columns: minmax(57px, 1fr) minmax(63px, .85fr); }
+  .terminal-shell .professional-watchlist .watch-columns { grid-template-columns: 18px minmax(57px, 1fr) minmax(63px, .85fr) 46px; }
+  .terminal-shell .professional-watchlist .watch-select .watch-change,
+  .terminal-shell .professional-watchlist .watch-columns .watch-col-change-pct { display: none; }
+}
+
 .terminal-shell .chart-pane.active { border-color: color-mix(in srgb, var(--workspace-accent) 55%, var(--border)); }
 .terminal-shell .pane-toolbar { background: var(--surface); border-bottom: 1px solid var(--border); }
 .terminal-shell .legend-title { letter-spacing: .01em; }
-.terminal-shell .ohlc { font-variant-numeric: tabular-nums; }
+.terminal-shell .ohlc {
+  font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.terminal-shell .ohlc > span { white-space: nowrap; }
+@container (max-width: 720px) {
+  .terminal-shell .chart-surface > .chart-legend { max-width: calc(100% - 112px); }
+}
 @container (min-width: 950px) {
   .terminal-shell .chart-surface > .chart-legend {
     display: flex;
