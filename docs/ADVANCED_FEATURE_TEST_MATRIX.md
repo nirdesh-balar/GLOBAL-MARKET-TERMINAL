@@ -1,8 +1,8 @@
 # Advanced Feature Test Matrix
 
-Phase 0 proposed acceptance plan · 23 November 2026
+Phase 0 acceptance plan with Phase 1 source tests · 23 November 2026
 
-All new rows are proposed and unexecuted. The verified pre-existing baseline is official `f53b57f84b7ff4cac784f54856a47292cc4a8a9c` and macOS 1.1.0-rc.7 ARM64 with Electron 44.11.5. Successful CI attempt 2 reported 2,419 Python passes, one optional skip, 31/31 macOS UI scripts and 18/18 numerical scripts. It measured 1,930 ms for warm Charts restoration and zero additional provider requests, following 2,173 ms on attempt 1. Windows native `WIN-ELECTRON44` remains pending. [CI run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45036636194) · [Windows pending](WINDOWS_PENDING.md)
+Phase 1 has deterministic backend, numerical and native fixture scripts in the maintained runner. Subsequent feature rows remain proposals. The verified pre-existing baseline is official `f53b57f84b7ff4cac784f54856a47292cc4a8a9c` and macOS 1.1.0-rc.7 ARM64 with Electron 44.11.5. Successful CI attempt 2 reported 2,419 Python passes, one optional skip, 31/31 macOS UI scripts and 18/18 numerical scripts. It measured 1,930 ms for warm Charts restoration and zero additional provider requests, following 2,173 ms on attempt 1. Windows native `WIN-ELECTRON44` remains pending. [CI run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/45036636194) · [Windows pending](WINDOWS_PENDING.md)
 
 ## Evidence and fixtures
 
@@ -23,13 +23,15 @@ All new rows are proposed and unexecuted. The verified pre-existing baseline is 
 
 ## Phase 1 · Advanced Chart Grid
 
+Run `node scripts/chart-grid-unit.mjs`, `node scripts/chart-grid-ui.mjs` and `backend/.venv/bin/python -m pytest backend/tests/test_workspace_repair.py -q -rs`. The macOS runner includes both Grid scripts. The UI benchmark writes `test-results/chart-grid-performance.json` with initial and new-timeframe measurements, navigation and page returns from cache, provider deltas, chart counts, and renderer memory before and after 20 cycles. The diagnostics use synthetic market data in disposable profiles. The final packaged candidate requires its own live acceptance.
+
 | ID | Deterministic case and pass condition | Surface |
 | --- | --- | --- |
 | G1-01 | Open dedicated Grid from navigation, watchlist individual and selected batch, then one screener result. Canonical ID and supported timeframe are preserved. Duplicate, unresolved, unsupported and over-cap entries produce a defined result and preserve order. Ordinary Chart and watchlist actions still function. | Shared, Mac UI, Windows UI |
-| G1-02 | Test four default cards and a populated 128-card descriptor fixture. Arrange responsive columns and sizes, page by mouse/keyboard, maximize and restore one card. Mount at most eight cards, one when maximized, and restore page position and focus. Verify narrow and high-DPI viewports. | Mac and Windows UI |
+| G1-02 | Test eight cards on a full page and a 128-card input limit. Arrange responsive columns and sizes, page by mouse/keyboard, maximize and restore one card. Mount at most eight cards, one when maximized, and restore page position and focus. Verify narrow and high-DPI viewports. | Mac and Windows UI |
 | G1-03 | Switch canonical symbols, intervals and settings amid delayed responses. Replace a removed card before its previous response completes. Late results never paint the wrong chart. One supported overlay agrees with an existing numerical fixture. Stale, empty, error and unsupported inputs remain distinguishable. | Shared and Mac UI |
 | G1-04 | Spy on work scheduled per card, cache keys and upstream requests. Compatible history requests coalesce. Different canonical ID, timeframe, adjustment and window inputs do not share incompatible answers. Limit active new Grid history operations to two and hidden cards to zero. Maintain the existing Yahoo budget under concurrent Charts/screener demand. | Shared backend and UI |
-| G1-05 | Cycle page, maximize, route, and remount at least 20 times, including cancellation while data is pending. Compare mount, listener, timer, subscription and owner counts with the corresponding quiescent state and inspect RSS trends. Warm eight-card Grid restore is below 2,000 ms with upstream delta zero. Report all runs, median and maximum. Run BASE-02 independently. | Shared lifecycle, Mac performance and Windows lifecycle |
+| G1-05 | Cycle page, maximize, route, and remount at least 20 times, including cancellation while data is pending. Compare mount, listener, timer, subscription and owner counts with the corresponding quiescent state and inspect RSS trends. Warm eight-card Grid restore records latency with upstream delta zero. Report individual runs, median and maximum before selecting a Grid-specific limit. Run BASE-02 independently. | Shared lifecycle, Mac performance and Windows lifecycle |
 | G1-06 | Open a legacy workspace, configure Grid, close and reopen on a disposable profile. Confirm validated state persists without bars or secrets. Inject invalid, over-limit and unknown fields and check safe fallbacks. Verify existing Charts and alerts retain state. | Shared schema, Mac and Windows packaged |
 
 ## Phases 2–5 · Market analysis and chart reuse

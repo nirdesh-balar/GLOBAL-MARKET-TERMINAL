@@ -21,7 +21,7 @@ from .flags import routes as flag_routes
 from .watchlists import Watchlists,routes as watchlist_routes,persist as persist_workspace,load as load_workspace
 from .database import Database
 from .instruments import bootstrap, refresh, refresh_startup, install_files
-from .models import Workspace, Timeframe, CacheConfig, IndicatorRequest
+from .models import Workspace, Timeframe, CacheConfig, GridPreferences, IndicatorRequest
 from .registry import InstrumentRegistry
 from .markets import MARKETS,entry
 from .discovery import DiscoveryService
@@ -36,7 +36,7 @@ def default_workspace(db):
     rows=[db.resolve(s) or (fallback[i%len(fallback)] if fallback else {'symbol':s,'token':'0'}) for i,s in enumerate(DEFAULTS)]
     return dict(layout=2,panes=[dict(id=str(i),symbol=r['symbol'],token=r['token'],timeframe='1d',chart_type='candles',indicators=['EMA20'],volume=True) for i,r in enumerate(rows)],watchlist=[dict(symbol=r['symbol'],token=r['token']) for r in rows])
 
-def restore_workspace(db,registry=None):
+def restore_workspace(db,registry=None,*,hydrate_grid=False):
     saved=db.get('workspace') or default_workspace(db)
     if not isinstance(saved, dict):
         saved = default_workspace(db)
@@ -92,7 +92,14 @@ def restore_workspace(db,registry=None):
             row['symbol']=security['symbol'] if security['id'].startswith('equity:') and not db.resolve(original.removesuffix('.NS')) else original # Preserve saved symbols unless the official directory records a rename.
         else:row['token']='0'
         if 'timeframe' in row and row['timeframe'] not in ('1m','5m','15m','30m','1h','4h','1d','1w','1M'):row['timeframe']='1d'
+    grid = GridPreferences.from_storage(saved.get('chart_grid', {}))
+    saved['chart_grid'] = grid if grid is not None else GridPreferences()
     result=Workspace.model_validate(saved).model_dump()
+    if registry and hydrate_grid:
+        for card in result['chart_grid']['cards']:
+            instrument = registry.resolve(card['canonical_id'])
+            if instrument and instrument['canonical_id'] == card['canonical_id']:
+                card['instrument'] = entry(instrument)
     for pane in result['panes']:
         for drawings in pane['drawing_sets'].values():
             for drawing in drawings:
@@ -249,7 +256,7 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
             try: return await asyncio.to_thread(install_files,db,mapped)
             except (ValueError,UnicodeError) as e: raise HTTPException(422,str(e)) from None
     @app.get('/workspace')
-    def workspace(): return restore_workspace(db,registry)
+    def workspace(): return restore_workspace(db,registry,hydrate_grid=True)
     @app.put('/workspace')
     def save_workspace(value:Workspace):
         for row in [p.model_dump() for p in value.panes]+[r.model_dump() for r in value.watchlist]+[r.model_dump() for w in value.watchlists for r in w.items]:

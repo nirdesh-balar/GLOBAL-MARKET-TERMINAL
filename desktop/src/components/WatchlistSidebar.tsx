@@ -2,7 +2,7 @@ import {legacyCrypto} from '../providers/legacy';
 import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,QuoteRow,RefreshPreferences} from '../refresh/hooks';
 import React, {useEffect,useLayoutEffect,useRef,useState,useCallback} from 'react';
-import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check} from 'lucide-react';
+import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check,LayoutGrid} from 'lucide-react';
 import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist,Timeframe} from '../types';
 import {symbolLabel,price,api} from '../services/api';
 import type {ExcelWatchlistRow,ExcelExportPayload} from '../export/excelWorkbook';
@@ -98,11 +98,33 @@ export function compareSymbolEntries(
     return 0;
 }
 
-export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, health, indices, active, quotes, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe }: { onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; health: Health; indices: Instrument[]; active: string; quotes: Record<string, ChartQuote>; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
+export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, health, indices, active, quotes, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe, onGrid }: { onGrid: (rows: SymbolEntry[], source: string) => void; onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; health: Health; indices: Instrument[]; active: string; quotes: Record<string, ChartQuote>; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
     const [query, setQuery] = useState(''), [manage, setManage] = useState(false), [name, setName] = useState(''), [action, setAction] = useState<'create' | 'rename' | 'duplicate'>('create'), [drag, setDrag] = useState<string | null>(null), [target, setTarget] = useState('active'), [width, setWidth] = useState(Math.round(workspace.sidebar.width || 320)), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [removeList, setRemoveList] = useState(false), [clearConfirm, setClearConfirm] = useState(false), [importing, setImporting] = useState(false), [menu, setMenu] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null), [destination, setDestination] = useState('');
     const [rowPicker, setRowPicker] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null);
     const [aliasInput, setAliasInput] = useState('');
     const [showHidden, setShowHidden] = useState(false);
+    const [gridSelection, setGridSelection] = useState<{ list: string; ids: Set<string> } | null>(null);
+    const [gridMenuOpen, setGridMenuOpen] = useState(false);
+    const gridMenu = useRef<HTMLDivElement>(null);
+    const gridMenuButton = useRef<HTMLButtonElement>(null);
+    const closeGridMenu = () => { setGridMenuOpen(false); gridMenuButton.current?.focus(); };
+
+    useEffect(() => {
+        if (!gridMenuOpen) return;
+        gridMenu.current?.querySelector<HTMLButtonElement>('.watchlist-grid-popup button:not(:disabled)')?.focus();
+        const outside = (event: PointerEvent) => {
+            if (!gridMenu.current?.contains(event.target as Node)) setGridMenuOpen(false);
+        };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') { event.stopPropagation(); closeGridMenu(); }
+        };
+        document.addEventListener('pointerdown', outside);
+        document.addEventListener('keydown', escape, true);
+        return () => {
+            document.removeEventListener('pointerdown', outside);
+            document.removeEventListener('keydown', escape, true);
+        };
+    }, [gridMenuOpen]);
  const [exportMenu,setExportMenu]=useState<{x:number;y:number}|null>(null);
  const [exporting,setExporting]=useState<{progress:string;current:number;total:number}|null>(null);
  const [noticeType,setNoticeType]=useState<'success'|'cancelled'|'notice'>('notice');
@@ -553,6 +575,8 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         finally { setBusy(false); }
     };
 
+ const choosingGrid=gridSelection?.list===current.id;
+ const selectedForGrid=choosingGrid?items.filter(({row})=>gridSelection.ids.has(identity(row))).map(({row})=>row):[];
  return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}><div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical" onPointerDown={e=>{resizing.current=true;e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{if(resizing.current){const next=Math.round(Math.max(220,Math.min(480,window.innerWidth-e.clientX)));widthRef.current=next;setWidth(next);}}} onPointerUp={e=>{if(!resizing.current)return;resizing.current=false;e.currentTarget.releasePointerCapture(e.pointerId);onChange({...workspace,sidebar:{...workspace.sidebar,width:Math.round(widthRef.current)}});}} onPointerCancel={()=>resizing.current=false}/>
  <header data-testid="watchlist-header">
   {isColored && activeColor && <span className="watchlist-header-flag" title={`${current.name}`}><FlagIcon color={activeColor} filled={true} size={15}/></span>}
@@ -585,7 +609,22 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
    </button>
   </div>
  )}
- <div className="watch-search"><button aria-label="Refresh watchlist prices" title="Fetch latest available historical prices" onClick={onQuoteRefresh} disabled={!!snapshots?.pending||refreshPaused}><RefreshCw size={14} className={snapshots?.pending&&!refreshPaused?'spin':''}/></button><input aria-label="Search current watchlist" placeholder="Search this watchlist" value={query} onChange={e=>setQuery(e.target.value)}/><button aria-label="Add watchlist symbol" title="Search global instruments" onClick={onSearch}><Plus size={16}/></button></div>
+ <div className="watch-search"><button aria-label="Refresh watchlist prices" title="Fetch latest available historical prices" onClick={onQuoteRefresh} disabled={!!snapshots?.pending||refreshPaused}><RefreshCw size={14} className={snapshots?.pending&&!refreshPaused?'spin':''}/></button><input aria-label="Search current watchlist" placeholder="Search this watchlist" value={query} onChange={e=>setQuery(e.target.value)}/><div className="watchlist-grid-picker" ref={gridMenu}>
+    <button ref={gridMenuButton} aria-label="Watchlist Chart Grid actions" aria-expanded={gridMenuOpen} data-selecting={choosingGrid}
+      title={choosingGrid ? selectedForGrid.length+' symbols selected for Chart Grid' : 'Open symbols in Chart Grid'}
+      onClick={()=>setGridMenuOpen(open=>!open)}><LayoutGrid size={15}/></button>
+    {gridMenuOpen&&<div className="watchlist-grid-popup" role="group" aria-label="Watchlist Grid actions">
+      <button disabled={!items.length} onClick={()=>{
+        closeGridMenu();setGridSelection(null);onGrid(items.map(({row})=>row),current.name);
+      }}>Open watchlist in Grid</button>
+      <button aria-pressed={choosingGrid} disabled={!items.length&&!choosingGrid} onClick={()=>{
+        setGridSelection(choosingGrid?null:{list:current.id,ids:new Set()});closeGridMenu();
+      }}>{choosingGrid?'Cancel symbol selection':'Select symbols'}</button>
+      {choosingGrid&&<button disabled={!selectedForGrid.length} onClick={()=>{
+        closeGridMenu();setGridSelection(null);onGrid(selectedForGrid,current.name+' · selection');
+      }}>Open selected ({selectedForGrid.length}) in Grid</button>}
+    </div>}
+  </div><button aria-label="Add watchlist symbol" title="Search global instruments" onClick={onSearch}><Plus size={16}/></button></div>
  <div className="watchlist-options">
   <select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select>
   <select aria-label="Watchlist sort" data-testid="watchlist-sort-select" value={workspace.sidebar.sort} onChange={e=>{const nextSort=e.target.value as Workspace['sidebar']['sort'];onChange({...workspace,sidebar:{...workspace.sidebar,sort:nextSort}});triggerResort();}}>
@@ -636,10 +675,15 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
    const rowFlagColor=flags[id]?.color;
    const rowFlagHex=rowFlagColor?FLAG_COLORS[rowFlagColor]?.hex:undefined;
    const isHidden=hiddenSymbols.includes(id);
-   return <div data-stream-state={snapshots?.rows[id]?.stream_state} data-quote-state={snapshots?.rows[id]?.state||'idle'} data-identity={id} data-hidden={isHidden} data-flag-color={rowFlagColor||undefined} style={rowFlagHex?({'--row-flag-color':rowFlagHex} as React.CSSProperties):undefined} className={`watch-row ${activePaneSymbol===id?'selected-symbol':''}`} key={id} draggable={!isColored&&!busy&&workspace.sidebar.sort==='manual'} onClick={e=>{if((e.target as HTMLElement).closest('.symbol-flag-btn, .watch-row-actions, button, a'))return;openRow(row);e.currentTarget.querySelector<HTMLButtonElement>('.watch-select')?.focus({preventScroll:true});}} onContextMenu={e=>{e.preventDefault();context(row,e.clientX,e.clientY);}} onDragStart={e=>{if(isColored)return;setDrag(id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>setDrag(null)} onDragOver={e=>{if(!isColored&&drag&&workspace.sidebar.sort==='manual')e.preventDefault();}} onDrop={e=>{e.preventDefault();if(!isColored&&drag&&workspace.sidebar.sort==='manual')move(current.items.findIndex(r=>identity(r)===drag),n);setDrag(null);}}>
-    <button data-testid={`watchlist-flag-${row.symbol}`} aria-label={rowFlagColor?`${rowFlagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${rowFlagColor?'flagged':'unflagged'}`} title={rowFlagColor?`${rowFlagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const b=e.currentTarget.getBoundingClientRect();setRowPicker({row,x:b.left,y:b.bottom+4});}}>
+   return <div data-stream-state={snapshots?.rows[id]?.stream_state} data-quote-state={snapshots?.rows[id]?.state||'idle'} data-identity={id} data-hidden={isHidden} data-flag-color={rowFlagColor||undefined} style={rowFlagHex?({'--row-flag-color':rowFlagHex} as React.CSSProperties):undefined} className={`watch-row ${activePaneSymbol===id?'selected-symbol':''}`} key={id} draggable={!isColored&&!busy&&workspace.sidebar.sort==='manual'} onClick={e=>{if((e.target as HTMLElement).closest('.symbol-flag-btn, .watch-row-actions, button, a, input'))return;openRow(row);e.currentTarget.querySelector<HTMLButtonElement>('.watch-select')?.focus({preventScroll:true});}} onContextMenu={e=>{e.preventDefault();context(row,e.clientX,e.clientY);}} onDragStart={e=>{if(isColored)return;setDrag(id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>setDrag(null)} onDragOver={e=>{if(!isColored&&drag&&workspace.sidebar.sort==='manual')e.preventDefault();}} onDrop={e=>{e.preventDefault();if(!isColored&&drag&&workspace.sidebar.sort==='manual')move(current.items.findIndex(r=>identity(r)===drag),n);setDrag(null);}}>
+    {choosingGrid?<input className="grid-source-choice" type="checkbox" aria-label={'Select '+row.symbol+' for Chart Grid'}
+      checked={gridSelection.ids.has(id)} onChange={e=>{
+        const ids=new Set(gridSelection.ids);
+        if(e.target.checked)ids.add(id);else ids.delete(id);
+        setGridSelection({list:current.id,ids});
+      }} />:<button data-testid={`watchlist-flag-${row.symbol}`} aria-label={rowFlagColor?`${rowFlagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${rowFlagColor?'flagged':'unflagged'}`} title={rowFlagColor?`${rowFlagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const b=e.currentTarget.getBoundingClientRect();setRowPicker({row,x:b.left,y:b.bottom+4});}}>
      <FlagIcon color={rowFlagColor} filled={Boolean(rowFlagColor)} size={14}/>
-    </button>
+    </button>}
     <button data-testid={`watchlist-symbol-${row.symbol}`} className="watch-select" title={`Click opens chart. ArrowUp / ArrowDown navigates and updates chart immediately. Shift+F10 opens actions.`} onClick={()=>openRow(row)} onKeyDown={e=>handleKeyDown(e,position,n)}>
      <span>
       <strong>{row.kind==='index'?row.name:symbolLabel(row.symbol)}</strong>
@@ -693,6 +737,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         {menu && <div ref={menuRef} role="menu" aria-label="Instrument actions" className="watchlist-context" style={{ left: menu.x, top: menu.y }}>
             <strong>{menu.row.symbol} · {menu.row.exchange}</strong>
             <button role="menuitem" onClick={() => { openRow(menu.row); setMenu(null); }}>Open in chart</button>
+            <button role="menuitem" onClick={() => { onGrid([menu.row], current.name); setMenu(null); }}>Open in Chart Grid</button>
             {onAlert && <button role="menuitem" onClick={() => { onAlert(menu.row); setMenu(null); }}>Create alert</button>}
             {/* Color flag actions */}
             <div style={{ padding: '4px 8px', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)', margin: '3px 0' }}>

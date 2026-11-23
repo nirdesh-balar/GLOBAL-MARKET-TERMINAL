@@ -3,7 +3,7 @@ import csv,hashlib,io,json,re,uuid
 from typing import Literal
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel,ConfigDict,Field,model_validator
-from .models import Workspace,Watchlist
+from .models import GridPreferences,Workspace,Watchlist
 from .market_router import MarketDataRouter,selectable
 from .providers.base import ProviderError
 from .markets import MARKETS,entry,EXCHANGES,SUFFIX
@@ -50,9 +50,21 @@ def validate_changes(old,new):
         if w['id'] not in {r['id'] for r in old_lists} and protected(w):raise HTTPException(422,'Reserved watchlist identifier')
 
 def persist(c,old,new):
+    raw_grid = old.get('chart_grid', {})
+    recovery = None
+    if GridPreferences.from_storage(raw_grid) is None:
+        if new.get('chart_grid') == raw_grid:
+            new = {**new, 'chart_grid': GridPreferences()}
+        original = json.dumps(raw_grid, sort_keys=True)
+        digest = hashlib.sha256(original.encode('utf-8')).hexdigest()
+        # Keep the original JSON opaque to migrations that rewrite instrument IDs.
+        recovery = (f'chart_grid_recovery:{digest}', json.dumps({'original_json': original}))
+
     value=Workspace.model_validate(new).model_dump();validate_changes(old,value)
     changed=old.get('watchlists',[])!=value['watchlists']
     value['watchlist_revision']=old.get('watchlist_revision',0)+int(changed)
+    if recovery is not None:
+        c.execute('INSERT OR IGNORE INTO settings VALUES(?,?)', recovery)
     c.execute('INSERT OR REPLACE INTO settings VALUES(?,?)',('workspace',json.dumps(value)))
     c.execute('INSERT OR REPLACE INTO watchlists VALUES(?,?)',('Favourites',json.dumps(value['watchlist'])))
     return value

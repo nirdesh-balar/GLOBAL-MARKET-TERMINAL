@@ -128,3 +128,85 @@ def test_auth_and_schema_boundary(app):
  c=TestClient(app);assert c.post('/api/watchlists/mutate',json={}).status_code==401
 @pytest.mark.parametrize('payload',[{'action':'create','name':'X','revision':0,'path':'/etc/passwd'},{'action':'eval','revision':0},{'action':'delete','revision':-1}])
 def test_strict_mutation_schema(client,payload):assert client.post('/api/watchlists/mutate',json=payload).status_code==422
+
+
+@pytest.mark.parametrize('grid', [
+    None,
+    {'version': 1, 'columns': 5},
+    {'version': 99, 'cards': [{'canonical_id': 'yahoo:AAPL:NMS:equity', 'future_setting': True}]},
+], ids=['null', 'malformed', 'unsupported-version'])
+def test_watchlist_mutation_recovers_saved_grid_without_workspace_put(client, app, grid):
+    initial = workspace(client)
+    db = app.state.db
+    saved = dict(initial, chart_grid=grid, layout=4, theme='light', sync_crosshair=True)
+    db.put('workspace', saved)
+
+    loaded = workspace(client)
+    assert loaded['chart_grid'] == initial['chart_grid']
+    assert db.get('workspace') == saved
+
+    stale = client.post('/api/watchlists/mutate', json={
+        'action': 'create', 'name': 'Stale revision', 'revision': loaded['watchlist_revision'] + 1,
+    })
+    assert stale.status_code == 409
+    assert db.get('workspace') == saved
+
+    response = client.post('/api/watchlists/mutate', json={
+        'action': 'create', 'name': 'Recovered watchlist', 'revision': loaded['watchlist_revision'],
+    })
+    assert response.status_code == 200, response.text
+    changed = response.json()
+    assert changed['watchlist_revision'] == loaded['watchlist_revision'] + 1
+    assert changed['watchlists'][:-1] == loaded['watchlists']
+    assert changed['watchlists'][-1]['name'] == 'Recovered watchlist'
+
+    reloaded = workspace(client)
+    for key in loaded.keys() - {'watchlists', 'active_watchlist', 'watchlist_revision'}:
+        assert reloaded[key] == loaded[key], key
+    with db.connect() as connection:
+        recovery = connection.execute(
+            "SELECT value FROM settings WHERE key GLOB 'chart_grid_recovery:*'"
+        ).fetchall()
+    assert [json.loads(json.loads(row['value'])['original_json']) for row in recovery] == [grid]
+    assert db.get('workspace')['chart_grid'] == initial['chart_grid']
+
+
+def test_chart_grid_recovery_rolls_back_with_watchlist_storage_failure(client, app):
+    initial = workspace(client)
+    db = app.state.db
+    saved = dict(initial, chart_grid={'version': 99})
+    db.put('workspace', saved)
+
+    with db.connect() as connection:
+        connection.execute("""
+            CREATE TRIGGER fail_watchlist_write BEFORE INSERT ON watchlists
+            BEGIN SELECT RAISE(ABORT, 'controlled watchlist storage failure'); END
+        """)
+
+    with pytest.raises(sqlite3.IntegrityError, match='controlled watchlist storage failure'):
+        client.post('/api/watchlists/mutate', json={
+            'action': 'create', 'name': 'Must roll back', 'revision': initial['watchlist_revision'],
+        })
+
+    assert db.get('workspace') == saved
+    with db.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM settings WHERE key GLOB 'chart_grid_recovery:*'"
+        ).fetchone()[0] == 0
+
+
+def test_workspace_save_keeps_displaced_unsupported_grid(client, app):
+    initial = workspace(client)
+    db = app.state.db
+    legacy_grid = {'version': 99, 'future_settings': {'columns': 9}}
+    db.put('workspace', dict(initial, chart_grid=legacy_grid))
+
+    repaired = workspace(client)
+    repaired['chart_grid']['columns'] = 2
+    assert client.put('/workspace', json=repaired).status_code == 200
+    assert workspace(client) == repaired
+    with db.connect() as connection:
+        recovery = connection.execute(
+            "SELECT value FROM settings WHERE key GLOB 'chart_grid_recovery:*'"
+        ).fetchall()
+    assert [json.loads(json.loads(row['value'])['original_json']) for row in recovery] == [legacy_grid]
