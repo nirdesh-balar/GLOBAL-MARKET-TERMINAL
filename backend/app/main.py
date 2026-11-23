@@ -304,7 +304,8 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
                     work.cancel()
                     raise HTTPException(499,'Outdated chart request cancelled')
                 await asyncio.wait({work},timeout=0.1)
-            return await work
+            # History already returns JSON-ready values, including the candle rows.
+            return JSONResponse(await work)
         finally:
             if not work.done():
                 work.cancel()
