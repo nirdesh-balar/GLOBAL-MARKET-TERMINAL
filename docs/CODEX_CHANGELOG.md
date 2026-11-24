@@ -1,5 +1,9 @@
 # Codex development log
 
+## 2026-11-24 · Study pane resizing
+- Track the native pane elements from Lightweight Charts 5.2.1, so study headers stay with their panes during a held separator drag. Resize events update header coordinates without rerendering the chart.
+- Keep native separator resizing and persist heights only for expanded studies whose divider actually changed. Remove the separate Height controls. Preserve per-chart heights through layout and viewport changes.
+
 ## 2026-11-24 · Chart toolbar cleanup
 - The main toolbar keeps the visible timeframe buttons and an icon-only Indicators button. Analytical alerts remain available through the Alerts workspace, chart cursor and multi-chart pane controls.
 - The single-chart toolbar keeps Auto Refresh, Refresh, Volume and Maximize/Restore. Multi-chart panes keep independent instrument, timeframe, chart type, indicator and alert controls.

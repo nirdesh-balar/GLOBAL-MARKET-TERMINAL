@@ -3,6 +3,7 @@ import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _electron as electron, expect } from './isolated-electron.mjs';
+import { dragStudySeparator } from './study-separator.mjs';
 
 await mkdir('test-results', { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'gmt-workspace-test-'));
@@ -218,12 +219,9 @@ try {
   await rsiControls.getByLabel(`Collapse study ${rsi.id}`).click();
   await expect.poll(async () => (await studyPanes()).find(row => row.id === rsi.id)?.collapsed).toBe(true);
   await rsiControls.getByLabel(`Expand study ${rsi.id}`).click();
-  await rsiControls.getByLabel(`Resize study ${rsi.id}`).click();
-  const resize = rsiControls.getByRole('slider',{name:`Height study ${rsi.id}`,exact:true});
-  await resize.focus();
-  await resize.press('ArrowRight');
+  await expect.poll(async () => (await studyPanes()).find(row => row.id === rsi.id)?.height).toBeGreaterThan(100);
+  await dragStudySeparator(page, canvas, rsi.id, -8);
   await expect.poll(async () => (await workspace()).panes[0].study_layout[rsi.id]?.height).toBe(112);
-  await rsiControls.getByLabel(`Resize study ${rsi.id}`).click();
 
   assert.equal((await historyStatus()).provider_requests, providerCount, 'Study controls must reuse loaded history');
   await toolbar.getByRole('button', { name: 'Active timeframe 15m', exact: true }).click();
