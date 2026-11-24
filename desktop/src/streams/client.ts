@@ -2,10 +2,12 @@ import {useEffect,useState} from 'react';
 import {api} from '../services/api';
 import type {Candle,HistoryResult,SymbolEntry} from '../types';
 import type {QuoteValue} from '../refresh/hooks';
-export interface StreamStatus {enabled:boolean;state:string;error:string|null;connection_count:number;subscriptions:number;consumers:number;limit:number;generation:number;version:number;metrics:Record<string,number>}
-export interface StreamFeed {key:string;identity:string;feed:'candle'|'trades';interval:string;state:string;error:string|null;received_at:number;market_time:number|null;refs:number;version:number;precision?:number;candle?:Candle;history?:HistoryResult;quote?:QuoteValue}
+import {mergeTape,type BookSnapshot,type TapeFrame} from '../orderFlow/types';
+type PublicFeed = 'candle' | 'trades' | 'l2Book';
+export interface StreamStatus {enabled:boolean;state:string;error:string|null;connection_count:number;subscriptions:number;consumers:number;limit:number;generation:number;version:number;metrics:Record<string,number>;paused?:boolean;order_flow?:{identity:string|null;state:'inactive'|'active'|'limited'}}
+export interface StreamFeed {key:string;identity:string;feed:PublicFeed;interval:string;state:string;error:string|null;received_at:number;market_time:number|null;refs:number;version:number;generation:number;native_mapping:string;precision?:number;candle?:Candle;history?:HistoryResult;quote?:QuoteValue;book?:BookSnapshot;tape?:TapeFrame}
 interface Message {cursor:number;status:StreamStatus;feeds:StreamFeed[]}
-interface Consumer {owner:string;identity:string;native_mapping:string;feed:'candle'|'trades';interval:string}
+interface Consumer {owner:string;identity:string;native_mapping:string;feed:PublicFeed;interval:string}
 const demands=new Map<string,Consumer>(),listeners=new Map<string,Set<(f:StreamFeed)=>void>>(),statusListeners=new Set<()=>void>(),latest=new Map<string,StreamFeed>();
 let status:StreamStatus={enabled:false,state:'initializing',error:null,connection_count:0,subscriptions:0,consumers:0,limit:108,generation:0,version:0,metrics:{}};
 let failures=0;
@@ -15,10 +17,13 @@ const key=(r:SymbolEntry,feed:string,interval:string)=>(r.canonical_id||r.instru
 function receive(value:Message){
  if(!value||!value.status||!Array.isArray(value.feeds))return;
  const before=status;status=value.status;
- if(before.enabled!==status.enabled||before.state!==status.state||before.error!==status.error||before.generation!==status.generation)for(const fn of statusListeners)fn();
+ if(before.enabled!==status.enabled||before.state!==status.state||before.error!==status.error||before.generation!==status.generation||before.paused!==status.paused||before.order_flow?.state!==status.order_flow?.state||before.order_flow?.identity!==status.order_flow?.identity)for(const fn of statusListeners)fn();
  for(const row of value.feeds){
-  if(!row||typeof row.identity!=='string'||!row.identity.startsWith('hyperliquid:')||!['candle','trades'].includes(row.feed))continue;
-  const previous=pending.get(row.key);pending.set(row.key,previous?.history&&!row.history?{...row,history:previous.history}:row);
+  if(!row||typeof row.identity!=='string'||!row.identity.startsWith('hyperliquid:')||!['candle','trades','l2Book'].includes(row.feed))continue;
+  const previous=pending.get(row.key);
+  if((row.feed==='l2Book'||row.tape)&&row.version<(previous?.version??latest.get(row.key)?.version??0))continue;
+  const frame=previous?.history&&!row.history?{...row,history:previous.history}:row;
+  pending.set(row.key,row.tape?{...frame,tape:mergeTape(previous?.tape,row.tape)}:frame);
  }
  if(!flushTimer)flushTimer=setTimeout(()=>{flushTimer=undefined;for(const [k,row] of pending){latest.set(k,row);for(const fn of listeners.get(k)||[])fn(row);}pending.clear();for(const k of latest.keys())if(!listeners.has(k))latest.delete(k);},250);
 }
@@ -36,14 +41,14 @@ async function send(){
  finally{running=false;}
 }
 export function useStreamStatus(){const [value,setValue]=useState(status);useEffect(()=>{start();const fn=()=>setValue({...status});statusListeners.add(fn);fn();return()=>{statusListeners.delete(fn);};},[]);return value;}
-export function useStreamFeed(owner:string,row:SymbolEntry,feed:'candle'|'trades',interval:string,enabled:boolean,onData:(f:StreamFeed)=>void){
+export function useStreamFeed(owner:string,row:SymbolEntry,feed:PublicFeed,interval:string,enabled:boolean,onData:(f:StreamFeed)=>void,replayLatest=true){
  const identity=row.canonical_id||row.instrument_id||'',mapping=row.native_mapping||'';
  useEffect(()=>{
   if(!enabled||row.provider!=='hyperliquid'||!identity)return;
   start();const k=key(row,feed,interval),id=owner+'|'+k;const callbacks=listeners.get(k)||new Set();callbacks.add(onData);listeners.set(k,callbacks);
-  demands.set(id,{owner,identity,native_mapping:mapping,feed,interval});schedule();const cached=latest.get(k);if(cached)onData(cached);
+  demands.set(id,{owner,identity,native_mapping:mapping,feed,interval});schedule();const cached=latest.get(k);if(replayLatest&&cached)onData(cached);
   return()=>{callbacks.delete(onData);if(!callbacks.size){listeners.delete(k);latest.delete(k);}demands.delete(id);schedule();};
- },[owner,identity,mapping,feed,interval,enabled,onData]);
+ },[owner,identity,mapping,feed,interval,enabled,onData,replayLatest]);
 }
 export function useWatchlistStream(owner:string,rows:SymbolEntry[],enabled:boolean,onData:(f:StreamFeed)=>void,feed:'trades'|'candle'='trades',interval=''){
  const signature=rows.filter(r=>r.provider==='hyperliquid').map(r=>(r.canonical_id||r.instrument_id)+'/'+r.native_mapping).join('|');

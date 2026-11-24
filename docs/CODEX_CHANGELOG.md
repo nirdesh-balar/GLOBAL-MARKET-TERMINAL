@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-24 · Phase 3 live public Order Flow
+- Add an analysis dock for the active verified Hyperliquid instrument. The same validated book supplies best bid and ask, absolute and midpoint percentage spread, cumulative depth and top-five-per-side imbalance. The tape shows observed public prints with the provider side code.
+- Share the existing public socket and signed-off provider identity model. Regular chart, watchlist and alert demand takes priority. Closing or leaving the dock releases its interests. The tape is bounded to 1,000 prints or 30 minutes, and gaps survive reconnection within the session. Order Flow stores no additional profile data and makes no historical candle requests.
+- The native fixture is included in the complete macOS UI suite. For additional real-provider checks, use `node scripts/order-flow-ui.mjs --live` after the source build on Apple Silicon. Each run creates a temporary profile.
+
+
 ## 2026-11-23 · Private rc.8 Mac installation
 
 - Installed the approved `1.1.0-rc.8` ARM64 candidate at `/Applications/GLOBAL MARKET TERMINAL.app` from `a63a96cbff1b72c7cbc2e710cf3cab93d68689e2`. Verified the signed Mac build 1.1.0.3, Electron 44.11.5, API 1.0.0, embedded source and blocked updater state.
