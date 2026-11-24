@@ -8,7 +8,9 @@ export function ColorFlagPicker({
   onRemoveFlag,
   onClose,
   symbolName,
-  position
+  position,
+  compact = false,
+  trigger,
 }: {
   currentColor?: FlagColor | null;
   onSelectColor: (color: FlagColor) => void;
@@ -16,8 +18,14 @@ export function ColorFlagPicker({
   onClose: () => void;
   symbolName: string;
   position?: { x: number; y: number };
+  compact?: boolean;
+  trigger?: HTMLButtonElement;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (compact) containerRef.current?.querySelector<HTMLButtonElement>('.color-chip-btn.selected,.color-chip-btn')?.focus({ preventScroll: true });
+  }, [compact]);
 
   useEffect(() => {
     const handlePointerDown = (e: PointerEvent) => {
@@ -29,6 +37,7 @@ export function ColorFlagPicker({
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
+        trigger?.focus({ preventScroll: true });
         onClose();
       }
     };
@@ -39,11 +48,11 @@ export function ColorFlagPicker({
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [onClose]);
+  }, [onClose, trigger]);
 
   // Adjust coordinates to ensure flyout stays on screen
-  const x = position ? Math.max(10, Math.min(position.x, window.innerWidth - 240)) : undefined;
-  const y = position ? Math.max(10, Math.min(position.y, window.innerHeight - 130)) : undefined;
+  const x = position ? Math.max(10, Math.min(position.x, window.innerWidth - (compact ? 166 : 240))) : undefined;
+  const y = position ? Math.max(10, Math.min(position.y, window.innerHeight - (compact ? 284 : 130))) : undefined;
 
   const style: React.CSSProperties = position
     ? { position: 'fixed', left: x, top: y, zIndex: 1100 }
@@ -52,10 +61,20 @@ export function ColorFlagPicker({
   return (
     <div
       ref={containerRef}
-      className="color-flag-picker-popover"
+      className={`color-flag-picker-popover ${compact ? 'watchlist-flag-popover' : ''}`}
       style={style}
       role="dialog"
       aria-label={`Flag color for ${symbolName}`}
+      onKeyDown={e => {
+        if (!compact || !['ArrowDown','ArrowUp','Home','End'].includes(e.key)) return;
+        const choices = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('.color-chip-btn,.unflag-btn'));
+        const current = choices.indexOf(document.activeElement as HTMLButtonElement);
+        const last = choices.length - 1;
+        const target = e.key === 'Home' ? 0 : e.key === 'End' ? last :
+            e.key === 'ArrowDown' ? Math.min(current + 1, last) : Math.max(current - 1, 0);
+        choices[target]?.focus();
+        e.preventDefault();
+      }}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -85,14 +104,16 @@ export function ColorFlagPicker({
               aria-label={`Flag as ${def.name}`}
               title={`${def.name} (${def.defaultLabel})`}
               className={`color-chip-btn ${isSelected ? 'selected' : ''}`}
-              style={{ backgroundColor: def.hex }}
+              style={compact ? undefined : { backgroundColor: def.hex }}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectColor(col);
+                trigger?.focus({ preventScroll: true });
                 onClose();
               }}
             >
-              {isSelected && <Check size={12} color="#ffffff" strokeWidth={3} />}
+              {compact && <><i style={{ backgroundColor: def.hex }}/><span>{def.name}</span></>}
+              {isSelected && <Check size={12} strokeWidth={3} />}
             </button>
           );
         })}
@@ -106,6 +127,7 @@ export function ColorFlagPicker({
             onClick={(e) => {
               e.stopPropagation();
               onRemoveFlag();
+              trigger?.focus({ preventScroll: true });
               onClose();
             }}
           >

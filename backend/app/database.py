@@ -5,7 +5,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-VALID_FLAG_COLORS = frozenset({'red', 'blue', 'green', 'yellow', 'purple', 'cyan', 'pink'})
+VALID_FLAG_COLORS = frozenset({'red', 'blue', 'green', 'orange', 'yellow', 'purple', 'cyan', 'pink'})
 
 class Database:
     def __init__(self, path: Path):

@@ -1,3 +1,4 @@
+import { chooseWatchlist } from './watchlist-controls.mjs';
 import {_electron as electron,expect} from './isolated-electron.mjs';
 import {mkdir,mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -29,14 +30,15 @@ try{
  const absent=async()=>{await expect(sidebar().locator('.symbol-details')).toHaveCount(0);await expect(sidebar().getByRole('region',{name:'Symbol details',exact:true})).toHaveCount(0);await expect(sidebar().locator('section')).toHaveCount(0);};
  const geometry=async()=>{
   const rect=await sidebar().evaluate(el=>{
-   const list=el.querySelector('[data-testid="watchlist-rows"]'),add=el.querySelector('[data-testid="watchlist-add-symbol"]'),header=el.querySelector('[data-testid="watchlist-header"]');
+   const list=el.querySelector('[data-testid="watchlist-rows"]'),add=el.querySelector('[data-testid="watchlist-add-symbol"]'),header=el.querySelector('[data-testid="watchlist-header"]'),footer=el.querySelector('.watchlist-bottom');
    const r=node=>{const b=node.getBoundingClientRect();return {top:b.top,bottom:b.bottom,height:b.height};};
-   return {sidebar:r(el),rows:r(list),add:r(add),header:r(header),marginTop:parseFloat(getComputedStyle(add).marginTop),overflowY:getComputedStyle(list).overflowY,flexGrow:getComputedStyle(list).flexGrow,client:list.clientHeight,scroll:list.scrollHeight};
+   return {sidebar:r(el),rows:r(list),add:r(add),header:r(header),footer:r(footer),marginTop:parseFloat(getComputedStyle(add).marginTop),overflowY:getComputedStyle(list).overflowY,flexGrow:getComputedStyle(list).flexGrow,client:list.clientHeight,scroll:list.scrollHeight};
   });
   assert.ok(Math.abs(rect.header.top-rect.sidebar.top)<=1,'Watchlist header is fixed at sidebar top');
-  assert.ok(Math.abs(rect.rows.bottom-(rect.add.top-rect.marginTop))<=1,'Rows occupy all space up to Add Symbol, with no empty details container');
+  assert.ok(Math.abs(rect.rows.bottom-(packaged?rect.add.top-rect.marginTop:rect.footer.top))<=1,'Rows fill the available scroll area up to the panel footer');
   assert.ok(rect.rows.height>rect.sidebar.height*.65,'Watchlist occupies most available sidebar height');
   assert.ok(rect.add.bottom<=rect.sidebar.bottom,'Add Symbol remains visible');
+  if(!packaged)assert.ok(rect.add.top>=rect.header.top&&rect.add.bottom<=rect.header.bottom,'Add Symbol is in the fixed header');
   assert.equal(rect.overflowY,'auto');assert.equal(rect.flexGrow,'1');return rect;
  };
  await absent();await layout(1);await geometry();
@@ -56,14 +58,14 @@ try{
   assert.equal(health.provider.provider_requests,3,'Production app fetches only initial two visible symbols, then explicitly selected SBIN');
   assert.deepEqual(errors,[]);console.log('PASS: signed packaged app launches with real Yahoo SBIN OHLC, full-height watchlist, no details card and no renderer errors.');
  }else{
-  await page.getByLabel('Active watchlist',{exact:true}).selectOption('indices');
+  await chooseWatchlist(page, 'indices');
   await page.getByTestId('watchlist-symbol-^NSEI').click();await expect(page.getByTestId('pane-0').locator('.legend-title strong')).toHaveText('NIFTY 50');
   await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect.poll(async()=>(await workspace()).panes[0].symbol).toBe('^NSEI');
   await expect(page.getByTestId('pane-0').locator('.ohlc b')).toHaveCount(4);await absent();
   const providerBefore=(await status()).provider_requests;
   // Populate a genuinely overflowing watchlist with directory metadata only.
-  const catalogue=await page.evaluate(()=>window.terminal.request('/api/instruments/search?q=NSE&limit=100'));
-  const items=catalogue.filter(row=>row.kind==='equity'&&row.exchange==='NSE').slice(0,40).map(row=>({symbol:row.symbol,token:row.token,instrument_id:row.id,kind:row.kind,name:row.name,exchange:row.exchange}));assert.equal(items.length,40);
+  const catalogue=await page.evaluate(()=>window.terminal.request('/api/instruments/search?q=NSE&limit=200'));
+  const items=catalogue.filter(row=>row.kind==='equity'&&row.exchange==='NSE').slice(0,100).map(row=>({symbol:row.symbol,token:row.token,instrument_id:row.id,kind:row.kind,name:row.name,exchange:row.exchange}));assert.equal(items.length,100);
   let w=await workspace();w.watchlists.push({id:'sidebar-regression',name:'Sidebar regression',items});w.active_watchlist='sidebar-regression';
   await page.evaluate(value=>window.terminal.request('/workspace','PUT',value),w);await page.reload();await expect(sidebar()).toBeVisible();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
   assert.equal((await status()).provider_requests,providerBefore,'Populating/reading a watchlist never bulk-downloads history');
@@ -79,7 +81,7 @@ try{
   await page.screenshot({path:'test-results/watchlist-only-light.png'});
   for(const n of [2,4,6,8]){await layout(n);await absent();await geometry();}
   await layout(2);await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();
-  const saved=await workspace();assert.equal(saved.active_watchlist,'sidebar-regression');assert.equal(saved.watchlists.at(-1).items.length,40);assert.equal(saved.panes[0].scale.logarithmic,true);
+  const saved=await workspace();assert.equal(saved.active_watchlist,'sidebar-regression');assert.equal(saved.watchlists.at(-1).items.length,100);assert.equal(saved.panes[0].scale.logarithmic,true);
   await app.close();app=await launch();page=await firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));await expect(sidebar()).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
   assert.deepEqual(await workspace(),saved,'Watchlists, chart/layout/sidebar/appearance/drawing settings survive restart');await absent();await geometry();
   assert.equal((await status()).provider_requests,2,'Restart fetches exactly the two visible charts');await expect(page.getByTestId('pane-0').locator('.pane-symbol')).toHaveText('NIFTY 50');await expect(page.getByTestId('pane-0').locator('.ohlc b')).toHaveCount(4);

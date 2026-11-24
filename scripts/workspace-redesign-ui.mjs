@@ -1,3 +1,4 @@
+import { openWatchlistOptions } from './watchlist-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -130,7 +131,7 @@ try {
   await expect(page.locator('.professional-watchlist')).toBeVisible();
   await page.getByLabel('Chart layout', { exact: true }).click();
   await page.getByLabel('Layout 2', { exact: true }).click();
-  await page.getByLabel('Open symbol in pane', { exact: true }).selectOption('1');
+  await openWatchlistOptions(page);await page.getByLabel('Open symbol in pane', { exact: true }).selectOption('1');await page.keyboard.press('Escape');
   const tcs = page.locator('.watch-select').filter({ has: page.getByText('TCS', { exact: true }) });
   await expect(tcs).toHaveCount(1);
   await tcs.click();

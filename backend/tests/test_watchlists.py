@@ -210,3 +210,22 @@ def test_workspace_save_keeps_displaced_unsupported_grid(client, app):
             "SELECT value FROM settings WHERE key GLOB 'chart_grid_recovery:*'"
         ).fetchall()
     assert [json.loads(json.loads(row['value'])['original_json']) for row in recovery] == [legacy_grid]
+
+
+def test_group_preferences_repair_preserves_legacy_workspace(client):
+    saved = workspace(client)
+    legacy = copy.deepcopy(saved)
+    legacy["sidebar"].pop("groups", None)
+    assert Workspace.model_validate(legacy).sidebar.groups == {}
+    legacy["sidebar"]["groups"] = {
+        "stocks": ["stocks", "unsupported", "stocks", {}, "crypto"],
+        "indices": None,
+        "color:orange": [],
+        "deleted-list": ["stocks"],
+    }
+    legacy["active_watchlist"] = "color:orange"
+    validated = Workspace.model_validate(legacy).model_dump()
+    assert validated["sidebar"]["groups"] == {"stocks": ["stocks", "crypto"], "color:orange": []}
+    assert validated["sidebar"]["width"] == saved["sidebar"]["width"]
+    assert validated["watchlists"] == saved["watchlists"]
+    assert validated["active_watchlist"] == "color:orange"

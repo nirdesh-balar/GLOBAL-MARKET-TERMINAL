@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-24 · Compact Watchlist
+- Use a keyboard-operated list picker and move list controls into the header overflow. The Watchlist plus opens the existing provider search in add mode and uses canonical duplicate protection.
+- Keep compact price rows, optional volume and a collapsed instrument summary. Changes in displayed prices animate with reduced-motion support. The summary reads already loaded data.
+- Preserve flat ordering by default. Group-by-market and its collapsed sections save per list. Orange is independent of Yellow. Existing list IDs, memberships, flag aliases and provider limits remain compatible.
+
 ## 2026-11-24 · Indicator legend and chart clock
 - The per-chart indicator list shows provider-independent calculated values at the crosshair or at the latest displayed candle. Its collapse state, individual visibility, and native study pane collapse are independent. Hidden studies remain available to restore in the list.
 - The timezone button displays the machine wall clock and current offset. Visible charts share one timer. Candle countdowns use validated Hyperliquid close timestamps or fresh Yahoo daily/native intraday session bounds. Closed, stale, unsupported, and replay data have no countdown. No new provider request is made to run either clock.

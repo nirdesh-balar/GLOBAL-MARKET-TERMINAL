@@ -82,7 +82,7 @@ def test_database_flag_crud_operations(temp_db):
 def test_invalid_color_validation(temp_db):
     """Validation rejects invalid colors and preserves valid colors."""
     with pytest.raises(ValueError, match="Invalid flag color"):
-        temp_db.set_flag("test:id", "orange", "TEST", "Test Inc", "NSE", "yahoo", "equity")
+        temp_db.set_flag("test:id", "magenta", "TEST", "Test Inc", "NSE", "yahoo", "equity")
 
     with pytest.raises(ValueError, match="Invalid flag color"):
         temp_db.clear_color_flags("invalid_color")
@@ -90,9 +90,9 @@ def test_invalid_color_validation(temp_db):
     with pytest.raises(ValueError, match="Invalid flag color"):
         temp_db.set_color_alias("black", "Blacklist")
 
-def test_all_seven_colors_supported(temp_db):
-    """Verify all 7 required colors work properly: red, blue, green, yellow, purple, cyan, pink."""
-    expected_colors = {"red", "blue", "green", "yellow", "purple", "cyan", "pink"}
+def test_all_eight_colors_supported(temp_db):
+    """Verify all eight colors work, including distinct Orange and Yellow."""
+    expected_colors = {"red", "blue", "green", "orange", "yellow", "purple", "cyan", "pink"}
     assert VALID_FLAG_COLORS == expected_colors
 
     for i, col in enumerate(ORDERED_COLORS):
@@ -101,7 +101,7 @@ def test_all_seven_colors_supported(temp_db):
         assert len(temp_db.get_flags_by_color(col)) == 1
 
     all_flags = temp_db.get_flags()
-    assert len(all_flags) == 7
+    assert len(all_flags) == len(expected_colors)
 
 def test_exchange_provider_identity_separation(temp_db):
     """Symbols with same text but different provider or exchange must have separate canonical flags."""
