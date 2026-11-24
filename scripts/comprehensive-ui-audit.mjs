@@ -221,15 +221,15 @@ try {
     record('ChartToolbar', 'Manual Refresh', 'Button', 'Click refresh', 'Refreshes', e.message, 'FAIL');
   }
 
-  // Chart type select in pane
+  // Active chart type in the main toolbar
   try {
-    const sel = page.getByLabel('Chart type pane 0', { exact: true });
+    const sel = page.getByLabel('Active chart type', { exact: true });
     await sel.selectOption('line');
     await page.waitForTimeout(500);
     await sel.selectOption('candles');
-    record('ChartToolbar', 'Pane Chart Type Selector', 'Select', 'Select Line then Candles', 'Changes chart series type', 'Series type toggled', 'PASS');
+    record('ChartToolbar', 'Active Chart Type Selector', 'Select', 'Select Line then Candles', 'Changes chart series type', 'Series type toggled', 'PASS');
   } catch (e) {
-    record('ChartToolbar', 'Pane Chart Type', 'Select', 'Change type', 'Changes type', e.message, 'FAIL');
+    record('ChartToolbar', 'Active Chart Type', 'Select', 'Change type', 'Changes type', e.message, 'FAIL');
   }
 
   // ==========================================
@@ -335,7 +335,7 @@ try {
   // 6. INDICATOR MANAGER MODAL
   // ==========================================
   try {
-    const indBtn = page.getByLabel('Active chart indicators', { exact: true });
+    const indBtn = page.getByLabel('Indicators', { exact: true });
     await indBtn.click();
     await page.waitForTimeout(800);
     const opened = await page.evaluate(() => !!document.querySelector('.indicator-manager'));

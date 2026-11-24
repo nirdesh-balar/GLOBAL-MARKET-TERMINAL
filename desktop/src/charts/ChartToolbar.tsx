@@ -1,6 +1,59 @@
-import {providerLabel} from '../providers/label';
-import {ChevronDown,SlidersHorizontal,RefreshCw,Volume2,Maximize2,Minimize2,Search} from 'lucide-react';
-import type {Pane} from '../types';
-import {TimeframeSelector} from './TimeframeSelector';
-import {symbolLabel} from '../services/api';
-export function ChartToolbar({pane,replay=false,loading,expanded,onSearch,onChange,onIndicators,onRefresh,onExpand,onAlert}:{pane:Pane;replay?:boolean;loading:boolean;expanded:boolean;onSearch:()=>void;onChange:(p:Partial<Pane>)=>void;onIndicators:()=>void;onRefresh:()=>void;onExpand:()=>void;onAlert:()=>void}){return <header className="pane-toolbar"><button className="pane-symbol" title="Change this chart’s instrument" onClick={onSearch}><Search className="pane-search-icon" size={13}/><span>{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</span><ChevronDown className="pane-search-chevron" size={13}/></button><span className="nse-tag" title={providerLabel(pane)}>{providerLabel(pane)}</span><div className="divider"/><TimeframeSelector paneId={pane.id} value={pane.timeframe} onChange={timeframe=>onChange({timeframe})}/><select aria-label={`Chart type pane ${pane.id}`} className="chart-type" value={pane.chart_type} onChange={e=>onChange({chart_type:e.target.value as Pane['chart_type']})}><option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option></select><div className="grow"/><button aria-label={`Create alert pane ${pane.id}`} onClick={onAlert}>Alert</button><button aria-label={`Indicators pane ${pane.id}`} onClick={onIndicators}><SlidersHorizontal size={15}/><span className="indicator-word">Indicators</span></button><button aria-label={`Auto Refresh pane ${pane.id}`} title="Automatically check visible historical candles" aria-pressed={pane.auto_refresh} className={pane.auto_refresh?'selected':''} onClick={()=>onChange({auto_refresh:!pane.auto_refresh})}>A</button><button aria-label={`Refresh pane ${pane.id}`} title="Refresh historical candles now" disabled={loading||replay} onClick={onRefresh}><RefreshCw size={15} className={loading?'spin':''}/></button><button aria-label={`Volume pane ${pane.id}`} className={pane.volume?'selected':''} onClick={()=>onChange({volume:!pane.volume})}><Volume2 size={15}/></button><button data-testid={`pane-maximize-${pane.id}`} aria-label={`${expanded?'Restore':'Maximize'} chart ${pane.id}`} title={expanded?'Restore all chart panes':'Maximize chart pane'} aria-pressed={expanded} onClick={onExpand}>{expanded?<Minimize2 size={15}/>:<Maximize2 size={15}/>}</button></header>;}
+import { ChevronDown, SlidersHorizontal, RefreshCw, Volume2, Maximize2, Minimize2 } from 'lucide-react';
+import { providerLabel } from '../providers/label';
+import type { Pane } from '../types';
+import { TimeframeSelector } from './TimeframeSelector';
+import { symbolLabel } from '../services/api';
+
+interface ChartToolbarProps {
+  pane: Pane;
+  singleChart: boolean;
+  replay?: boolean;
+  loading: boolean;
+  expanded: boolean;
+  onSearch: () => void;
+  onChange: (value: Partial<Pane>) => void;
+  onIndicators: () => void;
+  onRefresh: () => void;
+  onExpand: () => void;
+  onAlert: () => void;
+}
+
+export function ChartToolbar({
+  pane, singleChart, replay = false, loading, expanded,
+  onSearch, onChange, onIndicators, onRefresh, onExpand, onAlert,
+}: ChartToolbarProps) {
+  return (
+    <header className="pane-toolbar">
+      {!singleChart && <>
+        <button className="pane-symbol" title="Change this chart’s instrument" onClick={onSearch}>
+          <span>{pane.kind === 'index' ? pane.name : symbolLabel(pane.symbol)}</span><ChevronDown size={13} />
+        </button>
+        <span className="nse-tag" title={providerLabel(pane)}>{providerLabel(pane)}</span>
+        <div className="divider" />
+        <TimeframeSelector paneId={pane.id} value={pane.timeframe} onChange={timeframe => onChange({ timeframe })} />
+        <select aria-label={`Chart type pane ${pane.id}`} className="chart-type" value={pane.chart_type}
+          onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
+          <option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option>
+        </select>
+        <div className="grow" />
+        <button aria-label={`Create alert pane ${pane.id}`} onClick={onAlert}>Alert</button>
+        <button aria-label={`Indicators pane ${pane.id}`} onClick={onIndicators}>
+          <SlidersHorizontal size={15} /><span className="indicator-word">Indicators</span>
+        </button>
+      </>}
+      <button aria-label={`Auto Refresh pane ${pane.id}`} title="Automatically check visible historical candles"
+        aria-pressed={pane.auto_refresh} className={pane.auto_refresh ? 'selected' : ''}
+        onClick={() => onChange({ auto_refresh: !pane.auto_refresh })}>A</button>
+      <button aria-label={`Refresh pane ${pane.id}`} title="Refresh historical candles now" disabled={loading || replay} onClick={onRefresh}>
+        <RefreshCw size={15} className={loading ? 'spin' : ''} />
+      </button>
+      <button aria-label={`Volume pane ${pane.id}`} className={pane.volume ? 'selected' : ''} onClick={() => onChange({ volume: !pane.volume })}>
+        <Volume2 size={15} />
+      </button>
+      <button data-testid={`pane-maximize-${pane.id}`} aria-label={`${expanded ? 'Restore' : 'Maximize'} chart ${pane.id}`}
+        title={expanded ? 'Restore all chart panes' : 'Maximize chart pane'} aria-pressed={expanded} onClick={onExpand}>
+        {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+      </button>
+    </header>
+  );
+}

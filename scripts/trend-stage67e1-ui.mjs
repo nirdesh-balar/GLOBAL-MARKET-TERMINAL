@@ -5,7 +5,7 @@ const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/
 const request=(p,m='GET',b)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[p,m,b]);const ready=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByTestId('watchlist-sidebar')).toBeVisible({timeout:60000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:60000});};const pane=()=>page.getByTestId('pane-0'),canvas=()=>pane().locator('.chart-canvas');const data=()=>canvas().evaluate(e=>JSON.parse(e.dataset.studySeries));
 try{
  await mkdir('test-results',{recursive:true});app=await launch();await ready();let w=await request('/workspace');w.layout=1;w.panes[0].indicators=[];await request('/workspace','PUT',w);await page.reload();await ready();
- await pane().getByLabel('Indicators pane 0',{exact:true}).click();
+ await page.getByRole('button',{name:'Indicators',exact:true}).click();
  for(const kind of kinds){const study=indicatorCatalog.find(c=>c.kind===kind);await page.getByLabel('Search indicators',{exact:true}).fill(kind);await expect(page.getByLabel('Add '+study.name,{exact:true})).toBeEnabled();await page.getByLabel('Add '+study.name,{exact:true}).click();await expect(page.locator('.indicator-row')).toHaveCount(kinds.indexOf(kind)+1);}
  await page.getByLabel('Indicator category',{exact:true}).selectOption('Momentum');await page.getByLabel('Search indicators',{exact:true}).fill('CMO');await expect(page.getByLabel('Add Chande Momentum Oscillator (CMO)',{exact:true})).toBeVisible();await page.getByLabel('Close indicators',{exact:true}).click();await expect.poll(async()=>(await data()).length).toBe(26);
  const savedIndicators=async ()=>(await request('/workspace')).panes[0].indicators;

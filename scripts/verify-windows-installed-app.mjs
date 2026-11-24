@@ -203,14 +203,14 @@ async function run() {
 
   console.log('[Test 12/16] Timeframe Selection & Historical Replay...');
   // Timeframe change
-  await page.getByLabel('Timeframe pane 0').selectOption('1h');
+  await page.getByRole('button', { name: 'Active timeframe 1h', exact: true }).click();
   await page.waitForTimeout(1000);
   const tfWorkspace = await page.evaluate(() => window.terminal.request('/workspace'));
   console.log('       Pane 0 timeframe updated to: ' + tfWorkspace.panes[0].timeframe);
   assert.equal(tfWorkspace.panes[0].timeframe, '1h');
 
   // Switch back to 1d
-  await page.getByLabel('Timeframe pane 0').selectOption('1d');
+  await page.getByRole('button', { name: 'Active timeframe 1d', exact: true }).click();
   await page.waitForTimeout(500);
 
   // Historical replay

@@ -52,7 +52,7 @@ export function GridChart({ data, theme, showSma, showEma }: {
   useLayoutEffect(() => {
     const instance = createChart(container.current!, {
       autoSize: true,
-      layout: { attributionLogo: true, fontSize: 10 },
+      layout: { attributionLogo: false, fontSize: 10 },
       handleScroll: { mouseWheel: false, vertTouchDrag: false },
       handleScale: { mouseWheel: false },
       rightPriceScale: { minimumWidth: 50, scaleMargins: { top: 0.12, bottom: 0.1 } },

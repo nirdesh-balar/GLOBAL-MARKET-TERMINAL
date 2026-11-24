@@ -1,10 +1,10 @@
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
-  Minimize2, Scan, Bell, Save, Ellipsis, Database } from 'lucide-react';
+  Minimize2, Scan, Save, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
 import { providerLabel } from '../providers/label';
-import type { Pane, Workspace, Timeframe } from '../types';
+import type { Pane, Workspace } from '../types';
 import { useFlags } from '../flags/useFlags';
 import { FlagIcon } from './FlagIcon';
 import { ColorFlagPicker } from './ColorFlagPicker';
@@ -30,7 +30,6 @@ interface HeaderProps {
   onData: () => void;
   onChartSettings: () => void;
   onSync: (key: 'sync_time' | 'sync_crosshair') => void;
-  onAlert: () => void;
   focused: boolean;
   expanded: boolean;
   nativeState: { fullscreen: boolean; transitioning: boolean };
@@ -40,7 +39,7 @@ interface HeaderProps {
 
 export function TerminalHeader({
   workspace, pane, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
-  onLayout, onTheme, onSettings, onChartSettings, onSync, onAlert, focused,
+  onLayout, onTheme, onSettings, onChartSettings, onSync, focused,
   expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
 }: HeaderProps) {
   const { flags, assignFlag, removeFlag } = useFlags();
@@ -91,22 +90,14 @@ export function TerminalHeader({
         {frames.map(interval => <button key={interval} aria-label={`Active timeframe ${interval}`}
           aria-pressed={pane.timeframe === interval} className={pane.timeframe === interval ? 'selected' : ''}
           onClick={() => onChange({ timeframe: interval })}>{timeframeLabel(interval)}</button>)}
-        <div className="timeframe-picker">
-          <select className="timeframe-menu" aria-label="Active timeframe menu" title="All supported timeframes"
-            value={pane.timeframe} onChange={e => onChange({ timeframe: e.target.value as Timeframe })}>
-            {frames.map(interval => <option key={interval} value={interval}>{timeframeLabel(interval)}</option>)}
-          </select>
-          <ChevronDown aria-hidden="true" size={12} />
-        </div>
       </div>
       <select aria-label="Active chart type" value={pane.chart_type} onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
         <option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option>
       </select>
-      <button className="header-indicators" aria-label="Active chart indicators" title="Indicators" onClick={onIndicators}>
-        <SlidersHorizontal size={15} /><span>Studies</span>
+      <button className="header-indicators" aria-label="Indicators" title="Indicators" onClick={onIndicators}>
+        <SlidersHorizontal size={15} />
       </button>
       <div className="toolbar-divider" />
-      <button aria-label="Create alert from active chart" title="Create local analytical alert" onClick={onAlert}><Bell size={16} /></button>
       <button aria-label="Historical replay" title="Historical candle replay" onClick={() => command(pane.id, 'replay')}>
         <Play size={15} /><span className="replay-word">Replay</span>
       </button>

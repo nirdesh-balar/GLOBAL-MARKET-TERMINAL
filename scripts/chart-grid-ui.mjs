@@ -125,6 +125,8 @@ try {
   const openWatchlist = button('Open watchlist in Grid');
   await measure(openWatchlist, 'click', () => openWatchlist.click(), 'cold', 8, 'daily source first page');
   await expect(shell().getByText('Page 1 / 2')).toBeVisible();
+  await expect(shell().locator('#tv-attr-logo')).toHaveCount(0);
+  await expect(page.locator('.statusbar').getByRole('button', { name: 'Charts by TradingView', exact: true })).toBeVisible();
   await expect(shell().getByText('11 symbols')).toBeVisible();
   assert.deepEqual(await tiles().evaluateAll(nodes => nodes.map(node => node.dataset.gridId)), list.slice(0, 8).map(row => row.canonical_id));
   const global = page.getByLabel('Global Chart Grid timeframe');

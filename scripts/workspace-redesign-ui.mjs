@@ -39,6 +39,41 @@ try {
   const workspace = () => page.evaluate(() => window.terminal.request('/workspace'));
   const historyStatus = () => page.evaluate(() => window.terminal.request('/api/history/status'));
   await ready();
+  const toolbar = page.locator('.terminal-header');
+  await expect(toolbar.getByLabel('Active timeframe menu')).toHaveCount(0);
+  await expect(toolbar.getByLabel('Create alert from active chart')).toHaveCount(0);
+  const indicatorsButton = toolbar.getByRole('button', { name: 'Indicators', exact: true });
+  await expect(indicatorsButton).toHaveAttribute('title', 'Indicators');
+  await expect(indicatorsButton.locator('svg')).toBeVisible();
+  await expect(indicatorsButton).toHaveText('');
+  const inline = pane.locator('.pane-toolbar');
+  await expect(inline.getByRole('button')).toHaveCount(4);
+  await expect(inline.locator('.pane-symbol, select')).toHaveCount(0);
+  for (const name of ['Auto Refresh pane 0', 'Refresh pane 0', 'Volume pane 0', 'Maximize chart 0']) {
+    await expect(inline.getByRole('button', { name, exact: true })).toBeVisible();
+  }
+  await expect(pane.locator('#tv-attr-logo')).toHaveCount(0);
+  assert.equal(await canvas.evaluate(element => element.__chart.options().layout.attributionLogo), false);
+
+  await app.evaluate(({ shell }) => {
+    globalThis.originalTradingViewOpenExternal = shell.openExternal;
+    shell.openExternal = async url => { globalThis.openedTradingViewUrl = url; };
+  });
+  await page.locator('.statusbar').getByRole('button', { name: 'Charts by TradingView', exact: true }).click();
+  await expect.poll(() => app.evaluate(() => globalThis.openedTradingViewUrl)).toBe('https://www.tradingview.com/');
+  await app.evaluate(({ shell }) => { shell.openExternal = globalThis.originalTradingViewOpenExternal; });
+
+  await display.send('Emulation.setDeviceMetricsOverride', {
+    width: 1050, height: 650, deviceScaleFactor: 2, mobile: false,
+  });
+  for (const timeframe of ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1M', '1Y']) {
+    const button = toolbar.getByRole('button', { name: `Active timeframe ${timeframe}`, exact: true });
+    await expect(button).toBeInViewport({ ratio: 1 });
+    await expect(button).toBeEnabled();
+  }
+  await display.send('Emulation.setDeviceMetricsOverride', {
+    width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
+  });
 
   await page.getByRole('button',{name:'Save workspace',exact:true}).click();
   await expect(page.getByRole('button',{name:'Save workspace',exact:true})).toHaveAttribute('data-saved','true');
@@ -102,10 +137,22 @@ try {
   await expect(secondPane.locator('.pane-symbol')).toHaveText('TCS');
   await expect(secondPane.locator('.chart-canvas')).toHaveAttribute('data-rendered-bars', /^[1-9]/);
   await expect(page.locator('.chart-overlay')).toHaveCount(0, { timeout: 30000 });
-  await expect(secondPane.getByLabel('Timeframe pane 1')).toBeVisible();
+  const secondTimeframe = secondPane.getByLabel('Timeframe pane 1');
+  await expect(secondTimeframe).toBeVisible();
+  const firstInterval = await canvas.getAttribute('data-history-interval');
+  const secondInterval = await secondTimeframe.inputValue();
+  await secondTimeframe.selectOption('1w');
+  await expect(secondPane.locator('.chart-canvas')).toHaveAttribute('data-history-interval', '1w');
+  await expect(canvas).toHaveAttribute('data-history-interval', firstInterval);
+  await secondTimeframe.selectOption(secondInterval);
+  await expect(secondPane.locator('.chart-canvas')).toHaveAttribute('data-history-interval', secondInterval);
+  await expect(secondPane.getByLabel('Indicators pane 1')).toBeVisible();
+  await expect(secondPane.getByLabel('Create alert pane 1')).toBeVisible();
+  await expect(page.locator('.chart-grid #tv-attr-logo')).toHaveCount(0);
   const activeType = page.getByLabel('Active chart type', { exact: true });
   await activeType.selectOption('line');
   await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('line');
+  await expect(secondPane.getByLabel('Chart type pane 1')).toHaveValue('line');
   await activeType.selectOption('candles');
   await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('candles');
   await page.mouse.move(4,4);
@@ -134,7 +181,7 @@ try {
   await page.getByPlaceholder('Search symbol, company, index or ISIN').fill('RELIANCE');
   await expect(page.locator('.search-results').getByRole('button',{name:/RELIANCE/}).first()).toBeVisible();
   await page.getByLabel('Close search').click();
-  await page.getByLabel('Active timeframe menu').selectOption('1w');
+  await toolbar.getByRole('button', { name: 'Active timeframe 1w', exact: true }).click();
   await expect(canvas).toHaveAttribute('data-history-interval', '1w');
   await ready();
   await page.getByLabel('Active timeframe 1d', { exact: true }).click();
@@ -154,7 +201,7 @@ try {
   await settings.getByRole('button', { name: 'Apply settings' }).click();
   await expect.poll(async () => (await workspace()).panes[0].indicators.find(indicator => indicator.id === ema.id).length).toBe(9);
 
-  await page.getByLabel('Active chart indicators').click();
+  await indicatorsButton.click();
   const manager = page.getByRole('dialog', { name: 'Indicator manager' });
   await manager.getByLabel('Search indicators').fill('RSI');
   await manager.getByLabel('Add RSI', { exact: true }).click();
@@ -179,7 +226,7 @@ try {
   await rsiControls.getByLabel(`Resize study ${rsi.id}`).click();
 
   assert.equal((await historyStatus()).provider_requests, providerCount, 'Study controls must reuse loaded history');
-  await page.getByLabel('Active timeframe menu').selectOption('15m');
+  await toolbar.getByRole('button', { name: 'Active timeframe 15m', exact: true }).click();
   await expect(canvas).toHaveAttribute('data-history-interval', '15m');
   await ready();
   const series = JSON.parse(await canvas.getAttribute('data-study-series') || '[]');

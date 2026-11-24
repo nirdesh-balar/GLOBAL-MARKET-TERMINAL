@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-24 · Chart toolbar cleanup
+- The main toolbar keeps the visible timeframe buttons and an icon-only Indicators button. Analytical alerts remain available through the Alerts workspace, chart cursor and multi-chart pane controls.
+- The single-chart toolbar keeps Auto Refresh, Refresh, Volume and Maximize/Restore. Multi-chart panes keep independent instrument, timeframe, chart type, indicator and alert controls.
+- Charts and Advanced Chart Grid use Lightweight Charts 5.2.1's `layout.attributionLogo: false`. The clickable status-bar TradingView attribution and the upstream NOTICE and license remain available.
+
 ## 2026-11-24 · Phase 3 live public Order Flow
 - Add an analysis dock for the active verified Hyperliquid instrument. The same validated book supplies best bid and ask, absolute and midpoint percentage spread, cumulative depth and top-five-per-side imbalance. The tape shows observed public prints with the provider side code.
 - Share the existing public socket and signed-off provider identity model. Regular chart, watchlist and alert demand takes priority. Closing or leaving the dock releases its interests. The tape is bounded to 1,000 prints or 30 minutes, and gaps survive reconnection within the session. Order Flow stores no additional profile data and makes no historical candle requests.

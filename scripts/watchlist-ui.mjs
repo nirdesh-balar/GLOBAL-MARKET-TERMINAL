@@ -41,7 +41,7 @@ try{
  };
  await absent();await layout(1);await geometry();
  await page.getByTestId('watchlist-symbol-SBIN-EQ').click();
- await expect(page.getByTestId('pane-0').locator('.pane-symbol')).toHaveText('SBIN');
+ await expect(page.getByTestId('pane-0').locator('.legend-title strong')).toHaveText('SBIN');
  await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:packaged?120000:30000});
  await expect.poll(async()=>(await workspace()).panes[0].symbol).toBe('SBIN-EQ');
  await expect(page.getByTestId('pane-0').locator('.ohlc b')).toHaveCount(4);
@@ -57,7 +57,7 @@ try{
   assert.deepEqual(errors,[]);console.log('PASS: signed packaged app launches with real Yahoo SBIN OHLC, full-height watchlist, no details card and no renderer errors.');
  }else{
   await page.getByLabel('Active watchlist',{exact:true}).selectOption('indices');
-  await page.getByTestId('watchlist-symbol-^NSEI').click();await expect(page.getByTestId('pane-0').locator('.pane-symbol')).toHaveText('NIFTY 50');
+  await page.getByTestId('watchlist-symbol-^NSEI').click();await expect(page.getByTestId('pane-0').locator('.legend-title strong')).toHaveText('NIFTY 50');
   await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect.poll(async()=>(await workspace()).panes[0].symbol).toBe('^NSEI');
   await expect(page.getByTestId('pane-0').locator('.ohlc b')).toHaveCount(4);await absent();
   const providerBefore=(await status()).provider_requests;
