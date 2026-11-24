@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from app.database import Database, VALID_FLAG_COLORS
 from app.flags import routes as flag_routes, FlagColor, ORDERED_COLORS
-from app.main import create_app, restore_workspace
+from app.main import create_app, normalize_workspace
 from app.watchlists import Watchlists, CSVInput, Commit
 
 @pytest.fixture
@@ -238,7 +238,7 @@ def test_csv_import_roundtrip_with_color(tmp_path):
     app = create_app(data_dir=str(tmp_path), token="test_token_at_least_32_characters_long_12345")
     db = app.state.db
     registry = app.state.registry
-    service = Watchlists(db, registry, lambda: restore_workspace(db, registry))
+    service = Watchlists(db, registry, lambda saved: normalize_workspace(db, registry, saved))
 
     # CSV with color column
     csv_content = (

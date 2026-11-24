@@ -1,8 +1,9 @@
 """Atomic watchlist metadata operations and bounded, directory-only CSV resolution."""
 import csv,hashlib,io,json,re,uuid
+from copy import deepcopy
 from typing import Literal
 from fastapi import APIRouter,HTTPException
-from pydantic import BaseModel,ConfigDict,Field,model_validator
+from pydantic import BaseModel,ConfigDict,Field,ValidationError,model_validator
 from .models import GridPreferences,SidebarPreferences,Workspace
 from .flags import flag_row_to_symbol_entry
 from .database import VALID_FLAG_COLORS
@@ -69,12 +70,9 @@ def watchlist_name(raw, lists, exclude_id=None):
         raise HTTPException(422, 'A watchlist with this name already exists')
     return name
 
-def persist(c,old,new):
-    raw_grid = old.get('chart_grid', {})
+def persist(c,old,new,*,raw_grid):
     recovery = None
     if GridPreferences.from_storage(raw_grid) is None:
-        if new.get('chart_grid') == raw_grid:
-            new = {**new, 'chart_grid': GridPreferences()}
         original = json.dumps(raw_grid, sort_keys=True)
         digest = hashlib.sha256(original.encode('utf-8')).hexdigest()
         # Keep the original JSON opaque to migrations that rewrite instrument IDs.
@@ -90,21 +88,20 @@ def persist(c,old,new):
     c.execute('INSERT OR REPLACE INTO watchlists VALUES(?,?)',('Favourites',json.dumps(value['watchlist'])))
     return value
 
-def load(c,fallback):
+def load(c):
     row = c.execute("SELECT value FROM settings WHERE key='workspace'").fetchone()
-    if row is None:
-        return fallback
-    saved = json.loads(row['value'])
-    if not isinstance(saved, dict):
-        return fallback
-    if not saved.get('watchlist_defaults_initialized'):
-        records = saved.get('watchlists')
-        originals = {
-            item['id']: item for item in records if isinstance(item, dict) and isinstance(item.get('id'), str)
-        } if isinstance(records, list) else {}
-        saved['watchlists'] = [originals.get(item['id'], item) for item in fallback['watchlists']]
-        saved['active_watchlist'] = fallback['active_watchlist']
-    return saved
+    saved = json.loads(row['value']) if row else None
+    return saved if isinstance(saved, dict) else {}
+
+def normalize_for_write(saved, restore):
+    if saved.get('watchlist_defaults_initialized'):
+        # Keep valid saved metadata intact while repairing unsupported Grid settings.
+        grid = GridPreferences.from_storage(saved.get('chart_grid', {}))
+        try:
+            return Workspace.model_validate({**saved, 'chart_grid': grid or GridPreferences()}).model_dump()
+        except ValidationError:
+            pass
+    return restore(saved)
 
 class Watchlists:
     def __init__(self,db,registry,restore):self.db=db;self.registry=registry;self.restore=restore
@@ -185,11 +182,15 @@ class Watchlists:
         fingerprint=hashlib.sha256(json.dumps([(r['row'],r['status'],r['identity'],r['candidates']) for r in result],sort_keys=True).encode()).hexdigest()
         return dict(headers=headers,mapping=mapping,rows=result,needs_mapping=False,total=len(result),preview=rows[1:6],preview_hash=fingerprint,counts={s:sum(r['status']==s for r in result) for s in ('valid','duplicate','failed','ambiguous')})
     def transact(self,revision,fn):
-        fallback=self.restore()
         with self.db.connect() as c:
-            c.execute('BEGIN IMMEDIATE');old=load(c,fallback)
-            if revision!=old.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload and review the operation again.')
-            value=json.loads(json.dumps(old));summary=fn(value,c);new=persist(c,old,value)
+            c.execute('BEGIN IMMEDIATE')
+            raw=load(c)
+            if revision!=raw.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload and review the operation again.')
+            raw_grid=raw.get('chart_grid', {})
+            old=normalize_for_write(raw,self.restore)
+            value=deepcopy(old)
+            summary=fn(value,c)
+            new=persist(c,old,value,raw_grid=raw_grid)
         return dict(
             watchlists=new['watchlists'], active_watchlist=new['active_watchlist'],
             watchlist_revision=new['watchlist_revision'], groups=new['sidebar']['groups'],

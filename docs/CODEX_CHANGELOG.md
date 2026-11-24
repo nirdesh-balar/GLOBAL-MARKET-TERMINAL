@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-24 · Phase 3 search and profile recovery
+
+- Give each symbol search one chart or Watchlist destination. Closing it clears that destination, and a pending Watchlist write cannot close a later search.
+- Repair legacy instrument metadata from the workspace read inside the Watchlist transaction. Preserve revision checks, explicitly deleted lists, and atomic recovery of unsupported Chart Grid settings.
+
 ## 2026-11-24 · Watchlist readability and management
 - Increase Watchlist type and use sticky, horizontally scrollable column headings at narrow widths. List management lives in the name picker.
 - Rename, copy, and confirm deletion for every ordinary list. Copies retain the source memberships and per-list grouping and visibility preferences. Flagged views can be copied to independent lists and keep their flag assignments.

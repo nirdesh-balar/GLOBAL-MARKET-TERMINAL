@@ -1,10 +1,15 @@
 import copy,json,sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from threading import Event
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 from app.watchlists import Watchlists,Mutation,CSVInput,Commit
 from app.models import Workspace
-from app.main import restore_workspace
+from app.main import create_app, normalize_workspace, restore_workspace
+from fastapi.testclient import TestClient
+from fixtures import FixtureProvider
 from app.markets import instrument
 from test_direct_history import app,client
 
@@ -103,8 +108,8 @@ def test_append_replace_confirmation_and_failure_rollback(client):
  result=commit(client,'symbol\nMSFT\nAAPL\n',target=id);assert result.json()['summary']['duplicates']==1;assert result.json()['summary']['imported']==1
 
 def test_transaction_rolls_back_on_storage_error(client,app,monkeypatch):
- before=workspace(client);service=Watchlists(app.state.db,app.state.registry,lambda:restore_workspace(app.state.db,app.state.registry))
- def crash(c,old,new):
+ before=workspace(client);service=Watchlists(app.state.db,app.state.registry,lambda saved:normalize_workspace(app.state.db,app.state.registry,saved))
+ def crash(c,old,new,*,raw_grid):
   c.execute('INSERT OR REPLACE INTO settings VALUES(?,?)',('workspace',json.dumps(new)));raise sqlite3.OperationalError('controlled storage failure')
  monkeypatch.setattr('app.watchlists.persist',crash)
  with pytest.raises(sqlite3.OperationalError):service.mutate(Mutation(action='create',revision=before['watchlist_revision'],name='Must roll back'))
@@ -273,3 +278,114 @@ def test_copy_default_preferences_and_delete_all_without_reseeding(client, app):
     added = op(client, 'create', name='After deletion').json()
     assert len(added['watchlists']) == 1
     assert restore_workspace(app.state.db, app.state.registry)['watchlists'] == added['watchlists']
+
+
+@pytest.mark.parametrize('action', ['create', 'rename', 'duplicate', 'delete'])
+def test_first_watchlist_mutation_repairs_legacy_workspace(client, app, action):
+    initial = workspace(client)
+    stock = next(row for row in initial['watchlists'] if row['id'] == 'stocks')
+    item = stock['items'][0]
+    identity = item['canonical_id']
+    assert item['symbol'] != item['native_id']
+    legacy_item = {key: value for key, value in item.items() if key != 'native_id'}
+    legacy = copy.deepcopy(initial)
+    legacy.pop('watchlist_defaults_initialized')
+    legacy['watchlist_revision'] = 7
+    legacy['watchlist'] = [legacy_item]
+    legacy['watchlists'] = [
+        {**stock, 'name': 'Renamed default', 'items': [legacy_item]},
+        {'id': 'retained', 'name': 'Custom research', 'items': [legacy_item]},
+    ]
+    legacy['sidebar']['groups'] = {'stocks': ['stocks'], 'retained': ['stocks']}
+    legacy['hidden_symbols'] = {'stocks': [identity], 'retained': [identity]}
+    legacy['panes'][0].pop('native_id')
+    legacy['panes'][0]['drawing_sets'] = {'1d': [
+        {'id': 'retained-line', 'kind': 'horizontal', 'anchors': [{'time': 1700000000, 'price': 100}]},
+    ]}
+    legacy.update(layout=4, theme='light', sync_crosshair=True)
+    future_grid = {'version': 99, 'columns': 5, 'future_settings': {'size': 'large'}}
+    legacy['chart_grid'] = future_grid
+    db = app.state.db
+    db.put('workspace', legacy)
+    db.set_flag(identity, 'orange', item['symbol'], item['name'], item['exchange'], item['provider'], item['kind'], item)
+    flags = db.get_flags()
+    before = workspace(client)
+    assert db.get('workspace') == legacy
+    assert before['panes'][0]['native_id'] == item['native_id']
+    assert before['watchlists'][0]['items'][0]['native_id'] == item['native_id']
+    payload = {'action': action, 'id': 'stocks', 'name': 'Changed list', 'confirm': True}
+    stale = client.post('/api/watchlists/mutate', json={**payload, 'revision': 6})
+    assert stale.status_code == 409
+    assert db.get('workspace') == legacy
+    with db.connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM settings WHERE key GLOB 'chart_grid_recovery:*'").fetchone()[0] == 0
+
+    result = client.post('/api/watchlists/mutate', json={**payload, 'revision': 7})
+    assert result.status_code == 200
+    assert result.json()['watchlist_revision'] == 8
+    assert client.put('/workspace', json=before).status_code == 409
+
+    token = 'restart-fixture-token-' + 'x' * 32
+    restarted = create_app(db.path.parent, token, FixtureProvider(count=900))
+    with TestClient(restarted, headers={'Authorization': f'Bearer {token}'}) as reopened:
+        after = workspace(reopened)
+    assert after['watchlist_defaults_initialized'] is True
+    assert after['watchlist_revision'] == 8
+    assert set(after) == set(before)
+    for key in before.keys() - {'watchlists', 'active_watchlist', 'watchlist_revision', 'sidebar', 'hidden_symbols'}:
+        assert after[key] == before[key], key
+    for key in before['sidebar'].keys() - {'groups'}:
+        assert after['sidebar'][key] == before['sidebar'][key]
+    assert restarted.state.db.get_flags() == flags
+    remaining = {row['id']: row for row in after['watchlists']}
+    unrelated = {row['id']: row for row in before['watchlists'] if row['id'] != 'stocks'}
+    assert {key: remaining[key] for key in unrelated} == unrelated
+    assert after['sidebar']['groups']['retained'] == ['stocks']
+    assert after['hidden_symbols']['retained'] == [identity]
+    if action == 'delete':
+        assert 'stocks' not in remaining
+        assert 'stocks' not in after['sidebar']['groups'] and 'stocks' not in after['hidden_symbols']
+    else:
+        assert remaining['stocks']['items'] == [item]
+        assert remaining['stocks']['name'] == ('Changed list' if action == 'rename' else 'Renamed default')
+    if action in ('create', 'duplicate'):
+        added = remaining[after['active_watchlist']]
+        assert added['name'] == 'Changed list'
+        assert added['items'] == ([item] if action == 'duplicate' else [])
+        if action == 'duplicate':
+            assert after['sidebar']['groups'][added['id']] == ['stocks']
+            assert after['hidden_symbols'][added['id']] == [identity]
+    with db.connect() as connection:
+        recovery = connection.execute("SELECT value FROM settings WHERE key GLOB 'chart_grid_recovery:*'").fetchall()
+    assert [json.loads(json.loads(row['value'])['original_json']) for row in recovery] == [future_grid]
+
+
+def test_watchlist_transaction_keeps_workspace_committed_while_waiting(client, app, monkeypatch):
+    before = workspace(client)
+    db = app.state.db
+    db.put('workspace', before)
+    connect = db.connect
+    waiting = Event()
+
+    @contextmanager
+    def observed_connect():
+        with connect() as connection:
+            connection.set_trace_callback(lambda sql: waiting.set() if sql == 'BEGIN IMMEDIATE' else None)
+            yield connection
+
+    monkeypatch.setattr(db, 'connect', observed_connect)
+    payload = {'action': 'create', 'name': 'Concurrent research', 'revision': before['watchlist_revision']}
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with connect() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            later = {**before, 'layout': 4, 'theme': 'light', 'sync_crosshair': True}
+            later['chart_grid']['columns'] = 2
+            connection.execute("UPDATE settings SET value=? WHERE key='workspace'", (json.dumps(later),))
+            mutation = pool.submit(client.post, '/api/watchlists/mutate', json=payload)
+            assert waiting.wait(5), 'Mutation must wait for the existing write transaction'
+        assert mutation.result(timeout=10).status_code == 200
+    after = workspace(client)
+    for key in ('layout', 'theme', 'sync_crosshair', 'chart_grid'):
+        assert after[key] == later[key]
+    assert after['watchlists'][-1]['name'] == 'Concurrent research'
+    assert after['watchlist_revision'] == before['watchlist_revision'] + 1

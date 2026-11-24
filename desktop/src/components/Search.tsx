@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Search as SearchIcon, X, ArrowUpRight, Star, Plus } from 'lucide-react';
 import { api, symbolLabel } from '../services/api';
 import type { Instrument } from '../types';
@@ -21,7 +21,27 @@ export function Search({ onSelect, onClose, watchlist, onWatch, watchlistName }:
     },300);
     return()=>{cancelled=true;clearTimeout(timer);window.terminal.cancel(id);};
   },[query,category,country,exchange]);
-  return <div className="modal-backdrop" onClick={onClose}><section className={`search-modal${watchlistName?' watchlist-symbol-search':''}`} role="dialog" aria-modal="true" aria-label={watchlistName?'Add symbol to '+watchlistName:'Search stocks and indices'} onClick={e=>e.stopPropagation()} onKeyDown={e=>{if(picker){if(e.key==='Escape'){e.stopPropagation();setPicker(null);return;}}if(e.key==='Escape')onClose();if(e.key==='ArrowDown'){e.preventDefault();setSelected(i=>Math.min(i+1,results.length-1));}if(e.key==='ArrowUp'){e.preventDefault();setSelected(i=>Math.max(i-1,0));}if(e.key==='Enter'&&results[selected])onSelect(results[selected]);}}>
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      if (picker) setPicker(null);
+      else onClose();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelected(i=>Math.min(i+1,results.length-1));
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelected(i=>Math.max(i-1,0));
+    }
+    if (event.key === 'Enter' && event.target === input.current && results[selected]) {
+      event.preventDefault();
+      onSelect(results[selected]);
+    }
+  }
+  return <div className="modal-backdrop" onClick={onClose}><section className={`search-modal${watchlistName?' watchlist-symbol-search':''}`} role="dialog" aria-modal="true" aria-label={watchlistName?'Add symbol to '+watchlistName:'Search stocks and indices'} onClick={e=>e.stopPropagation()} onKeyDown={handleKeyDown}>
     {watchlistName&&<div className="watchlist-search-title">Add to {watchlistName}</div>}
     <div className="search-input"><SearchIcon size={20}/><input ref={input} placeholder="Search symbol, company, index or ISIN" value={query} onChange={e=>setQuery(e.target.value)}/><button aria-label="Close search" onClick={onClose}><X size={18}/></button></div>
     <div className="search-caption"><span>ALL MARKETS · {loading?'Searching…':category.startsWith('crypto')?'Hyperliquid · verified spot / perpetual catalogue':'Yahoo non-crypto + official NSE directory'}</span></div>
