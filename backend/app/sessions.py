@@ -20,6 +20,23 @@ def provider_segments(periods):
                     result.append((int(r['start']),int(r['end']),datetime.fromtimestamp(r['start'],UTC).date().isoformat()))
     return sorted(result)
 
+def calendar_segments(calendar, start, end):
+    """Return verified exchange segments, including holidays and intraday breaks."""
+    import pandas as pd
+
+    schedule = xcals.get_calendar(calendar, start=str(start), end=str(end)).schedule
+    result = []
+    for day, row in schedule.iterrows():
+        a, b = int(row['open'].timestamp()), int(row['close'].timestamp())
+        label = str(day)[:10]
+        if pd.notna(row['break_start']) and pd.notna(row['break_end']):
+            result.extend([(a, int(row['break_start'].timestamp()), label),
+                           (int(row['break_end'].timestamp()), b, label)])
+        else:
+            result.append((a, b, label))
+    return sorted(result)
+
+
 def segments(rows,security,provided=None):
     if not rows:return [],'No bars supplied.'
     zone=ZoneInfo(security.get('timezone','UTC'));kind=security.get('kind','equity')
@@ -35,15 +52,7 @@ def segments(rows,security,provided=None):
     # rules. This also splits Yahoo's single regular period around lunch breaks.
     if security.get('calendar'):
         try:
-            cal=xcals.get_calendar(security['calendar'],start=str(start),end=str(end))
-            result=[]
-            for day,r in cal.schedule.iterrows():
-                a,b=int(r['open'].timestamp()),int(r['close'].timestamp())
-                import pandas as pd
-                if pd.notna(r['break_start']) and pd.notna(r['break_end']):
-                    result.extend([(a,int(r['break_start'].timestamp()),str(day)[:10]),(int(r['break_end'].timestamp()),b,str(day)[:10])])
-                else:result.append((a,b,str(day)[:10]))
-            return sorted(result),f"Sessions: {security['calendar']} exchange calendar; holidays, DST, early closes and breaks respected within calendar coverage."
+            return calendar_segments(security['calendar'], start, end), f"Sessions: {security['calendar']} exchange calendar; holidays, DST, early closes and breaks respected within calendar coverage."
         except (ValueError,KeyError,RuntimeError):pass
     supplied=provider_segments(provided)
     if supplied:

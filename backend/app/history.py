@@ -14,6 +14,7 @@ from .providers.yahoo import YahooFinanceProvider
 from .providers.nse import NSEHistoricalProvider
 from zoneinfo import ZoneInfo
 from .sessions import aggregate_market_four_hour,segments
+from .candle_clock import yahoo_candle_clock
 from .aggregator import INTRADAY, LOOKBACK_DAYS, aggregate_four_hour
 
 class MemoryCache:
@@ -116,11 +117,15 @@ def response(history, interval, start=None, end=None, adjusted=False, cached=Fal
     candles=[r for r in aggregated if (a is None or (r.get('end_time',r['time']+1)-1 if native else r.get('last_time',r['time']))>=a) and (b is None or r['time']<=b)]
     for r in candles: r.pop('last_time',None)
     fmt=lambda t:datetime.fromtimestamp(t,timezone.utc).isoformat() if interval in INTRADAY else datetime.fromtimestamp(t,timezone.utc).date().isoformat()
-    return dict(request_diagnostics={k:history.metadata[k]for k in ('provider_http_events','retrieval_seconds','requested_period','actual_period')if k in history.metadata},stale=False,freshness='memory_cache'if cached else'retrieved',timezone=history.metadata.get('timezone') or (security or {}).get('timezone','Asia/Kolkata'),currency=history.metadata.get('currency') or (security or {}).get('currency','INR'),precision=history.metadata.get('precision',(security or {}).get('precision',2)),contract=(security or {}).get('contract',''),source=history.source,candles=candles,actions=history.actions,cached=cached,interval=interval,
+    result = dict(request_diagnostics={k:history.metadata[k]for k in ('provider_http_events','retrieval_seconds','requested_period','actual_period')if k in history.metadata},stale=False,freshness='memory_cache'if cached else'retrieved',timezone=history.metadata.get('timezone') or (security or {}).get('timezone','Asia/Kolkata'),currency=history.metadata.get('currency') or (security or {}).get('currency','INR'),precision=history.metadata.get('precision',(security or {}).get('precision',2)),contract=(security or {}).get('contract',''),source=history.source,candles=candles,actions=history.actions,cached=cached,interval=interval,
         first_available=fmt(history.candles[0]['time']),last_available=fmt(history.candles[-1]['time']),
         fetched_at=history.fetched_at,adjusted=adjusted,notice=history.notice + ((' 4h uses 15m bars; missing bars remain partial. '+session_notice) if interval=='4h' and not native else '') + (f' Intraday request uses Yahoo period {LOOKBACK_DAYS[interval]}d. Yahoo controls the actual available dates; these may differ from the requested period. Older unavailable history is not filled.' if interval in INTRADAY and not native else ''),
         stream_received_at=history.metadata.get('stream_received_at'),provider=history.metadata.get('provider','yahoo' if history.source=='YAHOO FINANCE' else 'nse'),canonical_id=history.metadata.get('canonical_id') or (security or {}).get('canonical_id'),native_id=history.metadata.get('native_id'),market_type=history.metadata.get('market_type'),history_limit=history.metadata.get('history_limit'),last_candle_end=history.candles[-1].get('end_time'),
         returned=len(candles),available_daily=len(history.candles),storage='memory only',timestamp_convention='UTC instants (displayed in instrument timezone)' if interval in INTRADAY or native else 'UTC midnight of trading date',lookback_days=None if native else LOOKBACK_DAYS.get(interval),volume_available=any(r.get('volume') is not None and r['volume']>0 for r in candles))
+    countdown = yahoo_candle_clock(history, security, interval, candles[-1] if candles else None)
+    if countdown is not None:
+        result['candle_clock'] = countdown
+    return result
 
 class HistoryService:
     def __init__(self, provider:HistoricalDataProvider|None=None, config=None):

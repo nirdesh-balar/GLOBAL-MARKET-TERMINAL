@@ -1,10 +1,11 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, EyeOff, Settings2, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, Settings2, X } from 'lucide-react';
 import type { IChartApi } from 'lightweight-charts';
 import type { Pane, StudyLayout } from '../types';
 import type { Study } from './indicators';
 import type { renderIndicatorPanes } from './IndicatorPane';
 import { chartHeight, studyHeight, PRICE_MIN, STUDY_MIN, VOLUME_DEFAULT } from './studyLayout';
+import { StudyValues, studyLegendName, type LegendValue } from './StudyLegend';
 
 interface StudyHeader {
   id: string;
@@ -189,8 +190,10 @@ export function useStudyWorkspace(
   return { height, headers, headerLayer };
 }
 
-export function StudyPaneControls({ rows, layer, pane, onChange, onSettings }: {
+export function StudyPaneControls({ rows, layer, pane, values, volume, onChange, onSettings }: {
   rows: StudyHeader[];
+  values: ReadonlyMap<string, LegendValue[]>;
+  volume: number | null;
   layer: RefObject<HTMLDivElement | null>;
   pane: Pane;
   onChange: (value: Partial<Pane>) => void;
@@ -207,23 +210,27 @@ export function StudyPaneControls({ rows, layer, pane, onChange, onSettings }: {
   return <div className="study-pane-headers" ref={layer}>
     {rows.map(({ id, name }) => {
       const collapsed = !!pane.study_layout?.[id]?.collapsed;
+      const indicator = pane.indicators.find(item => item.id === id);
+      const label = indicator ? studyLegendName(indicator) : name;
       return <div key={id} className="study-pane-controls" data-study-header={id}
         data-testid={`study-controls-${pane.id}-${id}`} onPointerDown={event => event.stopPropagation()}>
         <button aria-label={`${collapsed ? 'Expand' : 'Collapse'} study ${id}`} aria-expanded={!collapsed}
           title="Collapse / expand this study pane" onClick={() => change(id, { collapsed: !collapsed })}>
-          {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}<span>{name}</span>
+          {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}<span title={label}>{label}</span>
         </button>
+        {!collapsed && <StudyValues values={id === 'volume'
+          ? [{ name: 'Volume', color: 'var(--muted)', value: volume }] : values.get(id)} />}
         {id !== 'volume' && <button title="Study settings" aria-label={`Pane settings ${id}`} onClick={() => onSettings(id)}>
           <Settings2 size={12} />
         </button>}
         <button title="Hide this study" aria-label={`Hide study ${id}`} onClick={() => id === 'volume'
           ? onChange({ volume: false })
           : onChange({ indicators: pane.indicators.map(item => item.id === id ? { ...item, visible: false } : item) })}>
-          <EyeOff size={12} />
+          <Eye size={12} />
         </button>
         {id !== 'volume' && <button title="Remove this indicator" aria-label={`Remove study ${id}`}
           onClick={() => onChange({ indicators: pane.indicators.filter(item => item.id !== id) })}>
-          <Trash2 size={12} />
+          <X size={12} />
         </button>}
       </div>;
     })}

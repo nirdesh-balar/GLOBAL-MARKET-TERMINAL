@@ -13,7 +13,7 @@ export function ChartTimeZone({ value, instrumentZone, daily, onApply, onClose }
   const [selection, setSelection] = useState(value);
   const [zones] = useState(() => {
     const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return [...new Set(['UTC', local, instrumentZone, ...(value ? [value] : []), ...Intl.supportedValuesOf('timeZone')])];
+    return [...new Set(['UTC', local, 'Asia/Kolkata', instrumentZone, ...(value ? [value] : []), ...Intl.supportedValuesOf('timeZone')])];
   });
   useEffect(() => {
     const node = dialog.current;
@@ -34,7 +34,7 @@ export function ChartTimeZone({ value, instrumentZone, daily, onApply, onClose }
       onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}
       onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }}>
       <header><h2>Chart display time zone</h2><button aria-label="Close time zone" onClick={onClose}><X size={17} /></button></header>
-      <p>{daily ? 'Daily and higher-period candles keep their session dates. The selected zone is shown in the toolbar and used on intraday charts.' : 'Changes time labels only. Market sessions and chart data keep their original timestamps.'}</p>
+      <p>{daily ? 'The clock and intraday time labels use this zone. Daily and longer candles keep their original session dates.' : 'Changes time labels only. Market sessions and chart data keep their original timestamps.'}</p>
       <label>Search time zones<input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Search a city or time zone" /></label>
       <fieldset>
         <legend>Display zone</legend>

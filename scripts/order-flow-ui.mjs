@@ -142,6 +142,13 @@ try {
   }
   await activate(perpetual);
   await expect(page.getByTestId('stream-status-0')).toHaveAttribute('data-state', 'live', { timeout: wait });
+  if (live) {
+    const countdown = page.getByTestId('candle-countdown-0');
+    await expect(countdown).toBeVisible({ timeout: 30000 });
+    await expect(countdown).toHaveText(/^(?:\d+h \d{2}m|\d{2}:\d{2})$/);
+    report.perpetualCandleCountdown = await countdown.textContent();
+    await screenshot('perpetual-countdown');
+  }
   const before = await request('/api/history/status');
   if (!await panel().isVisible()) await toggle().click();
   await observe(perpetual, 'perpetual');

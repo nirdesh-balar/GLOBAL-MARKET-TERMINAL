@@ -179,13 +179,73 @@
   .terminal-shell .chart-legend .ohlc { margin-top: 0; }
   .terminal-shell .chart-legend .studies-legend { flex-basis: 100%; }
 }
-.terminal-shell .studies-legend { row-gap: 3px; align-items: center; }
-.terminal-shell .studies-legend > span:has(button) {
-  padding: 0 3px;
+/* Compact, disposable indicator controls share GMT's existing chart colors. */
+.terminal-shell .chart-surface > .chart-legend { max-height: none; overflow: visible; }
+.terminal-shell .studies-legend { display: block; max-height: none; overflow: visible; margin-top: 4px; }
+.study-legend-list { width: fit-content; max-width: 100%; }
+.study-legend-toggle {
+  color: var(--text);
+  padding: 2px 5px;
+  min-width: 31px;
+  gap: 3px;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
 }
-.terminal-shell .studies-legend > span:has(button):focus-within { box-shadow: 0 0 0 1px var(--border); }
+.study-legend-rows {
+  pointer-events: none;
+  width: fit-content;
+  max-width: 100%;
+  max-height: 148px;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 1px 2px;
+}
+.study-legend-rows[hidden] { display: none; }
+.study-legend-row {
+  pointer-events: auto;
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 19px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--canvas) 86%, transparent);
+  white-space: nowrap;
+}
+.study-legend-row:is(:hover, :focus-within) { background: var(--surface); }
+.study-legend-name, .study-legend-row > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.study-legend-row[data-visible="false"] .study-legend-name { opacity: .64; }
+.study-legend-actions { display: inline-flex; flex: none; opacity: 0; }
+.study-legend-row:is(:hover, :focus-within) .study-legend-actions { opacity: 1; }
+.terminal-shell .studies-legend .study-legend-actions > button {
+  width: 20px;
+  height: 19px;
+  padding: 0;
+  justify-content: center;
+  color: var(--muted);
+  opacity: 1;
+}
+.terminal-shell .studies-legend .study-legend-actions > button:is(:hover, :focus-visible) { color: var(--text); }
+/* A selected drawing tool must reach the chart even under a legend row. */
+.terminal-shell .chart-pane[data-drawing-active="true"] .study-legend-row,
+.terminal-shell .chart-pane[data-drawing-active="true"] .study-legend-actions > button {
+  pointer-events: none;
+}
+
+.study-values { display: inline-flex; min-width: 0; gap: 5px; overflow: hidden; font-variant-numeric: tabular-nums; }
+.study-values > span { white-space: nowrap; }
+.study-legend-meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 3px 0; color: var(--muted); }
+@container (max-width: 560px) {
+  .study-legend-rows { max-height: 65px; }
+  .study-legend-row { gap: 3px; }
+}
+@media (hover: none) {
+  .study-legend-actions { opacity: 1; }
+}
 .terminal-shell .study-pane-controls {
   color: var(--text);
   background: var(--surface);
@@ -193,6 +253,13 @@
   border-radius: 0 0 7px 0;
   right: auto;
   max-width: calc(100% - 86px);
+}
+.terminal-shell .study-pane-controls > button:first-child { max-width: clamp(76px, 24cqw, 160px); }
+.terminal-shell .study-pane-controls > button:first-child > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .terminal-shell .study-pane-controls button:hover { background: var(--hover); }
 .terminal-shell .bottom-chart-toolbar { height: 32px; min-height: 32px; background: var(--surface); }
@@ -209,6 +276,23 @@
   color: var(--muted);
   border-radius: 5px;
   font-size: 10px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.candle-countdown {
+  position: absolute;
+  right: 0;
+  z-index: 3;
+  visibility: hidden;
+  pointer-events: none;
+  padding: 2px 0;
+  border-radius: 0 0 3px 3px;
+  background: var(--surface);
+  color: var(--text);
+  font: 500 9px/12px system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
 }
 .terminal-shell .crosshair-alert {
   position: absolute;
@@ -239,6 +323,11 @@
   border-radius: 12px;
   box-shadow: 0 22px 70px #07101a70;
 }
+.terminal-shell .indicator-settings-dialog { width: 490px; padding-bottom: 10px; }
+.terminal-shell .indicator-settings-dialog > header { padding: 10px 14px; border-color: var(--border); }
+.terminal-shell .indicator-settings-dialog h2 { font-size: 15px; margin: 2px 0; }
+.terminal-shell .indicator-settings-dialog .indicator-fields { padding: 12px 14px; gap: 8px 10px; }
+.terminal-shell .indicator-settings-dialog footer { padding: 4px 14px; gap: 8px; }
 .chart-timezone-dialog { width: min(520px, calc(100vw - 28px)); padding: 16px; }
 .chart-timezone-dialog::backdrop { background: #06101bb3; }
 .chart-timezone-dialog header, .chart-timezone-dialog footer {
@@ -282,8 +371,9 @@
   .analysis-rail { width: 40px; flex-basis: 40px; }
   .analysis-rail > button { width: 33px; }
 }
-@container (max-width: 920px) {
-  .terminal-shell .chart-zone-button span { display: none; }
+@container (max-width: 420px) {
+  .terminal-shell .chart-zone-button { font-size: 9px; padding-inline: 3px; }
+  .terminal-shell .chart-zone-button svg { display: none; }
 }
 
 /* The title area remains draggable. In native fullscreen the chart toolbar takes its place. */

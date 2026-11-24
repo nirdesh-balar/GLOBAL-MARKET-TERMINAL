@@ -1,5 +1,9 @@
 # Codex development log
 
+## 2026-11-24 · Indicator legend and chart clock
+- The per-chart indicator list shows provider-independent calculated values at the crosshair or at the latest displayed candle. Its collapse state, individual visibility, and native study pane collapse are independent. Hidden studies remain available to restore in the list.
+- The timezone button displays the machine wall clock and current offset. Visible charts share one timer. Candle countdowns use validated Hyperliquid close timestamps or fresh Yahoo daily/native intraday session bounds. Closed, stale, unsupported, and replay data have no countdown. No new provider request is made to run either clock.
+
 ## 2026-11-24 · Study pane resizing
 - Track the native pane elements from Lightweight Charts 5.2.1, so study headers stay with their panes during a held separator drag. Resize events update header coordinates without rerendering the chart.
 - Keep native separator resizing and persist heights only for expanded studies whose divider actually changed. Remove the separate Height controls. Preserve per-chart heights through layout and viewport changes.

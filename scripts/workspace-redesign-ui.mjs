@@ -196,7 +196,7 @@ try {
   const providerCount = (await historyStatus()).provider_requests;
   const ema = (await workspace()).panes[0].indicators.find(indicator => indicator.kind === 'EMA');
   assert.ok(ema);
-  await pane.getByLabel(`Legend settings ${ema.id}`).click();
+  await pane.getByTestId(`legend-settings-${ema.id}`).click();
   const settings = page.getByRole('dialog', { name: 'Indicator settings' });
   await settings.getByLabel('Length', { exact: true }).fill('9');
   await settings.getByRole('button', { name: 'Apply settings' }).click();
