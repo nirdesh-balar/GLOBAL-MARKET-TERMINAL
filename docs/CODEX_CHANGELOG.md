@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-24 · Watchlist readability and management
+- Increase Watchlist type and use sticky, horizontally scrollable column headings at narrow widths. List management lives in the name picker.
+- Rename, copy, and confirm deletion for every ordinary list. Copies retain the source memberships and per-list grouping and visibility preferences. Flagged views can be copied to independent lists and keep their flag assignments.
+- Initialize legacy default lists once. Preserve explicit deletions and the empty state across restart, without touching charts, drawings, alerts or the directory.
+
 ## 2026-11-24 · Compact Watchlist
 - Use a keyboard-operated list picker and move list controls into the header overflow. The Watchlist plus opens the existing provider search in add mode and uses canonical duplicate protection.
 - Keep compact price rows, optional volume and a collapsed instrument summary. Changes in displayed prices animate with reduced-motion support. The summary reads already loaded data.

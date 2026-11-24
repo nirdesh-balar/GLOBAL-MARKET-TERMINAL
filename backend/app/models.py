@@ -533,6 +533,7 @@ class Workspace(BaseModel):
         return value
     watchlist_version:Literal[1]=1
     watchlist_revision:int=Field(default=0,ge=0)
+    watchlist_defaults_initialized:bool=False
     drawing_tools:DrawingToolbarPreferences=Field(default_factory=DrawingToolbarPreferences)
     layout:Literal[1,2,4,6,8]=2
     panes:list[Pane]=Field(min_length=8,max_length=8)
@@ -557,6 +558,8 @@ class Workspace(BaseModel):
             key: value for key, value in self.sidebar.groups.items() if key in valid_lists or key in color_lists
         }
         is_color_list = self.active_watchlist.startswith("color:") and self.active_watchlist.lower() in color_lists
+        if not self.watchlists and not is_color_list:
+            self.active_watchlist = ''
         if self.watchlists and self.active_watchlist not in valid_lists and not is_color_list:raise ValueError('Select a valid active watchlist')
         return self
 class CacheConfig(BaseModel):

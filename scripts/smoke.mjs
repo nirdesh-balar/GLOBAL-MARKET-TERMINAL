@@ -1,4 +1,4 @@
-import { chooseWatchlist, clickWatchlistAction, filterWatchlist, openWatchlistOptions } from './watchlist-controls.mjs';
+import { chooseWatchlist, filterWatchlist, openWatchlistOptions, watchlistManagement } from './watchlist-controls.mjs';
 import{pythonExecutable}from'./platform-paths.mjs';
 import {_electron as electron,expect} from './isolated-electron.mjs';
 import {mkdir,mkdtemp,readFile} from 'node:fs/promises';
@@ -51,9 +51,9 @@ try{
  await page.getByLabel('Timeframe pane 0',{exact:true}).selectOption('1d');await expect(page.locator('.chart-overlay')).toHaveCount(0);
  await chooseWatchlist(page, 'indices');await expect(page.locator('.watch-row')).toHaveCount(4);await (await filterWatchlist(page)).fill('BANK');await expect(page.locator('.watch-row')).toHaveCount(1);await (await filterWatchlist(page)).fill('');
  await openWatchlistOptions(page);await page.getByLabel('Open symbol in pane',{exact:true}).selectOption('1');await page.keyboard.press('Escape');await page.locator('.watch-select').filter({hasText:'NIFTY BANK'}).click();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect(page.getByTestId('pane-1').locator('.pane-symbol')).toContainText('NIFTY BANK');await expect(page.getByTestId('pane-1').locator('.studies-legend')).toContainText('Volume unavailable');
- await clickWatchlistAction(page, 'Create watchlist');await page.getByLabel('Watchlist name',{exact:true}).fill('Research');await page.getByRole('button',{name:'Save watchlist',exact:true}).click();
+ await (await watchlistManagement(page, 'Create watchlist')).click();await page.getByLabel('Watchlist name',{exact:true}).fill('Research');await page.getByRole('button',{name:'Save watchlist',exact:true}).click();
  await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.getByPlaceholder('Search symbol, company, index or ISIN').fill('INFY');await page.getByLabel('Favourite INFY-EQ',{exact:true}).click();await page.getByLabel('Close search',{exact:true}).click();await expect(page.locator('.watch-row')).toHaveCount(1);
- await clickWatchlistAction(page, 'Manage watchlists');await page.getByLabel('Watchlist action',{exact:true}).selectOption('rename');await page.getByLabel('Watchlist name',{exact:true}).fill('My research');await page.getByRole('button',{name:'Save watchlist',exact:true}).click();
+ await (await watchlistManagement(page, 'Rename…')).click();await page.getByLabel('Watchlist name',{exact:true}).fill('My research');await page.getByRole('button',{name:'Save watchlist',exact:true}).click();
  await page.getByLabel('Toggle theme',{exact:true}).click();await expect(page.locator('.theme-light')).toBeVisible();await page.screenshot({path:'test-results/advanced-light-theme.png'});await page.getByLabel('Toggle theme',{exact:true}).click();
  await page.getByTestId('chart-maximize-0').click();await expect(page.locator('.chart-pane:visible')).toHaveCount(1);await page.getByTestId('chart-maximize-0').click();await expect(page.locator('.chart-pane')).toHaveCount(2);
  const image=join(data,'chart-export.png');await app.evaluate(({dialog},path)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:path});},image);await page.getByLabel('SCREENSHOT pane 0',{exact:true}).click();await expect.poll(async()=>{try{return (await readFile(image)).subarray(0,8).toString('hex');}catch{return '';}}).toBe('89504e470d0a1a0a');

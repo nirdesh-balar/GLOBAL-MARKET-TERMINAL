@@ -26,3 +26,8 @@ export async function filterWatchlist(page) {
   }
   return filter;
 }
+
+export async function watchlistManagement(page, name) {
+  await page.getByTestId('watchlist-dropdown').click();
+  return page.getByRole('group', { name: 'Choose watchlist' }).getByRole('button', { name, exact: true });
+}

@@ -25,8 +25,19 @@ def test_crud_defaults_ids_and_fallback(client):
  assert len(workspace(client)['watchlists'])==10
 @pytest.mark.parametrize('id',['stocks','us','global','indices','global_indices','crypto','forex','commodities','funds','favourites'])
 @pytest.mark.parametrize('action',['rename','delete'])
-def test_default_protection(client,id,action):
- before=workspace(client);assert op(client,action,id=id,name='Bad',confirm=True).status_code==422;assert workspace(client)==before
+def test_default_management(client,id,action):
+    before=workspace(client)
+    result=op(client,action,id=id,name='Renamed built-in',confirm=True)
+    assert result.status_code==200, result.text
+    after=workspace(client)
+    unrelated=lambda state:[row for row in state['watchlists'] if row['id']!=id]
+    assert unrelated(before)==unrelated(after)
+    original=next(row for row in before['watchlists'] if row['id']==id)
+    if action=='rename':
+        assert next(row for row in after['watchlists'] if row['id']==id)=={**original,'name':'Renamed built-in'}
+    else:
+        assert all(row['id']!=id for row in after['watchlists'])
+        assert before['panes']==after['panes']
 @pytest.mark.parametrize('name',['',' ','a'*65,'bad\nname','\0'])
 def test_invalid_names(client,name):assert op(client,'create',name=name).status_code==422
 
@@ -229,3 +240,36 @@ def test_group_preferences_repair_preserves_legacy_workspace(client):
     assert validated["sidebar"]["width"] == saved["sidebar"]["width"]
     assert validated["watchlists"] == saved["watchlists"]
     assert validated["active_watchlist"] == "color:orange"
+
+
+def test_copy_default_preferences_and_delete_all_without_reseeding(client, app):
+    initial = workspace(client)
+    stock = next(row for row in initial['watchlists'] if row['id'] == 'stocks')['items'][0]
+    identity = stock['canonical_id']
+    app.state.db.set_flag(identity, 'orange', stock['symbol'], stock['name'], stock['exchange'],
+                          stock['provider'], stock['kind'], stock)
+    initial['sidebar']['groups']['stocks'] = ['stocks']
+    initial['hidden_symbols']['stocks'] = [identity]
+    assert client.put('/workspace', json=initial).status_code == 200
+    assert op(client, 'delete', id='stocks').status_code == 422
+    assert op(client, 'rename', id='stocks', name='Crypto').status_code == 422
+    copy = op(client, 'duplicate', id='stocks', name='Stocks copy').json()
+    copy_id = copy['active_watchlist']
+    assert copy['groups'][copy_id] == ['stocks']
+    assert copy['hidden_symbols'][copy_id] == [identity]
+    assert op(client, 'remove', id=copy_id, instrument=identity).status_code == 200
+    assert identity in [item['canonical_id'] for row in workspace(client)['watchlists'] if row['id']=='stocks' for item in row['items']]
+    flagged = op(client, 'duplicate', id='color:orange', name='Orange snapshot').json()
+    assert [row['canonical_id'] for row in flagged['watchlists'][-1]['items']] == [identity]
+    for row in workspace(client)['watchlists']:
+        assert op(client, 'delete', id=row['id'], confirm=True).status_code == 200
+    restored = restore_workspace(app.state.db, app.state.registry)
+    assert restored['watchlists'] == []
+    assert restored['active_watchlist'] == ''
+    assert restored['panes'] == initial['panes']
+    assert app.state.db.get_flags()[identity]['color'] == 'orange'
+    assert app.state.registry.resolve(identity)['canonical_id'] == identity
+    assert client.put('/workspace', json=restored).status_code == 200
+    added = op(client, 'create', name='After deletion').json()
+    assert len(added['watchlists']) == 1
+    assert restore_workspace(app.state.db, app.state.registry)['watchlists'] == added['watchlists']

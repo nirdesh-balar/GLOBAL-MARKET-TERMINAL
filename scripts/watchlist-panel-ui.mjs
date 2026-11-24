@@ -43,7 +43,7 @@ try {
     await expect(sidebar().locator('header select, .watchlist-options, .add-symbol')).toHaveCount(0);
     await expect(sidebar().getByTestId('watchlist-add-symbol')).toBeVisible();
     await expect(sidebar().locator('.watch-select > span:first-child small')).toHaveCount(0);
-    assert.ok((await rows().first().boundingBox()).height <= 28);
+    assert.equal((await rows().first().boundingBox()).height, 30);
     const w = await request('/workspace');
     const stock = w.watchlists.find(item => item.id === 'stocks').items[0];
     const indices = w.watchlists.find(item => item.id === 'indices').items.slice(0, 2);

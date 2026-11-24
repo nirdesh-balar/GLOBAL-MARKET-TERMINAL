@@ -105,8 +105,8 @@ export default function App(){
   const activePane=workspace?.panes.find(p=>p.id===active)||workspace?.panes[0];
   const activeTimeframe=activePane?.timeframe||'1d';
   const activeSymbol=activePane?.canonical_id||activePane?.instrument_id||activePane?.symbol;
-  const historicalQuotes=useWatchlistQuotes(selectedWatchlist?.id||'',selectedWatchlist?.items.map(r=>r.canonical_id||r.instrument_id||r.symbol).join('|')||'',!!workspace?.sidebar.visible&&chartsOpen&&!focus&&!refreshPaused,refreshPreferences.value,activeTimeframe,activeSymbol);
-  const liveSnapshot=useLiveWatchlist(selectedWatchlist?.id||'',selectedWatchlist?.items||[],!!workspace?.sidebar.visible&&chartsOpen&&!focus&&!refreshPaused,historicalQuotes.snapshot,activeTimeframe);
+  const historicalQuotes=useWatchlistQuotes(selectedWatchlist?.id||'',selectedWatchlist?.items.map(r=>r.canonical_id||r.instrument_id||r.symbol).join('|')||'',!!selectedWatchlist&&!!workspace?.sidebar.visible&&chartsOpen&&!focus&&!refreshPaused,refreshPreferences.value,activeTimeframe,activeSymbol);
+  const liveSnapshot=useLiveWatchlist(selectedWatchlist?.id||'',selectedWatchlist?.items||[],!!selectedWatchlist&&!!workspace?.sidebar.visible&&chartsOpen&&!focus&&!refreshPaused,historicalQuotes.snapshot,activeTimeframe);
   const watchlistQuotes={...historicalQuotes,snapshot:liveSnapshot};
   useEffect(()=>{const off=window.terminal.onWindowState(setNativeState);void window.terminal.windowControl('status').then(setNativeState).catch(e=>setError(e.message));return off;},[]);
   const nativeFullscreen=()=>void window.terminal.windowControl('toggle').then(setNativeState).catch(e=>setError(e.message));
@@ -116,7 +116,33 @@ export default function App(){
   const operations=useRef<Promise<unknown>>(Promise.resolve()),watchlistState=useRef<Pick<Workspace,'watchlists'|'watchlist_revision'>|null>(null);
   function enqueue<T>(work:()=>Promise<T>):Promise<T>{const task=operations.current.catch(()=>{}).then(work);operations.current=task;return task;}
   const acceptWorkspace=(w:Workspace)=>{watchlistState.current={watchlists:w.watchlists,watchlist_revision:w.watchlist_revision};setWorkspace(w);};
-  const changeWatchlists=(path:string,op:WatchlistMutation|ImportCommit)=>enqueue(async()=>{const result=await api<WatchlistResult>(path,'POST',{...op,revision:watchlistState.current?.watchlist_revision||0});watchlistState.current={watchlists:result.watchlists,watchlist_revision:result.watchlist_revision};setWorkspace(w=>w?{...w,watchlists:result.watchlists,watchlist_revision:result.watchlist_revision,active_watchlist:('action' in op && ['create','duplicate','delete'].includes(op.action)) || !('action' in op) ? result.active_watchlist : w.active_watchlist}:w);return result;});
+  const changeWatchlists=(path:string,op:WatchlistMutation|ImportCommit)=>{
+    if(savePending.current)flushWorkspace();
+    return enqueue(async()=>{
+      const result=await api<WatchlistResult>(path,'POST',{...op,revision:watchlistState.current?.watchlist_revision||0});
+      watchlistState.current={watchlists:result.watchlists,watchlist_revision:result.watchlist_revision};
+      setWorkspace(w=>{
+        if(!w)return w;
+        const groups={...w.sidebar.groups};
+        const hidden_symbols={...w.hidden_symbols};
+        if('action' in op && op.action==='duplicate'){
+          const id=result.active_watchlist;
+          if(result.groups[id])groups[id]=result.groups[id];
+          if(result.hidden_symbols[id])hidden_symbols[id]=result.hidden_symbols[id];
+        }
+        if('action' in op && op.action==='delete' && op.id){
+          delete groups[op.id];
+          delete hidden_symbols[op.id];
+        }
+        const selectResult=!('action' in op)||op.action==='create'||op.action==='duplicate'||
+          (op.action==='delete'&&w.active_watchlist===op.id);
+        return {...w,watchlists:result.watchlists,watchlist_revision:result.watchlist_revision,
+          active_watchlist:selectResult?result.active_watchlist:w.active_watchlist,
+          sidebar:{...w.sidebar,groups},hidden_symbols};
+      });
+      return result;
+    });
+  };
   const mutateWatchlist=(op:WatchlistMutation)=>changeWatchlists('/api/watchlists/mutate',op);
   const importWatchlist=(op:ImportCommit)=>changeWatchlists('/api/watchlists/import/commit',op);
   const savePending=useRef<Workspace|null>(null),saveRunning=useRef(false),saveTimeout=useRef<ReturnType<typeof setTimeout>|null>(null);const initialized=useRef(false);const revision=useRef<number|undefined>(undefined);
@@ -132,7 +158,7 @@ export default function App(){
           savePending.current=null;
           const lists=watchlistState.current||next;
           const activeWatchlist=next.active_watchlist.startsWith('color:')||
-            lists.watchlists.some(list=>list.id===next.active_watchlist)?next.active_watchlist:lists.watchlists[0].id;
+            lists.watchlists.some(list=>list.id===next.active_watchlist)?next.active_watchlist:lists.watchlists[0]?.id||'';
           const grid=next.chart_grid||DEFAULT_GRID;
           const chart_grid={...grid,cards:grid.cards.map(({instrument,...card})=>card)};
           const result=await api<{watchlist_revision:number}>('/workspace','PUT',{...next,...lists,active_watchlist:activeWatchlist,chart_grid});

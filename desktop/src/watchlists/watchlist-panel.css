@@ -1,14 +1,16 @@
 .terminal-shell .professional-watchlist {
-  --watch-columns: minmax(0, 1.14fr) minmax(0, .92fr) minmax(0, .66fr) minmax(0, .79fr);
+  --watch-columns: minmax(86px, 1.3fr) minmax(58px, 1.02fr) minmax(44px, .73fr) minmax(54px, .81fr);
+  --watch-table-minimum: 318px;
+  --watch-cell-font: 13px;
   --watchlist-tick-up: #27978055;
   --watchlist-tick-down: #e0606555;
-  --watch-flag-width: 18px;
-  --watch-actions-width: 38px;
-  --watch-table-gap: 4px;
+  --watch-flag-width: 16px;
+  --watch-actions-width: 36px;
+  --watch-table-gap: 3px;
 }
 .terminal-shell .professional-watchlist > header {
-  height: 36px;
-  min-height: 36px;
+  height: 38px;
+  min-height: 38px;
   padding: 0 5px 0 8px;
   gap: 2px;
   border: 0;
@@ -33,7 +35,7 @@
   gap: 5px;
   justify-content: flex-start;
   color: var(--text);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 650;
 }
 .terminal-shell .watchlist-title > span {
@@ -43,7 +45,14 @@
   white-space: nowrap;
 }
 .terminal-shell .watchlist-title svg { flex-shrink: 0; }
+.terminal-shell .professional-watchlist .watch-rows[data-volume="true"] { --watch-table-minimum: 365px; }
+.terminal-shell .professional-watchlist .watch-columns,
+.terminal-shell .professional-watchlist .watch-row,
+.terminal-shell .professional-watchlist .watch-market-heading { min-width: var(--watch-table-minimum); }
 .terminal-shell .professional-watchlist .watch-columns {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   grid-template-columns: var(--watch-flag-width) var(--watch-columns) var(--watch-actions-width);
   gap: var(--watch-table-gap);
   padding: 5px 4px 5px 5px;
@@ -52,17 +61,17 @@
   flex-shrink: 0;
 }
 .terminal-shell .professional-watchlist .watch-columns[data-volume="true"] {
-  grid-template-columns: var(--watch-flag-width) var(--watch-columns) minmax(0, .61fr) var(--watch-actions-width);
+  grid-template-columns: var(--watch-flag-width) var(--watch-columns) minmax(43px, .61fr) var(--watch-actions-width);
 }
-.terminal-shell .professional-watchlist .watch-col-btn {
+.terminal-shell .professional-watchlist .watch-columns .watch-col-btn {
   overflow: hidden;
-  font-size: 9px;
-  letter-spacing: .02em;
+  font-size: 12px;
+  letter-spacing: .01em;
 }
 .terminal-shell .professional-watchlist .watch-columns .watch-col-symbol { justify-content: flex-start; }
 .terminal-shell .professional-watchlist .watch-col-btn.active { color: var(--workspace-accent); }
 .terminal-shell .professional-watchlist .watch-row {
-  height: 26px;
+  height: 30px;
   padding: 0 4px 0 3px;
   gap: var(--watch-table-gap);
   border-bottom: 1px solid color-mix(in srgb, var(--border), transparent 56%);
@@ -83,13 +92,20 @@
   font-variant-numeric: tabular-nums;
 }
 .terminal-shell .professional-watchlist .watch-row[data-volume="true"] .watch-select {
-  grid-template-columns: var(--watch-columns) minmax(0, .61fr);
+  grid-template-columns: var(--watch-columns) minmax(43px, .61fr);
 }
 .terminal-shell .professional-watchlist .watch-select .watch-change,
 .terminal-shell .professional-watchlist .watch-select .watch-num-change { display: flex; }
 .terminal-shell .professional-watchlist .watch-columns .watch-col-change-pct,
 .terminal-shell .professional-watchlist .watch-columns .watch-col-change-abs { display: inline-flex; }
-.terminal-shell .professional-watchlist .watch-select > span:first-child > strong { font-weight: 620; }
+.terminal-shell .professional-watchlist .watch-select > span:first-child > strong {
+  font-size: var(--watch-cell-font);
+  font-weight: 620;
+}
+.terminal-shell .professional-watchlist .watch-select .quote > strong,
+.terminal-shell .professional-watchlist .watch-select :is(.watch-change, .watch-num-change) strong {
+  font-size: var(--watch-cell-font);
+}
 .terminal-shell .professional-watchlist .watch-select .quote > strong { font-weight: 560; }
 .terminal-shell .professional-watchlist .watch-select .quote-number { border-radius: 3px; }
 .terminal-shell .professional-watchlist .watch-select .quote[data-quote-warning] > strong::after {
@@ -154,8 +170,9 @@
   justify-content: flex-start;
   gap: 7px;
   width: 100%;
-  min-height: 27px;
+  min-height: 29px;
   padding: 3px 6px;
+  font-size: 14px;
   color: var(--text);
   background: transparent;
   border: 0;
@@ -184,8 +201,8 @@
 .terminal-shell .watchlist-popover-label span + span { margin-left: auto; font-variant-numeric: tabular-nums; }
 .terminal-shell .watchlist-popover-divider { border-top: 1px solid var(--border); margin: 4px 2px; }
 .terminal-shell .watchlist-popover-nested { margin-left: 13px; border-left: 1px solid var(--border); padding-left: 4px; }
-.terminal-shell .watchlist-popover label { display: flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 11px; }
-.terminal-shell .watchlist-popover select { min-width: 0; max-width: 165px; flex: 1; }
+.terminal-shell .watchlist-popover label { display: flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 13px; }
+.terminal-shell .watchlist-popover select { min-width: 0; max-width: 165px; flex: 1; font-size: 13px; }
 .terminal-shell .watchlist-flag-popover { width: min(160px, calc(100vw - 12px)); max-height: calc(100vh - 12px); }
 .terminal-shell .watchlist-flag-popover .picker-colors-row { display: grid; gap: 0; margin: 0; }
 .terminal-shell .watchlist-flag-popover .color-chip-btn { height: auto; min-height: 24px; box-shadow: none; }
@@ -198,3 +215,6 @@
 .terminal-shell .watchlist-symbol-search { width: min(550px, calc(100vw - 28px)); }
 .terminal-shell .watchlist-search-title { padding: 11px 12px 2px; font-weight: 650; }
 .terminal-shell .watchlist-symbol-search .search-input:focus-within { box-shadow: inset 0 -1px var(--workspace-accent); }
+
+.terminal-shell .watchlist-empty-state { padding: 12px; color: var(--muted); }
+.terminal-shell .watchlist-empty-state p { margin: 0 0 8px; }
