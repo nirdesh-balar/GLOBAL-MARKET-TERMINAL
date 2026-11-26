@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-26 · Reference analysis workspace
+
+- Reuse canonical symbol search for index lookup and bounded percent comparisons. Add grouped intervals, 13 genuine chart presentations, a crosshair Data Window and verified daily Yahoo dividend badges.
+- Extend the indicator manager with Favorites, Recently Used and typed local study revisions. Reuse the existing local alerts engine for completed-candle crossings. [Video audit and review scope](REFERENCE_ANALYSIS_WORKSPACE.md)
+
 ## 2026-11-26 · Watchlist quote refresh ownership
 
 - Fence each Watchlist refresh by client, selection generation and request sequence. The backend accepts a snapshot only after the corresponding list and timeframe have been registered. Polls also carry the expected job ID. Closing or replacing a selection retires its generation and cancels only its work.

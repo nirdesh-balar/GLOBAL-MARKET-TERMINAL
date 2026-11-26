@@ -9,6 +9,7 @@ from .alert_models import AlertDefinition,AlertSettings,quiet_now
 from .alert_store import AlertStore
 from .screener_conditions import ScreenConfig,evaluate,completed_rows
 from .providers.base import ProviderError
+from .study_recipes import evaluate_study_rule
 from .markets import entry
 UTC=timezone.utc
 CROSS_KINDS={'price_cross_up','price_cross_down','rsi_cross_up','rsi_cross_down','ema_cross_up','ema_cross_down','sma_cross_up','sma_cross_down','macd_cross_up','macd_cross_down','bb_middle_cross_up','bb_middle_cross_down','supertrend_change','stoch_cross_up','stoch_cross_down','price_cross_ema_up','price_cross_ema_down','price_cross_sma_up','price_cross_sma_down'}
@@ -171,7 +172,17 @@ class AlertEngine:
             return dict(runtime={**r,'status':'expired'})
         config=ScreenConfig(interval=d.interval,completed=d.completed,adjusted=d.adjusted,conditions=d.conditions)
         sec={**security,'timezone':h.get('timezone') or security.get('timezone','UTC')}
-        result=evaluate(h,sec,config,now);stamp=result.get('candle_time');state={'matched':True,'no_match':False}.get(result['status'])
+        if d.study_rule:
+            eligible=completed_rows(h['candles'],sec,d.interval,now,True)
+            state,value=evaluate_study_rule(d.study_rule,eligible)
+            last=eligible[-1] if eligible else {}
+            result=dict(candle_time=last.get('time'),close=last.get('close'),
+                        details=[dict(kind='local_study',reason='Insufficient candles for the local study.' if state is None else None,
+                                      value=value,level=d.study_rule.level,output=d.study_rule.output)])
+        else:
+            result=evaluate(h,sec,config,now)
+            state={'matched':True,'no_match':False}.get(result['status'])
+        stamp=result.get('candle_time')
         if not stamp:
             r.update(status='unknown',error='No eligible completed candle or valid OHLC values');return dict(runtime=r)
         end=candle_end(stamp,sec,d.interval) if d.completed else stamp
@@ -195,7 +206,7 @@ class AlertEngine:
             r.update(status='skipped_old_signal',error='Newly downloaded candle is outside the fresh-signal window; no retrospective notification.');return dict(runtime=r)
         qualifies=state
         if qualifies and d.repeat=='crossing':
-            intrinsic=len(d.conditions.children)==1 and d.conditions.children[0].type=='condition' and d.conditions.children[0].kind in CROSS_KINDS
+            intrinsic=bool(d.study_rule) or len(d.conditions.children)==1 and d.conditions.children[0].type=='condition' and d.conditions.children[0].kind in CROSS_KINDS
             if not intrinsic:
                 prefix=completed_rows(h['candles'],sec,d.interval,now,d.completed)
                 previous=evaluate({**h,'candles':prefix[:-1]},sec,config,now)

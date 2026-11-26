@@ -1,3 +1,4 @@
+from .study_recipes import LocalStudy, StudyRecipe
 from typing import Literal
 from pydantic import BaseModel,Field,model_validator,field_validator,ConfigDict,ValidationError
 Timeframe=Literal['1m','5m','15m','30m','1h','4h','1d','1w','1M','1Y']
@@ -374,7 +375,15 @@ class SidebarPreferences(BaseModel):
 class StudyLayout(BaseModel):
     height:int=Field(default=104,ge=48,le=600)
     collapsed:bool=False
+class AppliedStudy(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id:str=Field(pattern=r'^[0-9a-f-]{36}$')
+    name:str=Field(min_length=1,max_length=64)
+    recipe:StudyRecipe
+    visible:bool=True
+
 class Pane(SymbolEntry):
+    local_studies:list[AppliedStudy]=Field(default_factory=list,max_length=3)
     study_layout:dict[str,StudyLayout]=Field(default_factory=dict,max_length=21)
     @field_validator("study_layout")
     @classmethod
@@ -385,7 +394,23 @@ class Pane(SymbolEntry):
     auto_follow:bool=True
     id:str=Field(max_length=40)
     timeframe:Timeframe='1d'
-    chart_type:Literal['candles','line','area']='candles'
+    chart_type:Literal['candles','line','area','bars','hlc-bars','hollow','high-low','markers','steps','baseline','columns','heikin-ashi','line-break']='candles'
+    @field_validator('local_studies')
+    @classmethod
+    def distinct_applied_studies(cls,value):
+        if len({item.id for item in value}) != len(value):
+            raise ValueError('Applied study IDs must be unique')
+        return value
+
+    comparisons:list[SymbolEntry]=Field(default_factory=list,max_length=3)
+
+    @field_validator('comparisons')
+    @classmethod
+    def valid_comparisons(cls,value):
+        keys = [row.canonical_id for row in value]
+        if any(not key for key in keys) or len(keys) != len(set(keys)):
+            raise ValueError('Comparison instruments require distinct canonical identities')
+        return value
     indicators:list[IndicatorConfig]=Field(default_factory=lambda:[IndicatorConfig(id='default-ema',kind='EMA')],max_length=20)
     volume:bool=True
     scale:ScaleSettings=Field(default_factory=ScaleSettings)
@@ -470,7 +495,13 @@ class GridPreferences(BaseModel):
         return self
 
 
+class StudyLibrary(BaseModel):
+    favorites:list[IndicatorKind]=Field(default_factory=list,max_length=69)
+    recent:list[IndicatorKind]=Field(default_factory=list,max_length=20)
+
 class Workspace(BaseModel):
+    local_studies:list[LocalStudy]=Field(default_factory=list,max_length=20)
+    study_library:StudyLibrary=Field(default_factory=StudyLibrary)
     chart_grid: GridPreferences = Field(default_factory=GridPreferences)
     unsupported_indicator_archive:list[dict]=Field(default_factory=list,max_length=1024)
     @model_validator(mode='before')
@@ -548,6 +579,7 @@ class Workspace(BaseModel):
     hidden_symbols:dict[str,list[str]]=Field(default_factory=dict)
     @model_validator(mode='after')
     def validate_ids(self):
+        if len({item.id for item in self.local_studies})!=len(self.local_studies):raise ValueError('Local study IDs must be unique')
         if len({p.id for p in self.panes})!=8:raise ValueError('Pane identifiers must be unique')
         if len({w.id for w in self.watchlists})!=len(self.watchlists):raise ValueError('Watchlist IDs must be unique')
         if len({p.id for p in self.presets})!=len(self.presets):raise ValueError('Preset IDs must be unique')

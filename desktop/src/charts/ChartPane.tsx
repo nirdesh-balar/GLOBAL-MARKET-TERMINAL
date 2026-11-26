@@ -1,3 +1,9 @@
+import {recipeSeries} from '../studies/recipes';
+import {StudyValues} from './StudyLegend';
+import {chartDividends} from './dividends';
+import type {CandleInspection} from '../components/ChartDataWindow';
+import {useComparisons} from './useComparisons';
+import {chartPoint,chartPoints,createMainSeries,styleColors} from './chartStyles';
 import {chartFailure,failureTitle,type ChartFailure}from '../services/errors';
 import {providerLabel} from '../providers/label';
 import {StudyPaneControls,useStudyWorkspace} from './StudyWorkspace';
@@ -10,7 +16,7 @@ import {useStreamStatus,useStreamFeed,mergeLive,streamView,type StreamFeed} from
 import {useRefreshTask} from '../refresh/hooks';
 import {updatedView,mergeCandles} from '../refresh/scheduler';
 import { memo,useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, CrosshairMode, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
+import { createChart, createSeriesMarkers, HistogramSeries, createTextWatermark, ColorType, CrosshairMode, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
 import { getCandleColors, getVolumeColors, LIGHT_THEME, DARK_THEME } from './appearance';
 import { BellPlus, CandlestickChart, RefreshCw, X, Upload } from 'lucide-react';
 import type { Candle, Pane, Indicator, Timeframe, HistoryResult, ChartQuote } from '../types';
@@ -61,7 +67,7 @@ export function setPriceScaleRange(scale:IPriceScaleApi,from:number,to:number){
   }
 }
 
-export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
+export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{inspect?:boolean;singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
   const instrumentZone=pane.timezone||'Asia/Kolkata';
   const precision=pane.precision??2;
   const instrumentKey=pane.canonical_id||pane.instrument_id||pane.symbol;
@@ -90,6 +96,7 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const [appearanceOpen,setAppearanceOpen]=useState(false),[editIndicator,setEditIndicator]=useState<Indicator|null>(null),[dataOpen,setDataOpen]=useState(false),[timeZoneOpen,setTimeZoneOpen]=useState(false);
   const priceAlertButton=useRef<HTMLButtonElement>(null),cursorPrice=useRef<number|null>(null);
   const [replay,setReplay]=useState<number|null>(null),[playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[goDate,setGoDate]=useState('');
+  const compareEnabled=refreshVisible&&!hidden&&replay===null&&!legacyCrypto(pane)&&!!pane.comparisons?.some(item=>item.canonical_id!==instrumentKey);
   const primitive=useRef<DrawingsPrimitive|null>(null),mainSeries=useRef<ISeriesApi<SeriesType>|null>(null),volumeSeries=useRef<ISeriesApi<'Histogram'>|null>(null);
   const syncedCrosshair=useRef<number|null|undefined>(undefined);
   const syncRef=useRef({active,syncTime,syncCrosshair});syncRef.current={active,syncTime,syncCrosshair};
@@ -127,7 +134,14 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const referenceContext=useReferences(pane,pane.indicators_hidden?[]:pane.indicators,adjusted,`${refresh}/${data?.fetched_at??0}`,replay===null,replay===null&&refreshVisible&&!refreshPaused&&pane.auto_refresh);
   const studies=useRef(new LiveIndicators());
   const studyTiming=useRef(0);
-  const computed=useMemo(()=>{const start=performance.now();const value=studies.current.evaluate(rows,pane.indicators_hidden?[]:pane.indicators,pane.timeframe,chartZone,!!data?.stream_update_only&&replay===null,volumeInfo,referenceContext);studyTiming.current=performance.now()-start;return value;},[rows,pane.indicators,pane.indicators_hidden,pane.timeframe,chartZone,volumeInfo,referenceContext]);
+  const computed=useMemo(()=>{
+    const start=performance.now();
+    const value=studies.current.evaluate(rows,pane.indicators_hidden?[]:pane.indicators,pane.timeframe,chartZone,
+      !!data?.stream_update_only&&replay===null,volumeInfo,referenceContext);
+    studyTiming.current=performance.now()-start;
+    if(!pane.indicators_hidden&&pane.local_studies?.length)return {...value,series:[...value.series,...recipeSeries(rows,pane.local_studies)]};
+    return value;
+  },[rows,pane.indicators,pane.local_studies,pane.indicators_hidden,pane.timeframe,chartZone,volumeInfo,referenceContext]);
   const referenceLabels=useMemo(()=>new Map(pane.indicators.filter(c=>['RELATIVE_STRENGTH','INDIA_VIX'].includes(c.kind)).map(c=>[c.id,referenceFreshness(c,referenceContext,rows.at(-1)?.time??0)])),[pane.indicators,referenceContext,rows]);
   useEffect(()=>{setReplay(null);setPlaying(false);},[instrumentKey,pane.timeframe,source,adjusted,requested.start,requested.end]);
   useEffect(()=>{if(!playing||replay===null)return;const timer=setInterval(()=>setReplay(v=>{if(v===null)return v;if((replayRows.current?.length||0)<=v+1){setPlaying(false);return v;}return Math.min((replayRows.current?.length||1)-1,v+1);}),1000/speed);return()=>clearInterval(timer);},[playing,speed,data]);
@@ -326,13 +340,10 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     const candleColors=getCandleColors(pane.appearance,theme);
     const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'system-ui, sans-serif',fontSize:11,attributionLogo:false,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:60,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>timeFormatter.format(date(time))},crosshair:{mode:CrosshairMode.Normal,vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
     chart.current=c;chartDisplayZone.current=displayZone;(container.current as any).__chart=c;setChartEpoch(v=>v+1);container.current.dataset.chartCreations=String(Number(container.current.dataset.chartCreations??0)+1);if(container.current){container.current.dataset.priceMode=String(c.priceScale('right').options().mode);container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);}
-    let main:ISeriesApi<SeriesType>;
-    if(pane.chart_type==='candles')main=c.addSeries(CandlestickSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders});
-    else if(pane.chart_type==='area')main=c.addSeries(AreaSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00',lineWidth:2});
-    else main=c.addSeries(LineSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},color:candleColors.upColor,lineWidth:2});
+    const main=createMainSeries(c,pane.chart_type,candleColors,data?.precision??precision);
     const ready=dataFor.current===identity;
     const initialRows=ready?rowsRef.current:[];
-    main.setData(initialRows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));
+    main.setData(chartPoints(initialRows,pane.chart_type,candleColors));
     mainSeries.current=main;if(container.current)(container.current as any).__mainSeries=main;const drawingsPrimitive=new DrawingsPrimitive();primitive.current=drawingsPrimitive;main.attachPrimitive(drawingsPrimitive);drawingsPrimitive.volumeSupported=pane.kind!=='index'&&pane.kind!=='forex';drawingsPrimitive.rows=initialRows;drawingsPrimitive.currency=data?.currency||pane.currency||"";drawingsPrimitive.precision=data?.precision??precision;drawingsPrimitive.update(pane.drawing_sets[drawingStorageKey(pane)]||[],drawing.selected,pane.drawings_hidden);
     indicatorRender.current={slots:new Map(),handles:[],primitives:[],owners:[]};
     if(initialRows.length){if(preserve&&view.current)c.timeScale().setVisibleLogicalRange(view.current);else c.timeScale().setVisibleLogicalRange({from:Math.max(0,initialRows.length-150),to:initialRows.length+6});}
@@ -387,7 +398,7 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
     const candleColors=getCandleColors(a,theme);
     c.applyOptions({layout:{background:{type:ColorType.Solid,color:bg},textColor},grid:{vertLines:{visible:a.grid_visible,color:grid},horzLines:{visible:a.grid_visible,color:grid}},rightPriceScale:{borderColor,scaleMargins:{top:a.margin_top,bottom:a.margin_bottom}},timeScale:{borderColor,visible:a.dates_visible,timeVisible:a.time_visible&&!['1d','1w','1M','1Y'].includes(pane.timeframe),barSpacing:a.bar_spacing},crosshair:{vertLine:{visible:a.crosshair,labelVisible:a.crosshair,color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{visible:a.crosshair,labelVisible:a.crosshair,color:crosshairColor,labelBackgroundColor:crosshairBg}}});
-    m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...(pane.chart_type==='candles'?{upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders}:pane.chart_type==='area'?{lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00'}:{color:candleColors.upColor})});
+    m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...styleColors(pane.chart_type,candleColors)});
     const mark=createTextWatermark(c.panes()[0],{visible:a.watermark,horzAlign:'center',vertAlign:'center',lines:[{text:pane.kind==='index'?pane.name:symbolLabel(pane.symbol),color:theme==='dark'?'#ffffff0d':'#0000000d',fontSize:48,fontStyle:'bold'}]});
     return()=>{if(chart.current===c)mark.detach();};
   },[pane.appearance,!!data,pane.chart_type,pane.timeframe,pane.symbol,theme]);
@@ -397,12 +408,14 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     const previousRange=c.timeScale().getVisibleLogicalRange(),previousPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
     const nextView=data?.stream_received_at?streamView(previousRange,renderedRows.current,rows,pane.auto_follow):updatedView(previousRange,renderedLength.current,rows.length,pane.auto_follow);renderedLength.current=rows.length;pendingStudyView.current=replay!==null?{from:Math.max(0,rows.length-100),to:rows.length+6}:replayRestore.current??nextView;replayRestore.current=null;
     const tail=rows.at(-1),oldTail=renderedRows.current.at(-1),incremental=!!data?.stream_update_only&&replay===null&&!!tail&&!!oldTail&&renderedRows.current[0]?.time===rows[0]?.time&&(tail.time===oldTail.time||rows.at(-2)?.time===oldTail.time);
-    // A shorter replay prefix removes the hovered histogram's first visible value.
-    // Clear that obsolete hover before LWC synchronously re-hit-tests old series.
+    // Clear obsolete hover before the chart re-hit-tests a shorter replay prefix.
     if(rows.length<renderedRows.current.length)c.clearCrosshairPosition();
-    const volColors=getVolumeColors(theme);
-    if(incremental){m.update({...tail,time:tail.time as UTCTimestamp,value:tail.close});volumeSeries.current?.update(tail.volume===null?{time:tail.time as UTCTimestamp}:{time:tail.time as UTCTimestamp,value:tail.volume,color:tail.close>=tail.open?volColors.bullish:volColors.bearish});}
-    else{m.setData(rows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));volumeSeries.current?.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));}
+    const volColors=getVolumeColors(theme), candleColors=getCandleColors(pane.appearance,theme);
+    if(pane.chart_type==='baseline'&&rows.length)m.applyOptions({baseValue:{type:'price',price:rows[0].close}});
+    if(incremental&&pane.chart_type!=='heikin-ashi'&&pane.chart_type!=='line-break')m.update(chartPoint(tail,pane.chart_type,candleColors));
+    else m.setData(chartPoints(rows,pane.chart_type,candleColors));
+    if(incremental)volumeSeries.current?.update(tail.volume===null?{time:tail.time as UTCTimestamp}:{time:tail.time as UTCTimestamp,value:tail.volume,color:tail.close>=tail.open?volColors.bullish:volColors.bearish});
+    else volumeSeries.current?.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));
     incrementalStudies.current=incremental;renderedRows.current=rows;
     if(container.current)container.current.dataset.streamUpdate=incremental?'incremental':'reset';
     if(pendingStudyView.current&&replay===null)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
@@ -419,7 +432,7 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     const c=chart.current;if(!c)return;
     const previous=pendingStudyView.current??c.timeScale().getVisibleLogicalRange(),manualPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
     for(const [id,index] of indicatorRender.current.slots)if(c.panes()[index])paneHeights.current.set(id,c.panes()[index].getStretchFactor());
-    const layout=JSON.stringify([pane.indicators,pane.indicators_hidden,showVolume,pane.chart_type,theme]);
+    const layout=JSON.stringify([pane.indicators,pane.local_studies,pane.indicators_hidden,showVolume,pane.chart_type,theme]);
     if(incrementalStudies.current&&studyLayout.current===layout&&data?.stream_update_only&&replay===null&&indicatorRender.current.handles.length===computed.series.length&&computed.series.length&&renderedRows.current[0]?.time===rows[0]?.time){
       updateIndicatorPanes(indicatorRender.current,computed.series);if(pendingStudyView.current)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
       return;
@@ -473,6 +486,8 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const applyCustom=()=>{if(!dates.start||!dates.end||dates.start>dates.end){setRangeNotice('Choose a start date on or before the end date.');return;}setRequested(dates);setRange('CUSTOM');setCustom(false);};
   const importNSE=async()=>{setLoading(true);setError('');try{const result=await window.terminal.selectFiles('history',pane.symbol);if(result){setSource('nse');setAdjusted(false);setRefresh(r=>r+1);}}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
   const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),showVolume]),onChange);
+  const comparisonNotice=useComparisons(chart,container,chartEpoch,pane.comparisons,compareEnabled,
+    instrumentKey,pane.timeframe,requested.start,requested.end,adjusted,rows);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
@@ -482,6 +497,27 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     ? countdownBounds(data,lastCandle,streamEnabled ? streamFrame?.state : undefined) : undefined;
   const openTimeZone=useCallback(()=>setTimeZoneOpen(true),[]);
   const prevCandle=displayedIndex!==undefined&&displayedIndex>0?rows[displayedIndex-1]:null;
+  const dividends=useMemo(()=>chartDividends(rows,data,replay!==null),[rows,data,replay!==null]);
+  useEffect(()=>{
+    const series=mainSeries.current,c=chart.current;
+    if(!c||!series||!dividends.length)return;
+    const plugin=createSeriesMarkers(series,dividends.map(event=>({time:event.time as UTCTimestamp,
+      position:'belowBar',shape:'circle',color:'#7a9fe0',text:'D',id:'dividend-'+event.date})),{autoScale:false});
+    return()=>{if(chart.current===c)plugin.detach();};
+  },[dividends,chartEpoch]);
+  useEffect(()=>{
+    if(!inspect)return;
+    const send=()=>window.dispatchEvent(new CustomEvent<CandleInspection>('gmt-inspect-candle',{detail:{
+      pane:pane.id,instrument:instrumentKey,interval:pane.timeframe,zone:displayZone,precision:data?.precision??precision,
+      currency:data?.currency||pane.currency||'',candle:displayed,previous:prevCandle,source:data?.source||'',
+      stale:!!data?.stale||!!refreshError,hovered:crosshairTime!==null,replay:replay!==null,
+      dividend:displayed?dividends.filter(event=>event.time===displayed.time):[],
+    }}));
+    const requestInspection=(event:Event)=>{if((event as CustomEvent).detail===pane.id)send();};
+    window.addEventListener('gmt-request-inspection',requestInspection);
+    send();
+    return()=>window.removeEventListener('gmt-request-inspection',requestInspection);
+  },[inspect,pane.id,instrumentKey,pane.timeframe,displayZone,data?.precision,data?.currency,data?.source,data?.stale,pane.currency,precision,displayed,prevCandle,refreshError,crosshairTime,replay,dividends]);
   const ohlcChange=useMemo(()=>{
     if(!displayed||!prevCandle||typeof prevCandle.close!=='number'||!Number.isFinite(prevCandle.close)||prevCandle.close<=0)return null;
     const diff=displayed.close-prevCandle.close;
@@ -505,11 +541,22 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
       if(syncCrosshair&&active)window.dispatchEvent(new CustomEvent('terminal-sync',{detail:{id:pane.id,time:null}}));
       if(priceAlertButton.current)priceAlertButton.current.hidden=true;
     }}>
-    <div className="chart-legend"><div className="legend-title"><CandlestickChart className="legend-symbol" size={13}/><strong className="legend-symbol">{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong><span><span className="legend-timeframe">{pane.timeframe} · </span>{pane.exchange} · {data?.currency||pane.currency||"Currency unconfirmed"}</span><span className="demo-mini" title={pane.contract||undefined}>{replay!==null?'REPLAY':data?.source?.includes('FIXTURE')?data.source:providerLabel(pane)}</span>{pane.kind==='future'&&<span className="demo-mini" title={data?.contract||pane.contract}>{(data?.contract||pane.contract||'').startsWith('continuous')?'CONTINUOUS · NOT AN EXPIRY':'EXPIRING FUTURE'}</span>}</div><div className="ohlc">{displayed?<>{['open','high','low','close'].map((key,i)=><span key={key}>{['O','H','L','C'][i]} <b className={displayed.close>=displayed.open?'positive':'negative'}>{formatActualPrice(displayed[key as 'open'])}</b></span>)}{ohlcChange&&<span className={`ohlc-change-metric ${ohlcChange.positive?'positive':ohlcChange.negative?'negative':'neutral'}`} data-testid={`ohlc-change-${pane.id}`}>{ohlcChange.text}</span>}</>:<span>{loading?'Fetching history…':'No candles'}</span>}</div><div className="studies-legend">
+    <div className="chart-legend"><div className="legend-title"><CandlestickChart className="legend-symbol" size={13}/><strong className="legend-symbol">{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong><span><span className="legend-timeframe">{pane.timeframe} · </span>{pane.exchange} · {data?.currency||pane.currency||"Currency unconfirmed"}</span>{(pane.chart_type==='heikin-ashi'||pane.chart_type==='line-break')&&<span className="demo-mini" title="Chart shape is calculated. Header, drawings and indicators use provider candles.">Provider OHLC</span>}<span className="demo-mini" title={pane.contract||undefined}>{replay!==null?'REPLAY':data?.source?.includes('FIXTURE')?data.source:providerLabel(pane)}</span>{pane.kind==='future'&&<span className="demo-mini" title={data?.contract||pane.contract}>{(data?.contract||pane.contract||'').startsWith('continuous')?'CONTINUOUS · NOT AN EXPIRY':'EXPIRING FUTURE'}</span>}</div><div className="ohlc">{displayed?<>{['open','high','low','close'].map((key,i)=><span key={key}>{['O','H','L','C'][i]} <b className={displayed.close>=displayed.open?'positive':'negative'}>{formatActualPrice(displayed[key as 'open'])}</b></span>)}{ohlcChange&&<span className={`ohlc-change-metric ${ohlcChange.positive?'positive':ohlcChange.negative?'negative':'neutral'}`} data-testid={`ohlc-change-${pane.id}`}>{ohlcChange.text}</span>}</>:<span>{loading?'Fetching history…':'No candles'}</span>}</div><div className="studies-legend">
       <StudyLegend id={pane.id} indicators={pane.indicators} values={legendValues}
         volumeInfo={volumeInfo} referenceLabels={referenceLabels} globallyHidden={!!pane.indicators_hidden}
         onVisibility={id=>onChange({indicators:pane.indicators.map(i=>i.id===id?{...i,visible:!i.visible}:i)})}
         onSettings={setEditIndicator} onRemove={id=>onChange({indicators:pane.indicators.filter(i=>i.id!==id)})}/>
+      {!!pane.comparisons?.length&&<div className="compare-legend" title={comparisonNotice}>
+        {pane.comparisons.map(item=><button key={item.canonical_id} aria-label={`Remove comparison ${item.symbol}`}
+          onClick={()=>onChange({comparisons:pane.comparisons?.filter(other=>other.canonical_id!==item.canonical_id)})}>{symbolLabel(item.symbol)} <X size={11}/></button>)}
+        <small>{replay!==null?'Comparison paused in replay':comparisonNotice}</small>
+      </div>}
+            {!pane.indicators_hidden&&pane.local_studies?.map(item=><div key={item.id} className="compare-legend local-study-legend">
+        <button onClick={()=>onChange({local_studies:pane.local_studies?.map(value=>value.id===item.id?{...value,visible:!value.visible}:value)})}
+          aria-label={(item.visible?'Hide ':'Show ')+item.name}>{item.name}</button>
+        {item.visible&&<StudyValues values={legendValues.get(item.id)}/>}
+        <button aria-label={'Remove local study '+item.name} onClick={()=>onChange({local_studies:pane.local_studies?.filter(value=>value.id!==item.id)})}><X size={11}/></button>
+      </div>)}
       <div className="study-legend-meta">
         {pane.indicators.some(i=>i.visible&&isVolume(i.kind))&&!pane.indicators_hidden&&
           <small data-testid={`volume-source-units-${pane.id}`}>Volume input · {volumeInfo.volume_unit}</small>}

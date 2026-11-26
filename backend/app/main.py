@@ -268,7 +268,7 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
     def workspace(): return restore_workspace(db,registry,hydrate_grid=True)
     @app.put('/workspace')
     def save_workspace(value:Workspace):
-        for row in [p.model_dump() for p in value.panes]+[r.model_dump() for r in value.watchlist]+[r.model_dump() for w in value.watchlists for r in w.items]:
+        for row in [p.model_dump() for p in value.panes]+[r.model_dump() for p in value.panes for r in p.comparisons]+[r.model_dump() for r in value.watchlist]+[r.model_dump() for w in value.watchlists for r in w.items]:
             security=registry.resolve(row.get('canonical_id')) or registry.resolve(row.get('token')) or registry.resolve(row.get('instrument_id')) or registry.resolve(row.get('symbol'))
             if row['token']=='0': continue # Preserve unavailable old selections, visibly unavailable in chart.
             if security:

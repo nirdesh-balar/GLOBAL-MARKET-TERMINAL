@@ -1,3 +1,4 @@
+import {ChartStyleOptions} from './ChartStyleOptions';
 import { ChevronDown, SlidersHorizontal, RefreshCw, Volume2, Maximize2, Minimize2 } from 'lucide-react';
 import { providerLabel } from '../providers/label';
 import type { Pane } from '../types';
@@ -33,7 +34,7 @@ export function ChartToolbar({
         <TimeframeSelector paneId={pane.id} value={pane.timeframe} onChange={timeframe => onChange({ timeframe })} />
         <select aria-label={`Chart type pane ${pane.id}`} className="chart-type" value={pane.chart_type}
           onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
-          <option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option>
+          <ChartStyleOptions/>
         </select>
         <div className="grow" />
         <button aria-label={`Create alert pane ${pane.id}`} onClick={onAlert}>Alert</button>
