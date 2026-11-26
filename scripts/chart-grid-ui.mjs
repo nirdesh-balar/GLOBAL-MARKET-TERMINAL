@@ -1,3 +1,4 @@
+import { openWatchlistOptions } from './watchlist-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -104,27 +105,32 @@ try {
   await back();
 
   const watchlist = page.getByTestId('watchlist-sidebar');
-  const watchlistGrid = watchlist.getByRole('button', { name: 'Watchlist Chart Grid actions', exact: true });
+  await openWatchlistOptions(page);
+  const watchlistGrid = page.getByRole('button', { name: 'Watchlist Chart Grid actions', exact: true });
   await watchlistGrid.focus();
   await watchlistGrid.press('Enter');
   await expect(button('Open watchlist in Grid')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(watchlistGrid).toBeFocused();
   await watchlistGrid.press('Enter');
-  await watchlist.getByRole('button', { name: 'Select symbols', exact: true }).click();
+  await page.getByRole('button', { name: 'Select symbols', exact: true }).click();
   for (const row of list.slice(0, 2)) {
     await watchlist.getByRole('checkbox', { name: 'Select ' + row.symbol + ' for Chart Grid', exact: true }).check();
   }
+  await openWatchlistOptions(page);
   await watchlistGrid.click();
   await button('Open selected (2) in Grid').click();
   await ready(2);
   assert.deepEqual(await tiles().evaluateAll(nodes => nodes.map(node => node.dataset.gridId)), list.slice(0, 2).map(row => row.canonical_id));
   await back();
 
+  await openWatchlistOptions(page);
   await watchlistGrid.click();
   const openWatchlist = button('Open watchlist in Grid');
   await measure(openWatchlist, 'click', () => openWatchlist.click(), 'cold', 8, 'daily source first page');
   await expect(shell().getByText('Page 1 / 2')).toBeVisible();
+  await expect(shell().locator('#tv-attr-logo')).toHaveCount(0);
+  await expect(page.locator('.statusbar').getByRole('button', { name: 'Charts by TradingView', exact: true })).toBeVisible();
   await expect(shell().getByText('11 symbols')).toBeVisible();
   assert.deepEqual(await tiles().evaluateAll(nodes => nodes.map(node => node.dataset.gridId)), list.slice(0, 8).map(row => row.canonical_id));
   const global = page.getByLabel('Global Chart Grid timeframe');

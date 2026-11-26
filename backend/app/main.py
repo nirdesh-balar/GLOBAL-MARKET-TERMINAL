@@ -18,7 +18,7 @@ from .crypto_migration import MigrationService,routes as migration_routes
 from .screener import Screener,routes as screener_routes
 from .alerts import AlertEngine,routes as alert_routes
 from .flags import routes as flag_routes
-from .watchlists import Watchlists,routes as watchlist_routes,persist as persist_workspace,load as load_workspace
+from .watchlists import Watchlists,routes as watchlist_routes,persist as persist_workspace,load as load_workspace,normalize_for_write,validate_workspace_deletions
 from .database import Database
 from .instruments import bootstrap, refresh, refresh_startup, install_files
 from .models import Workspace, Timeframe, CacheConfig, GridPreferences, IndicatorRequest
@@ -37,8 +37,10 @@ def default_workspace(db):
     return dict(layout=2,panes=[dict(id=str(i),symbol=r['symbol'],token=r['token'],timeframe='1d',chart_type='candles',indicators=['EMA20'],volume=True) for i,r in enumerate(rows)],watchlist=[dict(symbol=r['symbol'],token=r['token']) for r in rows])
 
 def restore_workspace(db,registry=None,*,hydrate_grid=False):
-    saved=db.get('workspace') or default_workspace(db)
-    if not isinstance(saved, dict):
+    return normalize_workspace(db, registry, db.get('workspace'), hydrate_grid=hydrate_grid)
+
+def normalize_workspace(db, registry, saved, *, hydrate_grid=False):
+    if not isinstance(saved, dict) or not saved:
         saved = default_workspace(db)
     defaults = default_workspace(db)
     if saved.get('layout') not in (1, 2, 4, 6, 8):
@@ -66,12 +68,15 @@ def restore_workspace(db,registry=None,*,hydrate_grid=False):
         else:
             new_panes.append(defaults['panes'][i])
     saved['panes'] = new_panes
-    if not saved.get('watchlists'):
+    initialize_lists = not saved.get('watchlist_defaults_initialized')
+    if not isinstance(saved.get('watchlists'), list):
+        saved['watchlists'] = []
+    if initialize_lists and not saved['watchlists']:
         indices=registry.indices() if registry else []
         saved['watchlists']=[dict(id='indices',name='Indian Indices',items=[entry(r) for r in indices]),dict(id='stocks',name='Indian Stocks',items=defaults['watchlist']),dict(id='favourites',name='My Favourites',items=saved.get('watchlist',[]))]
         saved['active_watchlist']='stocks'
-    # Append missing market lists, preserving all existing names, IDs and selections.
-    if registry:
+    # Complete the legacy default set before the first write in this schema.
+    if registry and initialize_lists:
         for key,name in MARKETS:
             if any(w['id']==key or w.get('market')==key for w in saved['watchlists']):continue
             if len(saved['watchlists'])>=40:break
@@ -80,6 +85,7 @@ def restore_workspace(db,registry=None,*,hydrate_grid=False):
             saved['watchlists'].append(dict(id=key,name=name,market=key,items=[entry(r) for r in rows]))
         for w in saved['watchlists']:
             if w['id'] in dict(MARKETS):w.setdefault('market',w['id'] if w['id']!='favourites' else None)
+    saved['watchlist_defaults_initialized'] = True
     all_rows=saved['panes']+saved.get('watchlist',[])+[r for w in saved['watchlists'] for r in w['items']]
     for row in all_rows:
         security=(registry.resolve(row.get('canonical_id')) or registry.resolve(row.get('token')) or registry.resolve(row.get('instrument_id')) or registry.resolve(row.get('symbol'))) if registry else db.resolve(row['symbol']) or db.instrument(row['token'])
@@ -169,7 +175,10 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
     app.include_router(screener_routes(screener));app.state.screener=screener
     app.include_router(alert_routes(alerts));app.state.alerts=alerts
     app.include_router(flag_routes(db,registry))
-    app.include_router(watchlist_routes(Watchlists(db,registry,lambda:restore_workspace(db,registry))))
+    def restore_saved(saved):
+        return normalize_workspace(db, registry, saved)
+
+    app.include_router(watchlist_routes(Watchlists(db,registry,restore_saved)))
     app.include_router(refresh_routes(quotes));app.state.quotes=quotes
     migration=MigrationService(db,registry,service);app.include_router(migration_routes(migration));app.state.migration=migration
     app.state.db=db;app.state.history=service;app.state.registry=registry;app.state.discovery=discovery
@@ -272,11 +281,15 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
             row_sym = row['symbol']
             symbol_valid = security and (row_sym in allowed_symbols or (base_sym and row_sym.split('-')[0] == base_sym))
             if not security or not symbol_valid or security['token']!=row['token'] or security['kind']!=row['kind']: raise HTTPException(422,'Instrument metadata changed. Search and select the instrument again.')
-        fallback=restore_workspace(db,registry)
         with db.connect() as c:
-            c.execute('BEGIN IMMEDIATE');old=load_workspace(c,fallback)
-            if value.watchlist_revision!=old.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload the workspace before saving.')
-            saved=persist_workspace(c,old,value.model_dump())
+            c.execute('BEGIN IMMEDIATE')
+            raw=load_workspace(c)
+            if value.watchlist_revision!=raw.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload the workspace before saving.')
+            raw_grid=raw.get('chart_grid', {})
+            old=normalize_for_write(raw,restore_saved)
+            data=value.model_dump()
+            validate_workspace_deletions(old,data)
+            saved=persist_workspace(c,old,data,raw_grid=raw_grid)
         return {'saved':True,'watchlist_revision':saved['watchlist_revision']}
     @app.get('/api/provider/status')
     @app.get('/api/history/status')

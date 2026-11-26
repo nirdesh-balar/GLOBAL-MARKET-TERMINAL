@@ -32,7 +32,7 @@ export function useWatchlistQuotes(watchlist:string,signature:string,enabled:boo
   const [snapshot,setSnapshot]=useState<QuoteSnapshot|null>(null),[error,setError]=useState('');
   const runRef=useRef<(force?:boolean,automatic?:boolean)=>Promise<void>>(async()=>{}),first=useRef(true),lastSelection=useRef('');
   useEffect(()=>{
-    if(!enabled||!preferences){setSnapshot(old=>old?.watchlist===watchlist&&old?.timeframe===timeframe?old:null);return;}
+    if(!enabled||!preferences){setSnapshot(old=>old?.watchlist===watchlist&&old?.timeframe===timeframe?old:null);if(!watchlist)setError('');return;}
     let alive=true,running=false,runRevision=0,job:string|null=null,timer:ReturnType<typeof setTimeout>|undefined,wake:(()=>void)|undefined;
     const requests=new Set<string>();
     async function request<T>(path:string,method='GET',body?:unknown){const id=crypto.randomUUID();requests.add(id);try{return await api<T>(path,method,body,id);}finally{requests.delete(id);}}

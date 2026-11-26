@@ -20,7 +20,13 @@ class FixtureSocket:
    for sub in list(self.subscriptions.values()):
     if sub['type']=='candle':
      row=raw_candles(sub['coin'],sub['interval'])[-1];price=201+min(.8,self.tick*.001);row.update(c=f'{price:.3f}',h=str(max(202,price)),v=str(1099+self.tick),n=10+self.tick);self.put({'channel':'candle','data':row})
-    else:self.put({'channel':'trades','data':[dict(coin=sub['coin'],time=int(time.time()*1000),px=str(201+self.tick*.001),sz='0.1',tid=self.tick)]})
+    elif sub['type']=='l2Book':
+     data=dict(coin=sub['coin'],time=int(time.time()*1000),levels=[
+      [dict(px=str(200-index),sz='2.5',n=2) for index in range(20)],
+      [dict(px=str(202+index),sz='1.25',n=1) for index in range(20)],
+     ])
+     self.put({'channel':'l2Book','data':data})
+    else:self.put({'channel':'trades','data':[dict(coin=sub['coin'],time=int(time.time()*1000),px=str(201+self.tick*.001),sz='0.1',tid=self.tick,side='B')]})
  async def close(self):
   if self.closed:return
   self.closed=True;self.producer.cancel();await asyncio.gather(self.producer,return_exceptions=True);self.put(None)

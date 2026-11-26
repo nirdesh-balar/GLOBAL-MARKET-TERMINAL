@@ -53,7 +53,7 @@ def test_country_exchange_asset_search(app):
  assert registry.resolve('RELIANCE.NS')['yahoo_symbol']=='RELIANCE.NS'
 
 def test_watchlist_migration_keeps_saved_symbols_and_state(client,app):
- old=client.get('/workspace').json();old['watchlists']=old['watchlists'][:3]
+ old=client.get('/workspace').json();old['watchlists']=old['watchlists'][:3];old.pop('watchlist_defaults_initialized')
  old['watchlists'][1]['name']='NSE Stocks';old['active_watchlist']='favourites';old['layout']=4
  old['watchlists'].append(dict(id='my-custom',name='Private research',items=[old['panes'][0]],market=None))
  app.state.db.put('workspace',old)
@@ -171,6 +171,7 @@ def test_search_singleflight_and_rate_limit(client,app):
 
 def test_full_legacy_list_capacity_migration(client,app):
  w=client.get('/workspace').json();w['watchlists']=w['watchlists'][:3]+[dict(id=f'custom-{i}',name=f'Research {i}',items=[],market=None) for i in range(27)]
+ w.pop('watchlist_defaults_initialized')
  app.state.db.put('workspace',w)
  new=restore_workspace(app.state.db,app.state.registry)
  assert len(new['watchlists'])==37

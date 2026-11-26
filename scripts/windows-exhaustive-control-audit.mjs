@@ -479,7 +479,7 @@ try {
     await page.waitForTimeout(500);
 
     // Open Indicator Manager from Header
-    const indHeaderBtn = page.getByLabel('Active chart indicators', { exact: true });
+    const indHeaderBtn = page.getByLabel('Indicators', { exact: true });
     await indHeaderBtn.click();
     await page.waitForTimeout(800);
     const indModalVis = await page.evaluate(() => !!document.querySelector('.indicator-manager'));

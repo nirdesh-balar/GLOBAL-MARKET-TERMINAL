@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from .database import VALID_FLAG_COLORS
 from .markets import entry
 
-FlagColor = Literal['red', 'blue', 'green', 'yellow', 'purple', 'cyan', 'pink']
-ORDERED_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'cyan', 'pink']
+FlagColor = Literal['red', 'blue', 'green', 'orange', 'yellow', 'purple', 'cyan', 'pink']
+ORDERED_COLORS = ['red', 'blue', 'green', 'orange', 'yellow', 'purple', 'cyan', 'pink']
 
 class SetFlagRequest(BaseModel):
     model_config = ConfigDict(extra='ignore')

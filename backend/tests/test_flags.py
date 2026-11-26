@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from app.database import Database, VALID_FLAG_COLORS
 from app.flags import routes as flag_routes, FlagColor, ORDERED_COLORS
-from app.main import create_app, restore_workspace
+from app.main import create_app, normalize_workspace
 from app.watchlists import Watchlists, CSVInput, Commit
 
 @pytest.fixture
@@ -82,7 +82,7 @@ def test_database_flag_crud_operations(temp_db):
 def test_invalid_color_validation(temp_db):
     """Validation rejects invalid colors and preserves valid colors."""
     with pytest.raises(ValueError, match="Invalid flag color"):
-        temp_db.set_flag("test:id", "orange", "TEST", "Test Inc", "NSE", "yahoo", "equity")
+        temp_db.set_flag("test:id", "magenta", "TEST", "Test Inc", "NSE", "yahoo", "equity")
 
     with pytest.raises(ValueError, match="Invalid flag color"):
         temp_db.clear_color_flags("invalid_color")
@@ -90,9 +90,9 @@ def test_invalid_color_validation(temp_db):
     with pytest.raises(ValueError, match="Invalid flag color"):
         temp_db.set_color_alias("black", "Blacklist")
 
-def test_all_seven_colors_supported(temp_db):
-    """Verify all 7 required colors work properly: red, blue, green, yellow, purple, cyan, pink."""
-    expected_colors = {"red", "blue", "green", "yellow", "purple", "cyan", "pink"}
+def test_all_eight_colors_supported(temp_db):
+    """Verify all eight colors work, including distinct Orange and Yellow."""
+    expected_colors = {"red", "blue", "green", "orange", "yellow", "purple", "cyan", "pink"}
     assert VALID_FLAG_COLORS == expected_colors
 
     for i, col in enumerate(ORDERED_COLORS):
@@ -101,7 +101,7 @@ def test_all_seven_colors_supported(temp_db):
         assert len(temp_db.get_flags_by_color(col)) == 1
 
     all_flags = temp_db.get_flags()
-    assert len(all_flags) == 7
+    assert len(all_flags) == len(expected_colors)
 
 def test_exchange_provider_identity_separation(temp_db):
     """Symbols with same text but different provider or exchange must have separate canonical flags."""
@@ -238,7 +238,7 @@ def test_csv_import_roundtrip_with_color(tmp_path):
     app = create_app(data_dir=str(tmp_path), token="test_token_at_least_32_characters_long_12345")
     db = app.state.db
     registry = app.state.registry
-    service = Watchlists(db, registry, lambda: restore_workspace(db, registry))
+    service = Watchlists(db, registry, lambda saved: normalize_workspace(db, registry, saved))
 
     # CSV with color column
     csv_content = (

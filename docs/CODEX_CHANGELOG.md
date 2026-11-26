@@ -1,5 +1,39 @@
 # Codex development log
 
+## 2026-11-24 · Phase 3 search and profile recovery
+
+- Give each symbol search one chart or Watchlist destination. Closing it clears that destination, and a pending Watchlist write cannot close a later search.
+- Repair legacy instrument metadata from the workspace read inside the Watchlist transaction. Preserve revision checks, explicitly deleted lists, and atomic recovery of unsupported Chart Grid settings.
+
+## 2026-11-24 · Watchlist readability and management
+- Increase Watchlist type and use sticky, horizontally scrollable column headings at narrow widths. List management lives in the name picker.
+- Rename, copy, and confirm deletion for every ordinary list. Copies retain the source memberships and per-list grouping and visibility preferences. Flagged views can be copied to independent lists and keep their flag assignments.
+- Initialize legacy default lists once. Preserve explicit deletions and the empty state across restart, without touching charts, drawings, alerts or the directory.
+
+## 2026-11-24 · Compact Watchlist
+- Use a keyboard-operated list picker and move list controls into the header overflow. The Watchlist plus opens the existing provider search in add mode and uses canonical duplicate protection.
+- Keep compact price rows, optional volume and a collapsed instrument summary. Changes in displayed prices animate with reduced-motion support. The summary reads already loaded data.
+- Preserve flat ordering by default. Group-by-market and its collapsed sections save per list. Orange is independent of Yellow. Existing list IDs, memberships, flag aliases and provider limits remain compatible.
+
+## 2026-11-24 · Indicator legend and chart clock
+- The per-chart indicator list shows provider-independent calculated values at the crosshair or at the latest displayed candle. Its collapse state, individual visibility, and native study pane collapse are independent. Hidden studies remain available to restore in the list.
+- The timezone button displays the machine wall clock and current offset. Visible charts share one timer. Candle countdowns use validated Hyperliquid close timestamps or fresh Yahoo daily/native intraday session bounds. Closed, stale, unsupported, and replay data have no countdown. No new provider request is made to run either clock.
+
+## 2026-11-24 · Study pane resizing
+- Track the native pane elements from Lightweight Charts 5.2.1, so study headers stay with their panes during a held separator drag. Resize events update header coordinates without rerendering the chart.
+- Keep native separator resizing and persist heights only for expanded studies whose divider actually changed. Remove the separate Height controls. Preserve per-chart heights through layout and viewport changes.
+
+## 2026-11-24 · Chart toolbar cleanup
+- The main toolbar keeps the visible timeframe buttons and an icon-only Indicators button. Analytical alerts remain available through the Alerts workspace, chart cursor and multi-chart pane controls.
+- The single-chart toolbar keeps Auto Refresh, Refresh, Volume and Maximize/Restore. Multi-chart panes keep independent instrument, timeframe, chart type, indicator and alert controls.
+- Charts and Advanced Chart Grid use Lightweight Charts 5.2.1's `layout.attributionLogo: false`. The clickable status-bar TradingView attribution and the upstream NOTICE and license remain available.
+
+## 2026-11-24 · Phase 3 live public Order Flow
+- Add an analysis dock for the active verified Hyperliquid instrument. The same validated book supplies best bid and ask, absolute and midpoint percentage spread, cumulative depth and top-five-per-side imbalance. The tape shows observed public prints with the provider side code.
+- Share the existing public socket and signed-off provider identity model. Regular chart, watchlist and alert demand takes priority. Closing or leaving the dock releases its interests. The tape is bounded to 1,000 prints or 30 minutes, and gaps survive reconnection within the session. Order Flow stores no additional profile data and makes no historical candle requests.
+- The native fixture is included in the complete macOS UI suite. For additional real-provider checks, use `node scripts/order-flow-ui.mjs --live` after the source build on Apple Silicon. Each run creates a temporary profile.
+
+
 ## 2026-11-23 · Private rc.8 Mac installation
 
 - Installed the approved `1.1.0-rc.8` ARM64 candidate at `/Applications/GLOBAL MARKET TERMINAL.app` from `a63a96cbff1b72c7cbc2e710cf3cab93d68689e2`. Verified the signed Mac build 1.1.0.3, Electron 44.11.5, API 1.0.0, embedded source and blocked updater state.

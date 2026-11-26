@@ -182,15 +182,16 @@ try {
   await expect(page.getByRole('menu')).toHaveCount(0);
   console.log('PASS: Context menu provides Create Alert.');
 
-  // 11. Test Global Alert Feature Preserved
-  console.log('11. Verifying Global Alert Toolbar button works...');
-  await page.getByLabel('Create alert from active chart', { exact: true }).click();
+  // 11. Verify the Alerts workspace can still create an analytical alert.
+  console.log('11. Verifying the Alerts workspace can open the alert dialog...');
+  await page.getByLabel('Alerts workspace', { exact: true }).click();
+  const alerts = page.getByTestId('alerts-page');
+  await expect(alerts).toBeVisible();
+  await alerts.getByRole('button', { name: 'Create alert', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Create historical alert', exact: true })).toBeVisible();
   await page.getByLabel('Close alert dialog', { exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
-  await page.getByLabel('Alerts workspace', { exact: true }).click();
-  await expect(page.getByTestId('alerts-page')).toBeVisible();
   await page.getByRole('button', { name: 'Return to charts', exact: true }).click();
   await expect(page.getByTestId('alerts-page')).toBeHidden();
   console.log('PASS: Global Alert feature works properly.');

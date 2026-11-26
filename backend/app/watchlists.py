@@ -1,9 +1,12 @@
 """Atomic watchlist metadata operations and bounded, directory-only CSV resolution."""
 import csv,hashlib,io,json,re,uuid
+from copy import deepcopy
 from typing import Literal
 from fastapi import APIRouter,HTTPException
-from pydantic import BaseModel,ConfigDict,Field,model_validator
-from .models import GridPreferences,Workspace,Watchlist
+from pydantic import BaseModel,ConfigDict,Field,ValidationError,model_validator
+from .models import GridPreferences,SidebarPreferences,Workspace
+from .flags import flag_row_to_symbol_entry
+from .database import VALID_FLAG_COLORS
 from .market_router import MarketDataRouter,selectable
 from .providers.base import ProviderError
 from .markets import MARKETS,entry,EXCHANGES,SUFFIX
@@ -41,25 +44,41 @@ class Commit(CSVInput):
     preview_hash:str=Field(min_length=64,max_length=64)
 
 def key(row):return row.get('canonical_id') or row.get('instrument_id') or row.get('symbol')
-def protected(row):return row['id'] in SYSTEM_IDS or row.get('market') in SYSTEM_IDS
-def validate_changes(old,new):
-    old_lists=old.get('watchlists',[]);new_lists={w['id']:w for w in new.get('watchlists',[])}
-    for w in old_lists:
-        if protected(w) and (w['id'] not in new_lists or new_lists[w['id']]['name']!=w['name'] or new_lists[w['id']].get('market')!=w.get('market')):raise HTTPException(422,'Default market watchlists cannot be deleted or renamed')
-    for w in new_lists.values():
-        if w['id'] not in {r['id'] for r in old_lists} and protected(w):raise HTTPException(422,'Reserved watchlist identifier')
+def reserved_watchlist(row):
+    return row['id'] in SYSTEM_IDS or row.get('market') in SYSTEM_IDS or row['id'].startswith('color:')
 
-def persist(c,old,new):
-    raw_grid = old.get('chart_grid', {})
+def validate_workspace_deletions(old, new):
+    retained_ids = {row['id'] for row in new['watchlists']}
+    for row in old.get('watchlists', []):
+        if reserved_watchlist(row) and row['id'] not in retained_ids:
+            raise HTTPException(422, 'Confirm deletion through the watchlist menu')
+
+def validate_changes(old, new):
+    prior = {row['id']: row for row in old.get('watchlists', [])}
+    for row in new['watchlists']:
+        previous = prior.get(row['id'])
+        if previous is None and reserved_watchlist(row):
+            raise HTTPException(422, 'Reserved watchlist identifier')
+        if previous and reserved_watchlist(previous) and row.get('market') != previous.get('market'):
+            raise HTTPException(422, 'A default watchlist keeps its market identifier')
+
+def watchlist_name(raw, lists, exclude_id=None):
+    name = raw.strip()
+    if not name or any(ord(character) < 32 for character in name):
+        raise HTTPException(422, 'Enter a watchlist name of 1–64 characters without control characters')
+    if any(row['id'] != exclude_id and row['name'].strip().casefold() == name.casefold() for row in lists):
+        raise HTTPException(422, 'A watchlist with this name already exists')
+    return name
+
+def persist(c,old,new,*,raw_grid):
     recovery = None
     if GridPreferences.from_storage(raw_grid) is None:
-        if new.get('chart_grid') == raw_grid:
-            new = {**new, 'chart_grid': GridPreferences()}
         original = json.dumps(raw_grid, sort_keys=True)
         digest = hashlib.sha256(original.encode('utf-8')).hexdigest()
         # Keep the original JSON opaque to migrations that rewrite instrument IDs.
         recovery = (f'chart_grid_recovery:{digest}', json.dumps({'original_json': original}))
 
+    new = {**new, 'watchlist_defaults_initialized': True}
     value=Workspace.model_validate(new).model_dump();validate_changes(old,value)
     changed=old.get('watchlists',[])!=value['watchlists']
     value['watchlist_revision']=old.get('watchlist_revision',0)+int(changed)
@@ -69,8 +88,20 @@ def persist(c,old,new):
     c.execute('INSERT OR REPLACE INTO watchlists VALUES(?,?)',('Favourites',json.dumps(value['watchlist'])))
     return value
 
-def load(c,fallback):
-    r=c.execute("SELECT value FROM settings WHERE key='workspace'").fetchone();return json.loads(r['value']) if r else fallback
+def load(c):
+    row = c.execute("SELECT value FROM settings WHERE key='workspace'").fetchone()
+    saved = json.loads(row['value']) if row else None
+    return saved if isinstance(saved, dict) else {}
+
+def normalize_for_write(saved, restore):
+    if saved.get('watchlist_defaults_initialized'):
+        # Keep valid saved metadata intact while repairing unsupported Grid settings.
+        grid = GridPreferences.from_storage(saved.get('chart_grid', {}))
+        try:
+            return Workspace.model_validate({**saved, 'chart_grid': grid or GridPreferences()}).model_dump()
+        except ValidationError:
+            pass
+    return restore(saved)
 
 class Watchlists:
     def __init__(self,db,registry,restore):self.db=db;self.registry=registry;self.restore=restore
@@ -151,30 +182,60 @@ class Watchlists:
         fingerprint=hashlib.sha256(json.dumps([(r['row'],r['status'],r['identity'],r['candidates']) for r in result],sort_keys=True).encode()).hexdigest()
         return dict(headers=headers,mapping=mapping,rows=result,needs_mapping=False,total=len(result),preview=rows[1:6],preview_hash=fingerprint,counts={s:sum(r['status']==s for r in result) for s in ('valid','duplicate','failed','ambiguous')})
     def transact(self,revision,fn):
-        fallback=self.restore()
         with self.db.connect() as c:
-            c.execute('BEGIN IMMEDIATE');old=load(c,fallback)
-            if revision!=old.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload and review the operation again.')
-            value=json.loads(json.dumps(old));summary=fn(value,c);new=persist(c,old,value)
-        return dict(watchlists=new['watchlists'],active_watchlist=new['active_watchlist'],watchlist_revision=new['watchlist_revision'],summary=summary)
+            c.execute('BEGIN IMMEDIATE')
+            raw=load(c)
+            if revision!=raw.get('watchlist_revision',0):raise HTTPException(409,'Watchlists changed. Reload and review the operation again.')
+            raw_grid=raw.get('chart_grid', {})
+            old=normalize_for_write(raw,self.restore)
+            value=deepcopy(old)
+            summary=fn(value,c)
+            new=persist(c,old,value,raw_grid=raw_grid)
+        return dict(
+            watchlists=new['watchlists'], active_watchlist=new['active_watchlist'],
+            watchlist_revision=new['watchlist_revision'], groups=new['sidebar']['groups'],
+            hidden_symbols=new['hidden_symbols'], summary=summary,
+        )
     def mutate(self,op):
         def apply(w,c=None):
             lists=w['watchlists'];current=next((r for r in lists if r['id']==op.id),None)
-            if op.action not in ('create',) and current is None:raise HTTPException(404,'Watchlist no longer exists')
-            if op.action in ('create','rename','duplicate'):
-                name=op.name.strip()
-                if not name or any(ord(c)<32 for c in name):raise HTTPException(422,'Enter a watchlist name of 1–64 characters without control characters')
-                if op.action=='rename':
-                    if protected(current):raise HTTPException(422,'Default watchlists cannot be renamed')
-                    current['name']=name
+            color = op.id.removeprefix('color:') if op.id.startswith('color:') else None
+            flagged_copy = op.action == 'duplicate' and color in VALID_FLAG_COLORS
+            if op.action != 'create' and current is None and not flagged_copy:
+                raise HTTPException(404, 'Watchlist no longer exists')
+            sidebar = w.setdefault('sidebar', {})
+            groups = sidebar['groups'] = SidebarPreferences.validate_watchlist_groups(sidebar.get('groups'))
+            hidden_symbols = w.setdefault('hidden_symbols', {})
+            if op.action in ('create', 'rename', 'duplicate'):
+                name = watchlist_name(op.name, lists, op.id if op.action == 'rename' else None)
+                if op.action == 'rename':
+                    current['name'] = name
                 else:
-                    if len(lists)>=40:raise HTTPException(422,'Maximum 40 watchlists')
-                    id=uuid.uuid4().hex;lists.append(dict(id=id,name=name,items=current['items'].copy() if op.action=='duplicate' else []));w['active_watchlist']=id
-            elif op.action=='delete':
-                if protected(current):raise HTTPException(422,'Default watchlists cannot be deleted')
-                if not op.confirm:raise HTTPException(422,'Confirm deletion of the watchlist and its item memberships')
+                    if len(lists) >= 40:
+                        raise HTTPException(422, 'Maximum 40 watchlists')
+                    items = []
+                    if flagged_copy:
+                        items = [flag_row_to_symbol_entry(row) for row in self.db.get_flags_by_color(color, conn=c)]
+                        if len(items) > 100:
+                            raise HTTPException(422, 'This flagged view exceeds the 100-instrument watchlist limit')
+                    elif op.action == 'duplicate':
+                        items = current['items'].copy()
+                    list_id = uuid.uuid4().hex
+                    lists.append(dict(id=list_id, name=name, items=items))
+                    if op.action == 'duplicate':
+                        if op.id in groups:
+                            groups[list_id] = groups[op.id].copy()
+                        if op.id in hidden_symbols:
+                            hidden_symbols[list_id] = hidden_symbols[op.id].copy()
+                    w['active_watchlist'] = list_id
+            elif op.action == 'delete':
+                if not op.confirm:
+                    raise HTTPException(422, 'Confirm deletion of the watchlist and its item memberships')
                 lists.remove(current)
-                if w['active_watchlist']==current['id']:w['active_watchlist']=next((r['id'] for r in lists if r['id']=='stocks'),lists[0]['id'])
+                groups.pop(op.id, None)
+                hidden_symbols.pop(op.id, None)
+                if w['active_watchlist'] == op.id:
+                    w['active_watchlist'] = next((row['id'] for row in lists if row['id'] == 'stocks'), lists[0]['id'] if lists else '')
             elif op.action=='reorder':
                 items={key(r):r for r in current['items']}
                 if len(op.order)!=len(items) or set(op.order)!=set(items):raise HTTPException(422,'Provide every current instrument exactly once')

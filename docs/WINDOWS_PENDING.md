@@ -13,6 +13,8 @@ Use the official GitHub `main` as the shared source on native Windows 10/11 x64.
 
 Mac rc.8 installation was verified from integrated `a63a96cbff1b72c7cbc2e710cf3cab93d68689e2`. Windows x64 validation for `WIN-CHARTGRID` and `WIN-ELECTRON44` remains pending for the shared source.
 
+The local Phase 3 Order Flow branch uses the same public stream and process lifecycle on Windows. At the accepted shared SHA, verify the dock with native DPI and keyboard input, paired market switching, reconnect and sleep/wake gaps, and shared socket shutdown alongside Charts and Chart Grid. Verify with a disposable profile on Windows x64.
+
 ## Native commands
 
 1. Verify the source SHA and use native Node 22.19.0 or a compatible version with npm and Python 3.11 x64. Run `npm ci`, create `backend\.venv`, and install `backend\requirements-lock.txt` with the venv Python. Prepare test directory resources through the documented official-source path.

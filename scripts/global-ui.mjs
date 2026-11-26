@@ -1,3 +1,4 @@
+import { chooseWatchlist } from './watchlist-controls.mjs';
 import {_electron as electron,expect} from './isolated-electron.mjs';
 import {mkdtemp,mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -38,7 +39,7 @@ try{
  const count=(await status()).provider_requests;
  await page.getByLabel('LOG pane 0',{exact:true}).click();await page.getByLabel('Indicators pane 1',{exact:true}).click();await page.getByLabel('Add RSI',{exact:true}).click();await page.getByLabel('Close indicators',{exact:true}).click();
  assert.equal((await status()).provider_requests,count,'Indicators and scale reuse data');
- await page.getByLabel('Active watchlist',{exact:true}).selectOption('crypto');await expect(page.locator('.watch-row')).toHaveCount(4);
+ await chooseWatchlist(page, 'crypto');await expect(page.locator('.watch-row')).toHaveCount(4);
  await expect(page.getByTestId('watchlist-symbol-BTC-USD')).toContainText('BTC-USD');
  await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.getByLabel('Search market').selectOption('crypto');
  await expect(page.locator('.search-result')).toHaveCount(0);await expect(page.locator('.watch-row')).toHaveCount(4);await page.getByLabel('Close search',{exact:true}).click();

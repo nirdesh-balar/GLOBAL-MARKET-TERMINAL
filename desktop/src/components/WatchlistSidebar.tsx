@@ -2,14 +2,15 @@ import {legacyCrypto} from '../providers/legacy';
 import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,QuoteRow,RefreshPreferences} from '../refresh/hooks';
 import React, {useEffect,useLayoutEffect,useRef,useState,useCallback} from 'react';
-import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check,LayoutGrid} from 'lucide-react';
+import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check,LayoutGrid,ChevronDown,Search as SearchIcon,ListFilter} from 'lucide-react';
 import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist,Timeframe} from '../types';
 import {symbolLabel,price,api} from '../services/api';
 import type {ExcelWatchlistRow,ExcelExportPayload} from '../export/excelWorkbook';
-import {IndexWatchlist} from './IndexWatchlist';
+import {WatchlistPopover} from '../watchlists/WatchlistPopover';
+import {MARKET_SECTIONS,marketSection,type MarketSection} from '../watchlists/marketSections';
 import {WatchlistDialog} from '../watchlists/WatchlistDialog';
 import {ImportWatchlist} from '../watchlists/ImportWatchlist';
-import {identity,systemList,type WatchlistMutation,type ImportCommit,type WatchlistResult} from '../watchlists/types';
+import {identity,type WatchlistMutation,type ImportCommit,type WatchlistResult} from '../watchlists/types';
 import {useFlags} from '../flags/useFlags';
 import {FLAG_COLORS,ORDERED_FLAG_COLORS,type FlagColor} from '../flags/constants';
 import {FlagIcon} from './FlagIcon';
@@ -98,34 +99,32 @@ export function compareSymbolEntries(
     return 0;
 }
 
-export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, health, indices, active, quotes, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe, onGrid }: { onGrid: (rows: SymbolEntry[], source: string) => void; onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; health: Health; indices: Instrument[]; active: string; quotes: Record<string, ChartQuote>; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
-    const [query, setQuery] = useState(''), [manage, setManage] = useState(false), [name, setName] = useState(''), [action, setAction] = useState<'create' | 'rename' | 'duplicate'>('create'), [drag, setDrag] = useState<string | null>(null), [target, setTarget] = useState('active'), [width, setWidth] = useState(Math.round(workspace.sidebar.width || 320)), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [removeList, setRemoveList] = useState(false), [clearConfirm, setClearConfirm] = useState(false), [importing, setImporting] = useState(false), [menu, setMenu] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null), [destination, setDestination] = useState('');
-    const [rowPicker, setRowPicker] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null);
+export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, health, indices, active, quotes, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe, onGrid, onClose }: { onClose: () => void; onGrid: (rows: SymbolEntry[], source: string) => void; onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; health: Health; indices: Instrument[]; active: string; quotes: Record<string, ChartQuote>; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
+    const [query, setQuery] = useState(''), [manage, setManage] = useState(false), [name, setName] = useState(''), [action, setAction] = useState<'create' | 'rename' | 'duplicate'>('create'), [drag, setDrag] = useState<string | null>(null), [target, setTarget] = useState('active'), [width, setWidth] = useState(Math.round(workspace.sidebar.width || 320)), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [removeList, setRemoveList] = useState<Watchlist | null>(null), [clearConfirm, setClearConfirm] = useState(false), [importing, setImporting] = useState(false), [menu, setMenu] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null), [destination, setDestination] = useState('');
+    const [rowPicker, setRowPicker] = useState<{ row: SymbolEntry; x: number; y: number; trigger: HTMLButtonElement } | null>(null);
     const [aliasInput, setAliasInput] = useState('');
     const [showHidden, setShowHidden] = useState(false);
     const [gridSelection, setGridSelection] = useState<{ list: string; ids: Set<string> } | null>(null);
     const [gridMenuOpen, setGridMenuOpen] = useState(false);
-    const gridMenu = useRef<HTMLDivElement>(null);
-    const gridMenuButton = useRef<HTMLButtonElement>(null);
-    const closeGridMenu = () => { setGridMenuOpen(false); gridMenuButton.current?.focus(); };
-
-    useEffect(() => {
-        if (!gridMenuOpen) return;
-        gridMenu.current?.querySelector<HTMLButtonElement>('.watchlist-grid-popup button:not(:disabled)')?.focus();
-        const outside = (event: PointerEvent) => {
-            if (!gridMenu.current?.contains(event.target as Node)) setGridMenuOpen(false);
-        };
-        const escape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') { event.stopPropagation(); closeGridMenu(); }
-        };
-        document.addEventListener('pointerdown', outside);
-        document.addEventListener('keydown', escape, true);
-        return () => {
-            document.removeEventListener('pointerdown', outside);
-            document.removeEventListener('keydown', escape, true);
-        };
+    const gridActions = useRef<HTMLDivElement>(null);
+    const gridTrigger = useRef<HTMLButtonElement>(null);
+    useLayoutEffect(() => {
+        if (gridMenuOpen) gridActions.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     }, [gridMenuOpen]);
- const [exportMenu,setExportMenu]=useState<{x:number;y:number}|null>(null);
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [headerMenu, setHeaderMenu] = useState<{ kind: 'lists' | 'options' | 'export'; anchor: HTMLButtonElement } | null>(null);
+    const closeHeaderMenu = (restoreFocus = true) => {
+        if (restoreFocus) headerMenu?.anchor.focus();
+        setHeaderMenu(null);
+        setGridMenuOpen(false);
+    };
+    const toggleHeaderMenu = (kind: 'lists' | 'options', anchor: HTMLButtonElement) => {
+        if (headerMenu?.anchor === anchor) closeHeaderMenu();
+        else {
+            setGridMenuOpen(false);
+            setHeaderMenu({ kind, anchor });
+        }
+    };
  const [exporting,setExporting]=useState<{progress:string;current:number;total:number}|null>(null);
  const [noticeType,setNoticeType]=useState<'success'|'cancelled'|'notice'>('notice');
  const cancelExport=useRef(false);
@@ -193,16 +192,8 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
  const displayOrderRef = useRef<string[]>([]);
 
  useEffect(()=>setWidth(Math.round(workspace.sidebar.width||320)),[workspace.sidebar.width]);
- useEffect(()=>{setQuery('');setMenu(null);setRowPicker(null);setExportMenu(null);dismissStatus();},[workspace.active_watchlist,dismissStatus]);
+ useEffect(()=>{setQuery('');setMenu(null);setRowPicker(null);dismissStatus();},[workspace.active_watchlist,dismissStatus]);
  useEffect(()=>{return()=>clearStatusTimer();},[clearStatusTimer]);
- useEffect(()=>{
-  if(!exportMenu)return;
-  const dismiss=(e:PointerEvent)=>{if(!(e.target as HTMLElement).closest('.watchlist-export-menu,[data-testid="watchlist-export-btn"]'))setExportMenu(null);};
-  const key=(e:KeyboardEvent)=>{if(e.key==='Escape')setExportMenu(null);};
-  window.addEventListener('pointerdown',dismiss);
-  window.addEventListener('keydown',key);
-  return()=>{window.removeEventListener('pointerdown',dismiss);window.removeEventListener('keydown',key);};
- },[exportMenu]);
  useEffect(()=>{if(!menu)return;menuRef.current?.querySelector('button')?.focus();const dismiss=(e:PointerEvent)=>{if(!menuRef.current?.contains(e.target as Node))setMenu(null);};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){e.stopImmediatePropagation();e.preventDefault();setMenu(null);rows.current?.querySelector<HTMLElement>(`[data-identity="${CSS.escape(identity(menu.row))}"] .watch-select`)?.focus({preventScroll:true});}};window.addEventListener('pointerdown',dismiss);window.addEventListener('keydown',key,true);return()=>{window.removeEventListener('pointerdown',dismiss);window.removeEventListener('keydown',key,true);};},[menu]);
 
     const isColored = workspace.active_watchlist.startsWith('color:');
@@ -212,14 +203,16 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         id: workspace.active_watchlist,
         name: aliases[activeColor] || FLAG_COLORS[activeColor]?.defaultLabel || `${activeColor} List`,
         items: getSymbolsForColor(activeColor)
-    } : (workspace.watchlists.find(w => w.id === workspace.active_watchlist) || workspace.watchlists[0]);
+    } : (workspace.watchlists.find(w => w.id === workspace.active_watchlist) || workspace.watchlists[0] || { id: '', name: 'Watchlists', items: [] });
+    const hasCurrent = Boolean(current.id);
+    const favourites = workspace.watchlists.find(list => list.id === 'favourites');
 
     const isMarket = !isColored && (Boolean(current.market) || ['stocks', 'us', 'global', 'indices', 'global_indices', 'crypto', 'forex', 'commodities', 'funds'].includes(current.id));
     const hiddenSymbols = (workspace.hidden_symbols?.[current.id] || []);
-    const hasHidden = isMarket && hiddenSymbols.length > 0;
+    const hasHidden = hiddenSymbols.length > 0;
 
     const lastFetched = Math.max(0, ...Object.values(snapshots?.rows || {}).map(r => r.value?.fetched_at || 0));
-    const run = async (op: WatchlistMutation) => { if (busy) return; setBusy(true); setError(''); setNotice(''); try { await onMutate(op); setManage(false); setRemoveList(false); setMenu(null); setAutoDismissNotice('Watchlist saved', 'notice', 3000); } catch (e) { setAutoDismissError((e as Error).message); } finally { setBusy(false); } };
+    const run = async (op: WatchlistMutation) => { if (busy) return; setBusy(true); setError(''); setNotice(''); try { await onMutate(op); setManage(false); setRemoveList(null); setMenu(null); setAutoDismissNotice('Watchlist saved', 'notice', 3000); } catch (e) { setAutoDismissError((e as Error).message); } finally { setBusy(false); } };
     const move = (from: number, to: number) => { if (isColored || workspace.sidebar.sort !== 'manual' || to < 0 || to >= current.items.length || from === to) return; const order = current.items.map(identity); order.splice(to, 0, order.splice(from, 1)[0]); void run({ action: 'reorder', id: current.id, order }); };
 
     const baseItems = current.items.map((row, n) => ({ row, n }))
@@ -241,13 +234,13 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
 
     if (needsResort) {
         if (rows.current && rows.current.scrollTop > 0 && displayOrderRef.current.length > 0) {
-            const topIdx = Math.max(0, Math.floor(rows.current.scrollTop / 44));
-            const topSymbolId = displayOrderRef.current[topIdx];
-            if (topSymbolId) {
-                anchorRef.current = {
-                    id: topSymbolId,
-                    offset: rows.current.scrollTop - (topIdx * 44)
-                };
+            const viewport = rows.current.getBoundingClientRect();
+            const headingHeight = rows.current.querySelector<HTMLElement>('.watch-columns')?.offsetHeight || 0;
+            const topRow = document.elementFromPoint(viewport.left + 12, viewport.top + headingHeight + 2)
+                ?.closest<HTMLElement>('.watch-row');
+            const topId = topRow?.dataset.identity;
+            if (topRow && topId && rows.current.contains(topRow)) {
+                anchorRef.current = { id: topId, offset: viewport.top - topRow.getBoundingClientRect().top };
             }
         }
 
@@ -290,11 +283,10 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         if (anchorRef.current) {
             const anchor = anchorRef.current;
             anchorRef.current = null;
-            const newIndex = items.findIndex(it => identity(it.row) === anchor.id);
-            if (newIndex >= 0) {
-                const targetScroll = Math.max(0, newIndex * 44 + anchor.offset);
-                container.scrollTop = targetScroll;
-                scrollPosRef.current = targetScroll;
+            const row = container.querySelector(`[data-identity="${CSS.escape(anchor.id)}"]`);
+            if (row) {
+                container.scrollTop += row.getBoundingClientRect().top - container.getBoundingClientRect().top + anchor.offset;
+                scrollPosRef.current = container.scrollTop;
                 return;
             }
         }
@@ -303,6 +295,23 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
             container.scrollTop = scrollPosRef.current;
         }
     });
+
+    const groupPreference = workspace.sidebar.groups?.[current.id];
+    const grouped = groupPreference !== undefined;
+    const collapsedGroups = groupPreference || [];
+    const groups = grouped ? new Map(MARKET_SECTIONS.map(([id]) => [id, [] as typeof items])) : null;
+    if (groups) for (const item of items) groups.get(marketSection(item.row))?.push(item);
+    const visibleItems = groups
+        ? MARKET_SECTIONS.flatMap(([id]) => collapsedGroups.includes(id) ? [] : groups.get(id)!)
+        : items;
+    const visiblePositions = groups ? new Map(visibleItems.map((item,index)=>[item,index])) : null;
+    const gridItems = groups ? MARKET_SECTIONS.flatMap(([id]) => groups.get(id)!) : items;
+    const updateGroups = (collapsed?: MarketSection[]) => {
+        const groups = { ...workspace.sidebar.groups };
+        if (collapsed) groups[current.id] = collapsed;
+        else delete groups[current.id];
+        onChange({ ...workspace, sidebar: { ...workspace.sidebar, groups } });
+    };
 
     const isSymbol = currentSort === 'symbol' || currentSort === 'symbol_desc';
     const isPrice = currentSort === 'price' || currentSort === 'price_desc';
@@ -382,22 +391,22 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     };
 
     const navigateRows = (direction: 'next' | 'prev' | 'home' | 'end') => {
-        if (!items.length) return;
+        if (!visibleItems.length) return;
         const focusedRowId = (document.activeElement?.closest('[data-identity]') as HTMLElement)?.dataset?.identity;
-        const focusedPos = focusedRowId ? items.findIndex(({ row }) => identity(row) === focusedRowId) : -1;
-        const currentPos = focusedPos !== -1 ? focusedPos : items.findIndex(({ row }) => identity(row) === activePaneSymbol);
+        const focusedPos = focusedRowId ? visibleItems.findIndex(({ row }) => identity(row) === focusedRowId) : -1;
+        const currentPos = focusedPos !== -1 ? focusedPos : visibleItems.findIndex(({ row }) => identity(row) === activePaneSymbol);
         let targetIndex = currentPos;
         if (direction === 'home') {
             targetIndex = 0;
         } else if (direction === 'end') {
-            targetIndex = items.length - 1;
+            targetIndex = visibleItems.length - 1;
         } else if (direction === 'next') {
-            targetIndex = currentPos === -1 ? 0 : Math.min(items.length - 1, currentPos + 1);
+            targetIndex = currentPos === -1 ? 0 : Math.min(visibleItems.length - 1, currentPos + 1);
         } else if (direction === 'prev') {
-            targetIndex = currentPos === -1 ? items.length - 1 : Math.max(0, currentPos - 1);
+            targetIndex = currentPos === -1 ? visibleItems.length - 1 : Math.max(0, currentPos - 1);
         }
-        if (targetIndex < 0 || targetIndex >= items.length) return;
-        const targetRow = items[targetIndex].row;
+        if (targetIndex < 0 || targetIndex >= visibleItems.length) return;
+        const targetRow = visibleItems[targetIndex].row;
         openRow(targetRow);
         requestAnimationFrame(() => {
             const rowEl = rows.current?.querySelector<HTMLElement>(`[data-identity="${CSS.escape(identity(targetRow))}"]`);
@@ -430,7 +439,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         if (rowPosition !== undefined && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
             e.preventDefault();
             const b = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            context(items[rowPosition].row, b.left, b.bottom);
+            context(visibleItems[rowPosition].row, b.left, b.bottom);
             return;
         }
 
@@ -450,7 +459,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   const exportTf=activeTimeframe||'1d';
   const listName=current.name;
   const listId=current.id;
-  const targetItems=isMarket&&!showHidden&&hiddenSymbols.length>0?current.items.filter(r=>!hiddenSymbols.includes(identity(r))):current.items;
+  const targetItems=!showHidden&&hiddenSymbols.length>0?current.items.filter(r=>!hiddenSymbols.includes(identity(r))):current.items;
   if(!targetItems.length){setAutoDismissError('Watchlist contains no symbols to export.');return;}
   const sorted=[...targetItems];
   if(workspace.sidebar.sort!=='manual'){
@@ -497,7 +506,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     let dataStatus='OK';
     if(hasQuote&&val){
      if(val.session?.state==='closed')dataStatus='Closed';
-     else if(val.session?.state==='open')dataStatus='Live / Open';
+     else if(val.session?.state==='open')dataStatus=val.timestamp_kind==='provider_trade_time'?'Public trade snapshot · Open':'Historical snapshot · Open';
     }else{
      dataStatus=qRow?.error?`Error: ${qRow.error}`:'Unavailable';
     }
@@ -575,13 +584,72 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
         finally { setBusy(false); }
     };
 
+ const openManagement = (nextAction: typeof action) => {
+    closeHeaderMenu();
+    dismissStatus();
+    if (isColored && activeColor && nextAction === 'rename') setAliasInput(aliases[activeColor] || '');
+    setAction(nextAction);
+    setName(nextAction === 'create' ? '' : nextAction === 'duplicate' ? (current.name + ' copy').slice(0,64) : current.name);
+    setManage(true);
+ };
+ const managementActions = () => <>
+    <div className="watchlist-popover-divider"/>
+    <button aria-label="Create watchlist" onClick={()=>openManagement('create')}>Create new list…</button>
+    <button disabled={!hasCurrent||busy} onClick={()=>openManagement('rename')}>Rename…</button>
+    <button disabled={!hasCurrent||busy} onClick={()=>openManagement('duplicate')}>Make a copy…</button>
+    <button disabled={!hasCurrent||isColored||busy} onClick={()=>{closeHeaderMenu();setRemoveList(current);}}>Delete list…</button>
+ </>;
  const choosingGrid=gridSelection?.list===current.id;
- const selectedForGrid=choosingGrid?items.filter(({row})=>gridSelection.ids.has(identity(row))).map(({row})=>row):[];
+ const selectedForGrid=choosingGrid?gridItems.filter(({row})=>gridSelection.ids.has(identity(row))).map(({row})=>row):[];
+ const selectedItem=items.find(({row})=>identity(row)===activePaneSymbol)?.row;
+ const selectedQuote=selectedItem ? snapshots?.rows[identity(selectedItem)] : undefined;
+ const selectedDay=selectedItem ? quotes[identity(selectedItem)] : undefined;
  const boundedWidth=(value:number)=>Math.round(Math.max(220,Math.min(480,value)));
  const persistWidth=(value:number)=>{
   setWidth(value);
   onChange({...workspace,sidebar:{...workspace.sidebar,width:value}});
  };
+ const instrumentDetails = (row: SymbolEntry) => {
+    const index = row.kind === 'index' ? indices.find(item=>item.symbol===row.symbol) : undefined;
+    return [row.name, row.exchange, row.provider === 'hyperliquid' ? 'Hyperliquid' : 'Yahoo Finance',
+        row.market_type || row.kind, row.currency, index?.status === 'verified' ? 'Yahoo daily history checked' : index?.error]
+        .filter(Boolean).join(' · ');
+ };
+  const staleBefore = Date.now()/1000 - Math.max(120,(refreshPreferences?.watchlist_interval||300)*2);
+ const renderRow = ({row,n}: typeof items[number], position: number) => {
+   const id=identity(row),quoteRow=snapshots?.rows[id];
+   const rowFlagColor=flags[id]?.color;
+   const rowFlagHex=rowFlagColor?FLAG_COLORS[rowFlagColor]?.hex:undefined;
+   const isHidden=hiddenSymbols.includes(id);
+   return <div data-volume={workspace.sidebar.volume} data-stream-state={snapshots?.rows[id]?.stream_state} data-quote-state={snapshots?.rows[id]?.state||'idle'} data-identity={id} data-hidden={isHidden} data-flag-color={rowFlagColor||undefined} style={rowFlagHex?({'--row-flag-color':rowFlagHex} as React.CSSProperties):undefined} className={`watch-row ${activePaneSymbol===id?'selected-symbol':''}`} key={id} draggable={!isColored&&!busy&&workspace.sidebar.sort==='manual'} onClick={e=>{if((e.target as HTMLElement).closest('.symbol-flag-btn, .watch-row-actions, button, a, input'))return;openRow(row);e.currentTarget.querySelector<HTMLButtonElement>('.watch-select')?.focus({preventScroll:true});}} onContextMenu={e=>{e.preventDefault();context(row,e.clientX,e.clientY);}} onDragStart={e=>{if(isColored)return;setDrag(id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>setDrag(null)} onDragOver={e=>{if(!isColored&&drag&&workspace.sidebar.sort==='manual')e.preventDefault();}} onDrop={e=>{e.preventDefault();if(!isColored&&drag&&workspace.sidebar.sort==='manual'&&(!grouped||marketSection(row)===marketSection(current.items.find(r=>identity(r)===drag)||row)))move(current.items.findIndex(r=>identity(r)===drag),n);setDrag(null);}}>
+    {choosingGrid?<input className="grid-source-choice" type="checkbox" aria-label={'Select '+row.symbol+' for Chart Grid'}
+      checked={gridSelection.ids.has(id)} onChange={e=>{
+        const ids=new Set(gridSelection.ids);
+        if(e.target.checked)ids.add(id);else ids.delete(id);
+        setGridSelection({list:current.id,ids});
+      }} />:<button data-testid={`watchlist-flag-${row.symbol}`} aria-label={rowFlagColor?`${rowFlagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${rowFlagColor?'flagged':'unflagged'}`} title={rowFlagColor?`${rowFlagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const b=e.currentTarget.getBoundingClientRect();setRowPicker({row,x:b.left,y:b.bottom+4,trigger:e.currentTarget});}}>
+     <FlagIcon color={rowFlagColor} filled={Boolean(rowFlagColor)} size={14}/>
+    </button>}
+    <button data-testid={`watchlist-symbol-${row.symbol}`} className="watch-select" title={`Click opens chart. ArrowUp / ArrowDown navigates and updates chart immediately. Shift+F10 opens actions.`} onClick={()=>openRow(row)} onKeyDown={e=>handleKeyDown(e,position,n)}>
+     <span title={instrumentDetails(row)}>
+      <strong>{row.kind==='index'?row.name:symbolLabel(row.symbol)}</strong>
+
+     </span>
+     <QuoteCells row={quoteRow} showVolume={workspace.sidebar.volume} migrationRequired={legacyCrypto(row)}
+       paused={refreshPaused} expired={!!quoteRow?.value&&quoteRow.value.fetched_at<staleBefore}/>
+    </button>
+    <div className="watch-row-actions">
+     {legacyCrypto(row)&&<button className="migrate-btn" aria-label={`Migrate ${row.symbol}`} onClick={()=>onMigration(row)}>Migrate</button>}
+     {!isColored&&!isMarket&&<button aria-label={`Move up ${row.symbol}`} title="Move up" disabled={busy||workspace.sidebar.sort!=='manual'||n===0} onClick={e=>{e.stopPropagation();move(n,n-1);}}><ArrowUp size={11}/></button>}
+     {!isColored&&!isMarket&&<button aria-label={`Move down ${row.symbol}`} title="Move down" disabled={busy||workspace.sidebar.sort!=='manual'||n===current.items.length-1} onClick={e=>{e.stopPropagation();move(n,n+1);}}><ArrowDown size={11}/></button>}
+     {isHidden?(
+      <button aria-label={`Restore ${row.symbol}`} title="Restore hidden ticker" disabled={busy} onClick={e=>{e.stopPropagation();restoreRow(id);}}><RefreshCw size={11}/></button>
+     ):(
+      <button aria-label={`Remove ${row.symbol}`} title={isColored?'Remove flag':isMarket?'Hide ticker':'Remove from watchlist'} disabled={busy} onClick={e=>{e.stopPropagation();void removeRow(row,n);}}><X size={11}/></button>
+     )}
+    </div>
+   </div>;
+  };
  return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}>
   <div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical"
     tabIndex={0} aria-valuemin={220} aria-valuemax={480} aria-valuenow={width}
@@ -609,69 +677,73 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
       persistWidth(boundedWidth(width+(event.key==='ArrowLeft'?16:-16)));
     }}/>
  <header data-testid="watchlist-header">
-  {isColored && activeColor && <span className="watchlist-header-flag" title={`${current.name}`}><FlagIcon color={activeColor} filled={true} size={15}/></span>}
-  <select data-testid="watchlist-dropdown" aria-label="Active watchlist" value={current.id} disabled={busy} onChange={e=>onChange({...workspace,active_watchlist:e.target.value})}>
-   <optgroup label="CUSTOM WATCHLISTS">
-    {workspace.watchlists.filter(w=>!systemList(w)).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}
-   </optgroup>
-   <optgroup label="COLORED WATCHLISTS">
-    {ORDERED_FLAG_COLORS.map(col=><option key={`color:${col}`} value={`color:${col}`} data-testid={`colored-watchlist-${col}`}>{aliases[col]||FLAG_COLORS[col].defaultLabel} ({counts[col]||0})</option>)}
-   </optgroup>
-   <optgroup label="MARKETS">
-    {workspace.watchlists.filter(w=>systemList(w)).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}
-   </optgroup>
-  </select>
-  <span data-testid="watchlist-active-timeframe" className="watchlist-timeframe-badge" title={`Comparison timeframe synchronized with active chart (${timeframeDisplay(activeTimeframe)})`}>{timeframeDisplay(activeTimeframe)}</span>
-  <button aria-label="Create watchlist" title="Create watchlist" onClick={()=>{setAction('create');setName('');setManage(true);setError('');}}><Plus size={16}/></button>
-  <button aria-label="Import watchlist CSV" title="Import watchlist CSV" disabled={busy} onClick={()=>setImporting(true)}><Upload size={14}/></button>
-  <button data-testid="watchlist-export-btn" aria-label="Export watchlist" title="Export watchlist (Excel / CSV)" disabled={busy||Boolean(exporting)} onClick={e=>{e.stopPropagation();const b=e.currentTarget.getBoundingClientRect();setExportMenu(exportMenu?null:{x:Math.max(10,Math.min(b.left-100,window.innerWidth-240)),y:b.bottom+4});}}><Download size={14}/></button>
-  <button aria-label="Manage watchlists" title={isColored?'Rename alias or clear color list':'Rename, duplicate or delete watchlist'} onClick={()=>{if(isColored&&activeColor){setAliasInput(aliases[activeColor]||'');setManage(true);setError('');}else{setAction(systemList(current)?'duplicate':'rename');setName(current.name);setManage(true);setError('');}}}><MoreHorizontal size={16}/></button>
+  <button className="watchlist-title" data-testid="watchlist-dropdown" data-active-list={current.id}
+    aria-label="Active watchlist" aria-expanded={headerMenu?.kind === 'lists'} disabled={busy}
+    title={current.name} onClick={e=>toggleHeaderMenu('lists',e.currentTarget)}
+    onKeyDown={e=>{if(e.key==='ArrowDown'&&headerMenu?.kind!=='lists'){e.preventDefault();toggleHeaderMenu('lists',e.currentTarget);}}}>
+    {activeColor && <FlagIcon color={activeColor} size={14}/>}
+    <span>{current.name}</span><ChevronDown size={13}/>
+  </button>
+  <button data-testid="watchlist-add-symbol" aria-label="Add watchlist symbol" title={hasCurrent?"Add symbol":"Create a list and add symbols"} onClick={hasCurrent?onSearch:()=>openManagement('create')}><Plus size={17}/></button>
+  <button aria-label="Watchlist options" title="Watchlist options" aria-expanded={headerMenu?.kind === 'options' || headerMenu?.kind === 'export'}
+    onClick={e=>toggleHeaderMenu('options',e.currentTarget)}><MoreHorizontal size={17}/></button>
+  <button aria-label="Close watchlist" title="Close watchlist" onClick={onClose}><X size={16}/></button>
  </header>
- {exportMenu&&(
-  <div data-testid="watchlist-export-menu" className="watchlist-export-menu" style={{position:'fixed',left:exportMenu.x,top:exportMenu.y,zIndex:125}}>
-   <button data-testid="export-excel-action" aria-label="Export to Excel (.xlsx)" className="export-menu-item primary" onClick={()=>{setExportMenu(null);void handleExportExcel();}}>
-    <div className="export-menu-item-title"><strong>Export to Excel (.xlsx)</strong><span className="export-badge">Default</span></div>
-    <div className="export-menu-item-desc">Selected timeframe: {timeframeDisplay(activeTimeframe)}</div>
-   </button>
-   <button data-testid="export-csv-action" aria-label="Export watchlist CSV" className="export-menu-item" onClick={()=>{setExportMenu(null);void exportCSV();}}>
-    <div className="export-menu-item-title">Export to CSV (.csv)</div>
-    <div className="export-menu-item-desc">Standard table format</div>
-   </button>
-  </div>
- )}
- <div className="watch-search"><button aria-label="Refresh watchlist prices" title="Fetch latest available historical prices" onClick={onQuoteRefresh} disabled={!!snapshots?.pending||refreshPaused}><RefreshCw size={14} className={snapshots?.pending&&!refreshPaused?'spin':''}/></button><input aria-label="Search current watchlist" placeholder="Search this watchlist" value={query} onChange={e=>setQuery(e.target.value)}/><div className="watchlist-grid-picker" ref={gridMenu}>
-    <button ref={gridMenuButton} aria-label="Watchlist Chart Grid actions" aria-expanded={gridMenuOpen} data-selecting={choosingGrid}
-      title={choosingGrid ? selectedForGrid.length+' symbols selected for Chart Grid' : 'Open symbols in Chart Grid'}
-      onClick={()=>setGridMenuOpen(open=>!open)}><LayoutGrid size={15}/></button>
-    {gridMenuOpen&&<div className="watchlist-grid-popup" role="group" aria-label="Watchlist Grid actions">
-      <button disabled={!items.length} onClick={()=>{
-        closeGridMenu();setGridSelection(null);onGrid(items.map(({row})=>row),current.name);
-      }}>Open watchlist in Grid</button>
-      <button aria-pressed={choosingGrid} disabled={!items.length&&!choosingGrid} onClick={()=>{
-        setGridSelection(choosingGrid?null:{list:current.id,ids:new Set()});closeGridMenu();
-      }}>{choosingGrid?'Cancel symbol selection':'Select symbols'}</button>
-      {choosingGrid&&<button disabled={!selectedForGrid.length} onClick={()=>{
-        closeGridMenu();setGridSelection(null);onGrid(selectedForGrid,current.name+' · selection');
-      }}>Open selected ({selectedForGrid.length}) in Grid</button>}
-    </div>}
-  </div><button aria-label="Add watchlist symbol" title="Search global instruments" onClick={onSearch}><Plus size={16}/></button></div>
- <div className="watchlist-options">
-  <select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select>
-  <select aria-label="Watchlist sort" data-testid="watchlist-sort-select" value={workspace.sidebar.sort} onChange={e=>{const nextSort=e.target.value as Workspace['sidebar']['sort'];onChange({...workspace,sidebar:{...workspace.sidebar,sort:nextSort}});triggerResort();}}>
-   <option value="manual">Manual order</option>
-   <option value="symbol">Symbol (A to Z)</option>
-   <option value="symbol_desc">Symbol (Z to A)</option>
-   <option value="price_desc">Last Price (High to Low)</option>
-   <option value="price">Last Price (Low to High)</option>
-   <option value="change_abs_desc">Change (High to Low)</option>
-   <option value="change_abs">Change (Low to High)</option>
-   <option value="change">Change % (High to Low)</option>
-   <option value="change_asc">Change % (Low to High)</option>
-  </select>
-  <label title="Show supplied volume"><input aria-label="Watchlist volume" type="checkbox" checked={workspace.sidebar.volume} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,volume:e.target.checked}})}/>Vol</label>
-  {hasHidden&&<label title="Show or hide locally hidden tickers" className="watch-hidden-toggle" style={{display:'inline-flex',alignItems:'center',gap:'3px',fontSize:'10px',cursor:'pointer'}}><input aria-label="Show hidden symbols" type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/>Hidden ({hiddenSymbols.length})</label>}
- </div>
-
+ {headerMenu && <WatchlistPopover key={headerMenu.kind} anchor={headerMenu.anchor} label={headerMenu.kind === 'lists' ? 'Choose watchlist' : headerMenu.kind === 'export' ? 'Watchlist export' : 'Watchlist options'}
+   onClose={restoreFocus=>{
+      if (restoreFocus !== false && gridMenuOpen) { setGridMenuOpen(false);gridTrigger.current?.focus(); }
+      else closeHeaderMenu(restoreFocus);
+   }}>
+  {headerMenu.kind === 'lists' && <>
+   <div className="watchlist-popover-label">Watchlists</div>
+   {workspace.watchlists.map(list=><button key={list.id} type="button" data-testid={`watchlist-choice-${list.id}`}
+     aria-pressed={list.id===current.id} onClick={()=>{onChange({...workspace,active_watchlist:list.id});closeHeaderMenu();}}>
+      <span>{list.name}</span>{list.id===current.id&&<Check size={13}/>}
+   </button>)}
+   <div className="watchlist-popover-label">Flagged</div>
+   {ORDERED_FLAG_COLORS.map(col=><button key={col} type="button" data-testid={`watchlist-choice-color:${col}`}
+     aria-pressed={current.id===`color:${col}`} onClick={()=>{onChange({...workspace,active_watchlist:`color:${col}`});closeHeaderMenu();}}>
+       <FlagIcon color={col} size={13}/><span>{aliases[col]||FLAG_COLORS[col].defaultLabel}</span><small>{counts[col]||0}</small>
+   </button>)}
+   {managementActions()}
+  </>}
+  {headerMenu.kind === 'options' && <>
+   <button disabled={!hasCurrent} onClick={()=>{setFilterOpen(!filterOpen);if(filterOpen)setQuery('');closeHeaderMenu(filterOpen);}}><SearchIcon size={14}/><span>{filterOpen?'Close list filter':'Filter this watchlist'}</span></button>
+   <button aria-label="Refresh watchlist prices" disabled={!hasCurrent||!!snapshots?.pending||refreshPaused} onClick={()=>{closeHeaderMenu();onQuoteRefresh();}}><RefreshCw size={14}/><span>Refresh quotes</span></button>
+   <button aria-label="Import watchlist CSV" disabled={busy} onClick={()=>{closeHeaderMenu();setImporting(true);}}><Upload size={14}/>Import CSV…</button>
+   <button data-testid="watchlist-export-btn" aria-label="Export watchlist" disabled={!hasCurrent||busy||Boolean(exporting)}
+     onClick={()=>setHeaderMenu({...headerMenu,kind:'export'})}><Download size={14}/>Export…</button>
+   <button ref={gridTrigger} aria-label="Watchlist Chart Grid actions" aria-expanded={gridMenuOpen} onClick={()=>setGridMenuOpen(!gridMenuOpen)}><LayoutGrid size={14}/>Chart Grid<ChevronDown size={12}/></button>
+   {gridMenuOpen&&<div ref={gridActions} className="watchlist-popover-nested" role="group" aria-label="Watchlist Grid actions">
+     <button disabled={!gridItems.length} onClick={()=>{closeHeaderMenu();setGridSelection(null);onGrid(gridItems.map(({row})=>row),current.name);}}>Open watchlist in Grid</button>
+     <button aria-pressed={choosingGrid} disabled={!gridItems.length&&!choosingGrid} onClick={()=>{setGridSelection(choosingGrid?null:{list:current.id,ids:new Set()});closeHeaderMenu();}}>{choosingGrid?'Cancel symbol selection':'Select symbols'}</button>
+     {choosingGrid&&<button disabled={!selectedForGrid.length} onClick={()=>{closeHeaderMenu();setGridSelection(null);onGrid(selectedForGrid,current.name+' · selection');}}>Open selected ({selectedForGrid.length}) in Grid</button>}
+   </div>}
+   <div className="watchlist-popover-label"><ListFilter size={12}/><span>Display</span><span data-testid="watchlist-active-timeframe" title="Comparison timeframe follows the active chart">{timeframeDisplay(activeTimeframe)}</span></div>
+   <label>Open in<select aria-label="Open symbol in pane" value={target} onChange={e=>setTarget(e.target.value)}><option value="active">Active chart</option>{Array.from({length:8},(_,i)=><option key={i} value={i}>Chart {i+1}</option>)}</select></label>
+   <label>Order<select aria-label="Watchlist sort" data-testid="watchlist-sort-select" value={currentSort} onChange={e=>{const sort=e.target.value as WatchlistSortOption;onChange({...workspace,sidebar:{...workspace.sidebar,sort}});triggerResort();}}>
+    <option value="manual">Manual order</option><option value="symbol">Symbol (A to Z)</option><option value="symbol_desc">Symbol (Z to A)</option>
+    <option value="price_desc">Last Price (High to Low)</option><option value="price">Last Price (Low to High)</option>
+    <option value="change_abs_desc">Change (High to Low)</option><option value="change_abs">Change (Low to High)</option>
+    <option value="change">Change % (High to Low)</option><option value="change_asc">Change % (Low to High)</option>
+   </select></label>
+   <label><input aria-label="Watchlist volume" type="checkbox" checked={workspace.sidebar.volume} onChange={e=>onChange({...workspace,sidebar:{...workspace.sidebar,volume:e.target.checked}})}/>Show Volume column</label>
+   <label><input aria-label="Group by market" type="checkbox" disabled={!hasCurrent} checked={grouped} onChange={e=>updateGroups(e.target.checked?[]:undefined)}/>Group by market</label>
+   {hasHidden&&<label><input aria-label="Show hidden symbols" type="checkbox" checked={showHidden} onChange={e=>setShowHidden(e.target.checked)}/>Hidden ({hiddenSymbols.length})</label>}
+   {hasHidden&&<button onClick={()=>{closeHeaderMenu();restoreAllHidden();}}>Restore hidden symbols</button>}
+  </>}
+  {headerMenu.kind === 'export' && <div data-testid="watchlist-export-menu">
+   <button data-testid="export-excel-action" aria-label="Export to Excel (.xlsx)" onClick={()=>{closeHeaderMenu();void handleExportExcel();}}>Export to Excel (.xlsx)</button>
+   <button data-testid="export-csv-action" aria-label="Export watchlist CSV" onClick={()=>{closeHeaderMenu();void exportCSV();}}>Export to CSV (.csv)</button>
+   <button onClick={()=>setHeaderMenu({...headerMenu,kind:'options'})}>Back to options</button>
+  </div>}
+ </WatchlistPopover>}
+ {filterOpen && hasCurrent && <div className="watch-search">
+  <SearchIcon size={14}/>
+  <input aria-label="Search current watchlist" placeholder="Filter this watchlist" value={query} autoFocus onChange={e=>setQuery(e.target.value)}
+    onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setFilterOpen(false);setQuery('');}}}/>
+  <button aria-label="Close list filter" onClick={()=>{setFilterOpen(false);setQuery('');}}><X size={14}/></button>
+ </div>}
  {(error||notice||busy||exporting)&&(
   <div className={`watchlist-status ${error?'error':exporting||busy?'preparing':noticeType}`} role={error?'alert':'status'} aria-live={error?'assertive':'polite'}>
    <div className="watchlist-status-content">
@@ -683,10 +755,11 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
    {(error||notice)&&!exporting&&!busy&&<button aria-label="Dismiss watchlist notification" className="watchlist-status-dismiss" onClick={dismissStatus}><X size={11}/></button>}
   </div>
  )}
- <div className="watch-columns">
+ <div ref={rows} data-testid="watchlist-rows" className="watch-rows" data-volume={workspace.sidebar.volume} tabIndex={0} onKeyDown={e=>handleKeyDown(e)} onScroll={e=>{scrollPosRef.current=e.currentTarget.scrollTop;}}>
+ <div className="watch-columns" data-volume={workspace.sidebar.volume}>
   <span className="watch-col-flag" aria-hidden="true"/>
   <button type="button" className={`watch-col-btn watch-col-symbol ${isSymbol?'active':''}`} onClick={()=>handleColumnSort('symbol')} title={isSymbol?(currentSort==='symbol'?'Symbol (A to Z) · Click to sort Z to A':'Symbol (Z to A) · Click to sort A to Z'):'Click to sort by Symbol'} aria-label="Sort by Symbol">
-   SYMBOL · {current.items.length}{isSymbol&&<span className="sort-arrow">{currentSort==='symbol'?' ▲':' ▼'}</span>}
+   Symbol{isSymbol&&<span className="sort-arrow">{currentSort==='symbol'?' ▲':' ▼'}</span>}
   </button>
   <button type="button" className={`watch-col-btn watch-col-price ${isPrice?'active':''}`} onClick={()=>handleColumnSort('price')} title={isPrice?(currentSort==='price_desc'?'Last Price (High to Low) · Click to sort Low to High':'Last Price (Low to High) · Click to sort High to Low'):'Click to sort by Last Price'} aria-label="Sort by Last Price">
    LAST{isPrice&&<span className="sort-arrow">{currentSort==='price_desc'?' ▼':' ▲'}</span>}
@@ -697,48 +770,44 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   <button type="button" className={`watch-col-btn watch-col-change-pct ${isChangePct?'active':''}`} onClick={()=>handleColumnSort('change')} title={isChangePct?(currentSort==='change_asc'?'Change % (Low to High) · Click to sort High to Low':'Change % (High to Low) · Click to sort Low to High'):'Click to sort by Change %'} aria-label="Sort by Change %">
    CHG %{isChangePct&&<span className="sort-arrow">{currentSort==='change_asc'?' ▲':' ▼'}</span>}
   </button>
+  {workspace.sidebar.volume && <span className="watch-col-volume">Vol</span>}
   <span className="watch-col-actions" aria-hidden="true"/>
  </div>
- <div ref={rows} data-testid="watchlist-rows" className="watch-rows" tabIndex={0} onKeyDown={e=>handleKeyDown(e)} onScroll={e=>{scrollPosRef.current=e.currentTarget.scrollTop;}}>
-  {items.map(({row,n},position)=>{
-   const id=identity(row),q=snapshots?.rows[id]?.value;
-   const rowFlagColor=flags[id]?.color;
-   const rowFlagHex=rowFlagColor?FLAG_COLORS[rowFlagColor]?.hex:undefined;
-   const isHidden=hiddenSymbols.includes(id);
-   return <div data-stream-state={snapshots?.rows[id]?.stream_state} data-quote-state={snapshots?.rows[id]?.state||'idle'} data-identity={id} data-hidden={isHidden} data-flag-color={rowFlagColor||undefined} style={rowFlagHex?({'--row-flag-color':rowFlagHex} as React.CSSProperties):undefined} className={`watch-row ${activePaneSymbol===id?'selected-symbol':''}`} key={id} draggable={!isColored&&!busy&&workspace.sidebar.sort==='manual'} onClick={e=>{if((e.target as HTMLElement).closest('.symbol-flag-btn, .watch-row-actions, button, a, input'))return;openRow(row);e.currentTarget.querySelector<HTMLButtonElement>('.watch-select')?.focus({preventScroll:true});}} onContextMenu={e=>{e.preventDefault();context(row,e.clientX,e.clientY);}} onDragStart={e=>{if(isColored)return;setDrag(id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}} onDragEnd={()=>setDrag(null)} onDragOver={e=>{if(!isColored&&drag&&workspace.sidebar.sort==='manual')e.preventDefault();}} onDrop={e=>{e.preventDefault();if(!isColored&&drag&&workspace.sidebar.sort==='manual')move(current.items.findIndex(r=>identity(r)===drag),n);setDrag(null);}}>
-    {choosingGrid?<input className="grid-source-choice" type="checkbox" aria-label={'Select '+row.symbol+' for Chart Grid'}
-      checked={gridSelection.ids.has(id)} onChange={e=>{
-        const ids=new Set(gridSelection.ids);
-        if(e.target.checked)ids.add(id);else ids.delete(id);
-        setGridSelection({list:current.id,ids});
-      }} />:<button data-testid={`watchlist-flag-${row.symbol}`} aria-label={rowFlagColor?`${rowFlagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${rowFlagColor?'flagged':'unflagged'}`} title={rowFlagColor?`${rowFlagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const b=e.currentTarget.getBoundingClientRect();setRowPicker({row,x:b.left,y:b.bottom+4});}}>
-     <FlagIcon color={rowFlagColor} filled={Boolean(rowFlagColor)} size={14}/>
-    </button>}
-    <button data-testid={`watchlist-symbol-${row.symbol}`} className="watch-select" title={`Click opens chart. ArrowUp / ArrowDown navigates and updates chart immediately. Shift+F10 opens actions.`} onClick={()=>openRow(row)} onKeyDown={e=>handleKeyDown(e,position,n)}>
-     <span>
-      <strong>{row.kind==='index'?row.name:symbolLabel(row.symbol)}</strong>
-      {row.kind==='index'?<IndexWatchlist indices={indices} symbol={row.symbol}/>:<small>{legacyCrypto(row)?'Migration required':`${row.exchange} · ${row.provider==='hyperliquid'?row.market_type:row.kind}`} {workspace.sidebar.volume&&q?.volume!==null&&q?.volume!==undefined?' · Vol '+q.volume.toLocaleString():''}</small>}
-     </span>
-     <QuoteCells migrationRequired={legacyCrypto(row)} row={snapshots?.rows[id]?{...snapshots.rows[id],state:refreshPaused?'cancelled':snapshots.rows[id].state,stale:snapshots.rows[id].stale||refreshPaused||!!q&&Date.now()/1000-q.fetched_at>Math.max(120,(refreshPreferences?.watchlist_interval||300)*2)}:undefined}/>
-    </button>
-    <div className="watch-row-actions">
-     {legacyCrypto(row)&&<button className="migrate-btn" aria-label={`Migrate ${row.symbol}`} onClick={()=>onMigration(row)}>Migrate</button>}
-     {!isColored&&!isMarket&&<button aria-label={`Move up ${row.symbol}`} title="Move up" disabled={busy||workspace.sidebar.sort!=='manual'||n===0} onClick={e=>{e.stopPropagation();move(n,n-1);}}><ArrowUp size={11}/></button>}
-     {!isColored&&!isMarket&&<button aria-label={`Move down ${row.symbol}`} title="Move down" disabled={busy||workspace.sidebar.sort!=='manual'||n===current.items.length-1} onClick={e=>{e.stopPropagation();move(n,n+1);}}><ArrowDown size={11}/></button>}
-     {isHidden?(
-      <button aria-label={`Restore ${row.symbol}`} title="Restore hidden ticker" disabled={busy} onClick={e=>{e.stopPropagation();restoreRow(id);}}><RefreshCw size={11}/></button>
-     ):(
-      <button aria-label={`Remove ${row.symbol}`} title={isColored?'Remove flag':isMarket?'Hide ticker':'Remove from watchlist'} disabled={busy} onClick={e=>{e.stopPropagation();void removeRow(row,n);}}><X size={11}/></button>
-     )}
-    </div>
-   </div>;
-  })}
-  {!items.length&&<p className="empty">{current.items.length?(hasHidden&&!showHidden?`All matching symbols hidden in this list. Toggle 'Hidden (${hiddenSymbols.length})' to show them.`:'No symbols match your search.'):isColored?`No symbols flagged with ${activeColor?.toUpperCase() || ''}. Flag symbols from Search or other watchlists.`:'Use Add symbol or Import CSV to populate this watchlist.'}</p>}
+  {groups ? MARKET_SECTIONS.map(([id,label]) => {
+    const group = groups.get(id)!;
+    if (!group.length) return null;
+    const collapsed = collapsedGroups.includes(id);
+    return <div className="watch-market-section" key={id}>
+      <button className="watch-market-heading" aria-expanded={!collapsed} aria-label={label}
+        onClick={()=>updateGroups(collapsed?collapsedGroups.filter(value=>value!==id):[...collapsedGroups,id])}>
+        <ChevronDown size={13}/><span>{label}</span><small>{group.length}</small>
+      </button>
+      {!collapsed&&group.map(row=>renderRow(row,visiblePositions!.get(row)!))}
+    </div>;
+  }) : items.map(renderRow)}
+  {!hasCurrent&&<div className="watchlist-empty-state">
+    <p>No ordinary watchlists yet.</p>
+    <button className="secondary-button" onClick={()=>openManagement('create')}>Create new list</button>
+  </div>}
+  {hasCurrent&&!items.length&&<p className="empty">{current.items.length?(hasHidden&&!showHidden?`All matching symbols hidden in this list. Use Watchlist options to show hidden symbols.`:'No symbols match your search.'):isColored?`No symbols in this flagged list. Assign a flag in Search or another watchlist.`:'Add a symbol or import a CSV.'}</p>}
  </div>
- <button data-testid="watchlist-add-symbol" className="add-symbol" onClick={onSearch}><Plus size={15}/> Add symbol</button>
- <div className="watchlist-bottom"><strong>{health.instruments.toLocaleString()} <span>NSE equities · Global search</span></strong><details className="quote-preferences"><summary data-testid="quote-refresh-status" title={quoteError||snapshots?.provider.error||`Historical snapshots, not a live quote feed. Updated at is the last successful provider retrieval; each row shows its own data/retrieval times. Last check completed: ${snapshots?.completed_at?new Date(snapshots.completed_at*1000).toLocaleTimeString():'pending'}`}>{refreshPaused?'Refresh paused':quoteError?'Provider unavailable':snapshots?.pending?`Loading ${snapshots.pending} prices…`:lastFetched?`Updated at ${new Date(lastFetched*1000).toLocaleTimeString()}`:'Historical prices'} · {refreshPreferences?.watchlist_interval?`Auto ${refreshPreferences.watchlist_interval}s`:'Manual'}</summary><div><label><input type="checkbox" aria-label="Fetch watchlist prices on startup" checked={!!refreshPreferences?.startup_quotes} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,startup_quotes:e.target.checked})}/> Fetch prices on startup</label><label>Watchlist refresh<select aria-label="Watchlist auto refresh" value={refreshPreferences?.watchlist_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,watchlist_interval:Number(e.target.value) as RefreshPreferences['watchlist_interval']})}><option value={0}>Manual only</option><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><label>Chart checks<select aria-label="Chart refresh interval" value={refreshPreferences?.chart_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,chart_interval:Number(e.target.value) as RefreshPreferences['chart_interval']})}><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><small>Yahoo historical data for non-crypto; verified crypto uses public streaming when available. Daily, weekly and monthly checks use at least 300 seconds; reliably closed markets reduce requests.</small>{(quoteError||snapshots?.provider.error)&&<small role="status">{quoteError||snapshots?.provider.error}</small>}</div></details></div>
+ <div className="watchlist-bottom">
+  {selectedItem&&<details className="watchlist-instrument-summary">
+   <summary title={instrumentDetails(selectedItem)}>{symbolLabel(selectedItem.symbol)} details</summary>
+   <div><strong>{selectedItem.name || selectedItem.symbol}</strong>
+    {selectedQuote?.value&&<span>{price(selectedQuote.value.price,selectedQuote.value.precision)} {selectedQuote.value.currency}
+      {selectedQuote.value.change!=null&&` · ${selectedQuote.value.change.toFixed(2)}%`}
+      {selectedQuote.value.absolute_change!=null&&` (${price(selectedQuote.value.absolute_change,selectedQuote.value.precision)})`}
+      {selectedQuote.stale&&' · Stale'}
+    </span>}
+    {selectedQuote?.value?.session.reliable&&<span>Session {selectedQuote.value.session.state}</span>}
+    {selectedDay?.interval==='1d'&&<span>Daily candle · High {price(selectedDay.candle.high,selectedQuote?.value?.precision)} · Low {price(selectedDay.candle.low,selectedQuote?.value?.precision)}</span>}
+    {selectedQuote?.value?.timeframe==='1d'&&selectedQuote.value.volume!=null&&<span>Daily volume {selectedQuote.value.volume.toLocaleString()}</span>}
+   </div>
+  </details>}
+  <strong>{health.instruments.toLocaleString()} <span>NSE equities · Global search</span></strong><details className="quote-preferences"><summary data-testid="quote-refresh-status" title={quoteError||snapshots?.provider.error||`Historical snapshots, not a live quote feed. Updated at is the last successful provider retrieval; each row shows its own data/retrieval times. Last check completed: ${snapshots?.completed_at?new Date(snapshots.completed_at*1000).toLocaleTimeString():'pending'}`}>{refreshPaused?'Refresh paused':quoteError?'Provider unavailable':snapshots?.pending?`Loading ${snapshots.pending} prices…`:lastFetched?`Updated at ${new Date(lastFetched*1000).toLocaleTimeString()}`:'Historical prices'} · {refreshPreferences?.watchlist_interval?`Auto ${refreshPreferences.watchlist_interval}s`:'Manual'}</summary><div><label><input type="checkbox" aria-label="Fetch watchlist prices on startup" checked={!!refreshPreferences?.startup_quotes} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,startup_quotes:e.target.checked})}/> Fetch prices on startup</label><label>Watchlist refresh<select aria-label="Watchlist auto refresh" value={refreshPreferences?.watchlist_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,watchlist_interval:Number(e.target.value) as RefreshPreferences['watchlist_interval']})}><option value={0}>Manual only</option><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><label>Chart checks<select aria-label="Chart refresh interval" value={refreshPreferences?.chart_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,chart_interval:Number(e.target.value) as RefreshPreferences['chart_interval']})}><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><small>Yahoo historical data for non-crypto; verified crypto uses public streaming when available. Daily, weekly and monthly checks use at least 300 seconds; reliably closed markets reduce requests.</small>{(quoteError||snapshots?.provider.error)&&<small role="status">{quoteError||snapshots?.provider.error}</small>}</div></details></div>
 
-        {manage && isColored && activeColor && <WatchlistDialog title={`Manage ${FLAG_COLORS[activeColor].name} List`} onClose={() => { if (!busy) setManage(false); }}>
+        {manage && isColored && activeColor && action === 'rename' && <WatchlistDialog title={`Manage ${FLAG_COLORS[activeColor].name} List`} onClose={() => { if (!busy) setManage(false); }}>
             <div className="watchlist-dialog-body">
                 <label>Custom Display Name / Alias
                     <input aria-label="Colored list alias" maxLength={64} value={aliasInput} onChange={e => setAliasInput(e.target.value)} placeholder={FLAG_COLORS[activeColor].defaultLabel} />
@@ -750,7 +819,22 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
             </div>
         </WatchlistDialog>}
 
-        {manage && !isColored && <WatchlistDialog title="Manage watchlists" onClose={() => { if (!busy) setManage(false); }}><div className="watchlist-dialog-body"><label>Action<select aria-label="Watchlist action" value={action} onChange={e => { const a = e.target.value as typeof action; setAction(a); setName(a === 'create' ? '' : a === 'duplicate' ? current.name + ' copy' : current.name); }}><option value="create">Create watchlist</option><option value="rename" disabled={systemList(current)}>Rename current</option><option value="duplicate">Duplicate current</option></select></label><label>Name<input aria-label="Watchlist name" maxLength={64} value={name} onChange={e => setName(e.target.value)} placeholder="Watchlist name" autoFocus /></label><p>{workspace.watchlists.length}/40 lists · {systemList(current) ? 'Default market list; its name and existence are protected.' : `${current.items.length} items in ${current.name}`}</p><button className="secondary-button" disabled={busy || !name.trim()} onClick={() => void run({ action, id: current.id, name })}>Save watchlist</button><button className="secondary-button" aria-label="Delete watchlist" disabled={busy || systemList(current)} onClick={() => { setManage(false); setRemoveList(true); }}>Delete current list</button>{hasHidden && <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}><p>{hiddenSymbols.length} hidden ticker{hiddenSymbols.length === 1 ? '' : 's'} in {current.name}.</p><button className="secondary-button" disabled={busy} onClick={restoreAllHidden}>Restore {hiddenSymbols.length} hidden ticker{hiddenSymbols.length === 1 ? '' : 's'}</button></div>}{error && <p role="alert" className="error">{error}</p>}</div></WatchlistDialog>}
+        {manage && (!isColored || action !== 'rename') && <WatchlistDialog
+            title={action==='create'?'Create watchlist':action==='rename'?'Rename watchlist':'Copy watchlist'}
+            onClose={()=>{if(!busy)setManage(false);}}>
+            <form className="watchlist-dialog-body" onSubmit={event=>{
+                event.preventDefault();
+                if (!busy&&name.trim()) void run({action,id:current.id,name});
+            }}>
+                <label>Name<input aria-label="Watchlist name" maxLength={64} value={name}
+                    onChange={event=>setName(event.target.value)} placeholder="Watchlist name" autoFocus /></label>
+                <p>{action==='duplicate'
+                    ? `Copy ${current.items.length} instrument memberships from ${current.name}.`
+                    : `${workspace.watchlists.length}/40 ordinary lists`}</p>
+                <button className="secondary-button" type="submit" disabled={busy||!name.trim()}>Save watchlist</button>
+                {error&&<p role="alert" className="error">{error}</p>}
+            </form>
+        </WatchlistDialog>}
 
         {clearConfirm && isColored && activeColor && <WatchlistDialog title={`Clear ${current.name}?`} onClose={() => { if (!busy) setClearConfirm(false); }}>
             <div className="watchlist-dialog-body">
@@ -761,8 +845,8 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
             </div>
         </WatchlistDialog>}
 
-        {removeList && <WatchlistDialog title="Delete watchlist?" onClose={() => { if (!busy) setRemoveList(false); }}><div className="watchlist-dialog-body"><p>Delete “{current.name}” and its {current.items.length} item memberships? Securities remain in the global directory and all other watchlists.</p><button className="secondary-button" onClick={() => setRemoveList(false)}>Cancel</button><button className="secondary-button" disabled={busy} onClick={() => void run({ action: 'delete', id: current.id, confirm: true })}>Confirm delete watchlist</button>{error && <p role="alert" className="error">{error}</p>}</div></WatchlistDialog>}
-        {importing && <ImportWatchlist lists={workspace.watchlists} current={current.id} onCommit={onImport} onClose={() => setImporting(false)} />}
+        {removeList && <WatchlistDialog title="Delete watchlist?" onClose={() => { if (!busy) setRemoveList(null); }}><div className="watchlist-dialog-body"><p>Delete “{removeList.name}” and its {removeList.items.length} item memberships? Securities remain in the global directory and all other watchlists.</p><button className="secondary-button" onClick={() => setRemoveList(null)}>Cancel</button><button className="secondary-button" disabled={busy} onClick={() => void run({ action: 'delete', id: removeList.id, confirm: true })}>Confirm delete watchlist</button>{error && <p role="alert" className="error">{error}</p>}</div></WatchlistDialog>}
+        {importing && <ImportWatchlist lists={workspace.watchlists} current={isColored?'':current.id} onCommit={onImport} onClose={() => setImporting(false)} />}
 
         {menu && <div ref={menuRef} role="menu" aria-label="Instrument actions" className="watchlist-context" style={{ left: menu.x, top: menu.y }}>
             <strong>{menu.row.symbol} · {menu.row.exchange}</strong>
@@ -778,7 +862,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
                 </div>
             </div>
             {flags[identity(menu.row)] && <button role="menuitem" onClick={() => { onChange({ ...workspace, active_watchlist: `color:${flags[identity(menu.row)]!.color}` }); setMenu(null); }}>Open {aliases[flags[identity(menu.row)]!.color] || FLAG_COLORS[flags[identity(menu.row)]!.color].defaultLabel}</button>}
-            <button role="menuitem" disabled={busy} onClick={() => void run({ action: 'add', id: 'favourites', instrument: identity(menu.row) })}>Add to favourites</button>
+            {favourites&&<button role="menuitem" disabled={busy} onClick={() => void run({ action: 'add', id: favourites.id, instrument: identity(menu.row) })}>Add to favourites</button>}
             <label>Destination<select aria-label="Destination watchlist" value={destination} onChange={e => setDestination(e.target.value)}>{workspace.watchlists.filter(w => w.id !== current.id).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
             <button role="menuitem" disabled={busy || !destination} onClick={() => void run({ action: 'transfer', id: current.id, instrument: identity(menu.row), destination })}>Copy to watchlist</button>
             <button role="menuitem" disabled={busy || !destination} onClick={() => void run({ action: 'transfer', id: current.id, instrument: identity(menu.row), destination, move: true })}>Move to watchlist</button>
@@ -788,11 +872,13 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
                 ) : (
                     <button role="menuitem" disabled={busy} onClick={() => { void removeRow(menu.row, 0); setMenu(null); }}>Hide ticker from watchlist</button>
                 )
+            ) : hiddenSymbols.includes(identity(menu.row)) ? (
+                <button role="menuitem" disabled={busy} onClick={()=>{restoreRow(identity(menu.row));setMenu(null);}}>Restore ticker to watchlist</button>
             ) : (
                 <button role="menuitem" disabled={busy} onClick={() => { if (isColored) { void removeFlag(identity(menu.row)); setMenu(null); } else void run({ action: 'remove', id: current.id, instrument: identity(menu.row) }); }}>{isColored ? 'Unflag from this colored list' : 'Remove from current watchlist'}</button>
             )}
         </div>}
 
-        {rowPicker && <ColorFlagPicker symbolName={rowPicker.row.symbol} currentColor={flags[identity(rowPicker.row)]?.color} position={{ x: rowPicker.x, y: rowPicker.y }} onSelectColor={col => void assignFlag(rowPicker.row, col)} onRemoveFlag={() => void removeFlag(identity(rowPicker.row))} onClose={() => setRowPicker(null)} />}
+        {rowPicker && <ColorFlagPicker symbolName={rowPicker.row.symbol} currentColor={flags[identity(rowPicker.row)]?.color} position={{ x: rowPicker.x, y: rowPicker.y }} onSelectColor={col => void assignFlag(rowPicker.row, col)} onRemoveFlag={() => void removeFlag(identity(rowPicker.row))} compact trigger={rowPicker.trigger} onClose={() => setRowPicker(null)} />}
     </aside>;
 }

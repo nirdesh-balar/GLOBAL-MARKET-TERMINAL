@@ -350,6 +350,20 @@ class SidebarPreferences(BaseModel):
     volume:bool=False
     sort:Literal['manual','symbol','symbol_desc','price','price_desc','change','change_desc','change_asc','change_abs','change_abs_desc']='manual'
     sort_dir:Literal['asc','desc']='asc'
+    groups: dict[str, list[Literal['commodities', 'indices_funds', 'crypto', 'stocks', 'other']]] = Field(default_factory=dict)
+
+    @field_validator('groups', mode='before')
+    @classmethod
+    def validate_watchlist_groups(cls, value):
+        if not isinstance(value, dict):
+            return {}
+        sections = {'commodities', 'indices_funds', 'crypto', 'stocks', 'other'}
+        return {
+            key: list(dict.fromkeys(item for item in items if isinstance(item, str) and item in sections))
+            for key, items in list(value.items())[:50]
+            if isinstance(key, str) and 0 < len(key) <= 100 and isinstance(items, list)
+        }
+
     @field_validator('width',mode='before')
     @classmethod
     def coerce_width(cls,value):
@@ -519,6 +533,7 @@ class Workspace(BaseModel):
         return value
     watchlist_version:Literal[1]=1
     watchlist_revision:int=Field(default=0,ge=0)
+    watchlist_defaults_initialized:bool=False
     drawing_tools:DrawingToolbarPreferences=Field(default_factory=DrawingToolbarPreferences)
     layout:Literal[1,2,4,6,8]=2
     panes:list[Pane]=Field(min_length=8,max_length=8)
@@ -537,7 +552,14 @@ class Workspace(BaseModel):
         if len({w.id for w in self.watchlists})!=len(self.watchlists):raise ValueError('Watchlist IDs must be unique')
         if len({p.id for p in self.presets})!=len(self.presets):raise ValueError('Preset IDs must be unique')
         valid_lists={w.id for w in self.watchlists}
-        is_color_list=self.active_watchlist.startswith('color:') and self.active_watchlist.split(':',1)[1].lower() in {'red','blue','green','yellow','purple','cyan','pink'}
+        colors = {'red', 'blue', 'green', 'orange', 'yellow', 'purple', 'cyan', 'pink'}
+        color_lists = {f'color:{color}' for color in colors}
+        self.sidebar.groups = {
+            key: value for key, value in self.sidebar.groups.items() if key in valid_lists or key in color_lists
+        }
+        is_color_list = self.active_watchlist.startswith("color:") and self.active_watchlist.lower() in color_lists
+        if not self.watchlists and not is_color_list:
+            self.active_watchlist = ''
         if self.watchlists and self.active_watchlist not in valid_lists and not is_color_list:raise ValueError('Select a valid active watchlist')
         return self
 class CacheConfig(BaseModel):

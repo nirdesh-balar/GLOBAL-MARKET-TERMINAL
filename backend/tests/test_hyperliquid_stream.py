@@ -27,7 +27,7 @@ async def settle():await asyncio.sleep(.05)
 def test_public_candle_schema(interval,native,kind):
  r=market(native,kind);assert wire('subscribe',subscription('candle',r,interval))==dict(method='subscribe',subscription=dict(type='candle',coin=native,interval=interval))
  assert wire('unsubscribe',subscription('candle',r,interval))['method']=='unsubscribe'
-@pytest.mark.parametrize('feed',['allMids','userFills','clearinghouseState','orderUpdates','post','l2Book','activeAssetData'])
+@pytest.mark.parametrize('feed',['allMids','userFills','clearinghouseState','orderUpdates','post','activeAssetData'])
 def test_disallowed_feed(feed):
  with pytest.raises(ProviderError):subscription(feed,market(),'1m')
  with pytest.raises(ProviderError):wire('subscribe',{'type':feed,'coin':'BTC'})
