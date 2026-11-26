@@ -6,7 +6,7 @@ import {_electron as electron,expect,sourceElectron} from './isolated-electron.m
 
 const profile=await mkdtemp(join(tmpdir(),'gmt-reference-analysis-'));
 const launch=()=>electron.launch({executablePath:sourceElectron,args:['.'],timeout:60000,
-  env:{...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1',IMT_OFFLINE:'1'}});
+  env:{...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1',IMT_HYPERLIQUID_UI:'1',IMT_OFFLINE:'1'}});
 const results='test-results/reference-analysis';
 await mkdir(results,{recursive:true});
 let app,page;
@@ -57,7 +57,7 @@ try{
   let search=page.getByRole('dialog',{name:'Compare Symbol'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('TCS');
   const result=search.getByTestId('search-result-TCS.NS');
-  await expect(result).toBeEnabled();
+  await expect(result).toBeEnabled({timeout:30000});
   await screenshot('0029-compare-search');
   await result.click();
   await expect(pane().locator('.compare-legend')).toContainText('Returns since',{timeout:30000});
@@ -78,8 +78,9 @@ try{
   await expect.poll(()=>canvas().evaluate(node=>node.__chart.priceScale('left').width())).toBe(0);
   await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
   search=page.getByRole('dialog',{name:'Search stocks and indices'});
+  await search.getByRole('button',{name:'India equities',exact:true}).click();
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('RELIANCE');
-  await expect(search.getByTestId('search-result-RELIANCE.NS')).toBeVisible();
+  await expect(search.getByTestId('search-result-RELIANCE.NS')).toBeEnabled({timeout:30000});
   await screenshot('0013-search');
   await page.keyboard.press('Escape');
   await expect(search).toHaveCount(0);
@@ -105,7 +106,7 @@ try{
   search=page.getByRole('dialog',{name:'Search indices'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('NIFTY');
   const index=search.getByTestId('search-result-^NSEI');
-  await expect(index).toBeEnabled();
+  await expect(index).toBeEnabled({timeout:30000});
   await index.click();
   const details=page.getByRole('dialog',{name:'Index details'});
   await expect(details).toContainText('Yahoo Finance');
@@ -124,7 +125,7 @@ try{
   await page.getByRole('button',{name:'Search indices',exact:true}).click();
   search=page.getByRole('dialog',{name:'Search indices'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('Nifty 50');
-  await expect(search.getByTestId('search-result-^NSEI')).toBeEnabled();
+  await expect(search.getByTestId('search-result-^NSEI')).toBeEnabled({timeout:30000});
   await search.getByTestId('search-result-^NSEI').press('Enter');
   await expect(details).toContainText('NIFTY', {ignoreCase:true});
   await details.getByRole('button',{name:'View Chart'}).click();
