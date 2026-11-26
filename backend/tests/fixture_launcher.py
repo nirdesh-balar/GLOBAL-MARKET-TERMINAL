@@ -70,7 +70,10 @@ if __name__=='__main__':
   from app.providers.hyperliquid import HyperliquidClient
   from app.request_budget import RequestBudget
   from hyperliquid_fixtures import PublicFixture
-  hyper_client=HyperliquidClient(RequestBudget(2),PublicFixture(),min_interval=0,weight_limit=100000)
+  # Replay needs more than 100 real fixture bars even when no clock minute rolls
+  # over between the REST snapshot and the first WebSocket update.
+  candle_count=120 if os.environ.get('IMT_REPLAY_SERIES_UI')=='1' else 100
+  hyper_client=HyperliquidClient(RequestBudget(2),PublicFixture(candle_count),min_interval=0,weight_limit=100000)
  stream_connector=None
  if os.environ.get('IMT_STREAM_UI')=='1':
   from stream_fixtures import FixtureConnector
