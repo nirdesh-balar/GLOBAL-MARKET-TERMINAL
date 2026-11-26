@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-26 · Watchlist quote refresh ownership
+
+- Fence each Watchlist refresh by client, selection generation and request sequence. The backend accepts a snapshot only after the corresponding list and timeframe have been registered. Polls also carry the expected job ID. Closing or replacing a selection retires its generation and cancels only its work.
+- Keep quote values by canonical instrument and timeframe in a bounded memory cache shared across selections. Show the last valid value with its existing provenance and stale status. Retain provider backoff, shared request budgets and startup opt-out.
+- On Phase 3 post-merge run `45817781307`, Stage 6.6 found zero ready rows after Stocks → US → Crypto → Stocks. A controlled Mac reproduction on `f1d2f106` showed a late Crypto POST displacing the new Stocks job even with all eight prices still cached. The hosted log lacks request ordering. Stage 6.6 now requires the intended completed job and checks all eight canonical rows and rendered prices. The controlled Electron regression also delivers old starts, cancellation and status after a newer selection.
+
 ## 2026-11-24 · Phase 3 search and profile recovery
 
 - Give each symbol search one chart or Watchlist destination. Closing it clears that destination, and a pending Watchlist write cannot close a later search.

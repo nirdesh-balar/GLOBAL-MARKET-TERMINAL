@@ -15,6 +15,8 @@ Mac rc.8 installation was verified from integrated `a63a96cbff1b72c7cbc2e710cf3c
 
 The local Phase 3 Order Flow branch uses the same public stream and process lifecycle on Windows. At the accepted shared SHA, verify the dock with native DPI and keyboard input, paired market switching, reconnect and sleep/wake gaps, and shared socket shutdown alongside Charts and Chart Grid. Verify with a disposable profile on Windows x64.
 
+Watchlist quote refresh ownership shares the Electron and Python lifecycle on Windows. At the accepted shared SHA, verify rapid list and timeframe changes, cached prices, manual and automatic refresh overlap, sidebar close/reopen, renderer reload, suspend/resume, and clean shutdown in a disposable x64 profile. Windows native testing remains pending.
+
 ## Native commands
 
 1. Verify the source SHA and use native Node 22.19.0 or a compatible version with npm and Python 3.11 x64. Run `npm ci`, create `backend\.venv`, and install `backend\requirements-lock.txt` with the venv Python. Prepare test directory resources through the documented official-source path.

@@ -3,8 +3,34 @@ import {_electron as electron,expect} from './isolated-electron.mjs';import asse
 const profile=await mkdtemp(join(tmpdir(),'imt-stage66-refresh-'));let app,page;const errors=[];const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/dist/Electron.app/Contents/MacOS/Electron'),args:['.'],env:{...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1',IMT_REFRESH_UI:'1',IMT_OFFLINE:'1'},timeout:60000});
 const request=(path,method='GET',body)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[path,method,body]);
 const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByTestId('watchlist-sidebar')).toBeVisible({timeout:60000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:45000});};
-const readyQuotes=async()=>{await expect.poll(async()=>(await request('/api/quotes/status?watchlist=stocks')).pending,{timeout:45000}).toBe(0);await expect(page.locator('.watch-row[data-quote-state="ready"]')).toHaveCount(8);};
-try{app=await launch();await load();await readyQuotes();let status=await request('/api/history/status');assert.equal(status.history_requests,2);assert.equal(status.quote_provider_requests,8);const snapshot=await request('/api/quotes/status?watchlist=stocks');assert.ok(Object.values(snapshot.rows).every(r=>r.value?.price&&r.value.currency&&r.value.data_time));await page.screenshot({path:'test-results/stage66-startup-prices.png'});await chooseWatchlist(page, 'us');await chooseWatchlist(page, 'crypto');await chooseWatchlist(page, 'stocks');await readyQuotes();
+const readyQuotes=async(expectedIds, previous)=>{
+ const sidebar=page.getByTestId('watchlist-sidebar');
+ await expect(sidebar).toHaveAttribute('data-watchlist','stocks');
+ let snapshot;
+ await expect.poll(async()=>{
+  snapshot=await request('/api/quotes/status?watchlist=stocks');
+  if(!snapshot.job||snapshot.generation<1||snapshot.job===previous?.job||snapshot.generation<=(previous?.generation??0))return 'Missing or superseded Stocks job';
+  const rows=Object.values(snapshot.rows);
+  if(rows.some(row=>row.state==='cancelled'))return 'Stocks job was cancelled';
+  if(snapshot.pending)return 'Stocks job still loading';
+  if(!snapshot.completed_at)return 'Stocks job did not complete';
+  if(rows.length!==8||!rows.every(row=>row.state==='ready'&&Number.isFinite(row.value?.price)&&row.value.price>0&&row.value.currency&&row.value.data_time))return 'Missing or invalid Stocks quote cache';
+  return 'Eight ready Stocks quotes';
+ },{timeout:45000}).toBe('Eight ready Stocks quotes');
+ assert.deepEqual(Object.keys(snapshot.rows).sort(),expectedIds);
+ await expect(sidebar).toHaveAttribute('data-quote-generation',String(snapshot.generation));
+ await expect(sidebar).toHaveAttribute('data-quote-job',snapshot.job);
+ const ready=sidebar.locator('.watch-row[data-quote-state="ready"]');
+ await expect(ready).toHaveCount(8);
+ const rendered=await ready.evaluateAll(rows=>Object.fromEntries(rows.map(row=>[row.dataset.identity,row.querySelector('.quote-number')?.textContent])));
+ assert.deepEqual(Object.keys(rendered).sort(),expectedIds,'All eight expected canonical instruments are rendered');
+ for(const [key,row] of Object.entries(snapshot.rows)){
+  const {price,precision}=row.value;
+  assert.equal(rendered[key],price.toLocaleString('en-IN',{minimumFractionDigits:precision,maximumFractionDigits:precision}),key+' renders the owned cached quote');
+ }
+ return snapshot;
+};
+try{app=await launch();await load();const stocks=(await request('/workspace')).watchlists.find(list=>list.id==='stocks');const expectedIds=stocks.items.map(item=>item.canonical_id).sort();assert.equal(new Set(expectedIds).size,8);const startup=await readyQuotes(expectedIds);let status=await request('/api/history/status');assert.equal(status.history_requests,2);assert.equal(status.quote_provider_requests,8);await page.screenshot({path:'test-results/stage66-startup-prices.png'});await chooseWatchlist(page, 'us');await chooseWatchlist(page, 'crypto');await chooseWatchlist(page, 'stocks');const restored=await readyQuotes(expectedIds,startup);assert.deepEqual(Object.fromEntries(Object.entries(restored.rows).map(([id,row])=>[id,row.value])),Object.fromEntries(Object.entries(startup.rows).map(([id,row])=>[id,row.value])),'Switching lists reuses all eight Stocks quotes');
  // Compact controls and persisted opt-out. Selecting a new list cancels old work.
  await page.getByTestId('quote-refresh-status').click();await expect(page.getByLabel('Watchlist auto refresh',{exact:true})).toHaveValue('300');await page.getByLabel('Watchlist auto refresh',{exact:true}).selectOption('0');await page.getByLabel('Fetch watchlist prices on startup',{exact:true}).uncheck();await page.getByTestId('quote-refresh-status').click();await expect.poll(async()=>(await request('/api/refresh/preferences')).watchlist_interval).toBe(0);const prefs=await request('/api/refresh/preferences');
  const w=await request('/workspace');w.layout=2;Object.assign(w.panes[1],Object.fromEntries(Object.entries(w.panes[0]).filter(([k])=>k!=='id')));w.panes[0].scale={logarithmic:true,auto:false,percentage:false};w.panes[0].drawing_sets={[w.panes[0].canonical_id+'/1d']:[{id:'refresh-line',kind:'horizontal',version:2,anchors:[{time:1470000000,price:340}],color:'#86aaf9',width:1,params:{}}]};await request('/workspace','PUT',w);await page.reload();await load();assert.equal((await request('/api/refresh/preferences')).startup_quotes,false);

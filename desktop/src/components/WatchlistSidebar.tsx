@@ -650,7 +650,8 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     </div>
    </div>;
   };
- return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}>
+ return <aside data-testid="watchlist-sidebar" aria-label="Watchlists" className="watchlist professional-watchlist" style={{width}} aria-busy={busy}
+  data-watchlist={current.id} data-quote-generation={snapshots?.generation} data-quote-job={snapshots?.job ?? undefined}>
   <div className="sidebar-resizer" role="separator" aria-label="Resize watchlist" aria-orientation="vertical"
     tabIndex={0} aria-valuemin={220} aria-valuemax={480} aria-valuenow={width}
     onPointerDown={event=>{

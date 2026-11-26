@@ -11,7 +11,7 @@ from app.main import create_app
 from app.history import HistoryService
 from app.providers.base import History, ProviderError
 from app.providers.yahoo import YahooFinanceProvider
-from app.refresh import quote_value, market_session, RefreshPreferences
+from app.refresh import quote_value, market_session, RefreshPreferences, Ownership, Selection, Operation
 from app.request_budget import RequestBudget
 from fixtures import candles
 
@@ -326,4 +326,272 @@ def test_same_ticker_different_exchange_has_separate_quote_cache():
         assert len(provider.calls)==2 and len(h.quote_cache.entries)==2
         await h.quote(nasdaq);await h.quote(nyse);assert len(provider.calls)==2
         await h.close()
+    asyncio.run(run())
+
+
+async def select_scope(q, client, generation, watchlist, timeframe='1d'):
+    owner = Ownership(client=client, generation=generation)
+    result = await q.select(Selection(watchlist=watchlist, timeframe=timeframe), owner)
+    assert result['accepted']
+    return owner
+
+
+async def owned_start(q, owner, watchlist, sequence=1, *, timeframe='1d', force=False, automatic=False):
+    return await q.start(watchlist, force, automatic, timeframe,
+                         owner=Operation(**owner.model_dump(), sequence=sequence))
+
+
+def test_delayed_start_and_cancel_cannot_replace_return_to_warm_stocks(tmp_path):
+    a = app_for(tmp_path)
+    q, history = a.state.quotes, a.state.history
+
+    async def run():
+        client = (await q.register())['client']
+        initial = await select_scope(q, client, 1, 'stocks')
+        await owned_start(q, initial, 'stocks')
+        await q.clients[client].task
+        original = q.status('stocks', owner=initial)['rows']
+        assert len(original) == 8 and all(row['state'] == 'ready' and row['value'] for row in original.values())
+        provider_calls = len(history.provider.calls)
+
+        for cycle in range(12):
+            generation = 2 + 3*cycle
+            us = await select_scope(q, client, generation, 'us')
+            crypto = await select_scope(q, client, generation+1, 'crypto')
+            stocks = await select_scope(q, client, generation+2, 'stocks')
+            warm = q.status('stocks', owner=stocks)
+            assert warm['job'] is None and warm['rows'] == original
+            current = await owned_start(q, stocks, 'stocks')
+            if cycle % 2:
+                assert not await q.retire(crypto)
+            # These posts are delivered after Stocks is accepted. Neither can
+            # start work, even with force, or reset the current job and status.
+            assert not (await owned_start(q, crypto, 'crypto', force=True))['accepted']
+            assert not (await owned_start(q, us, 'us', force=True))['accepted']
+            if not cycle % 2:
+                assert not await q.retire(crypto)
+            assert not q.status('stocks', owner=initial)['accepted']
+            assert not q.status('crypto', owner=crypto)['accepted']
+            assert await q.select(q.clients[client].selection.model_copy(update={'watchlist':'crypto'}), crypto) == {'accepted':False}
+            await q.clients[client].task
+            done = q.status('stocks', owner=stocks, sequence=1, job_id=current['job'])
+            assert done['pending'] == done['active_jobs'] == 0
+            assert done['rows'] == original
+            assert done['cached_values'] == 8 and done['owned_clients'] == 1
+            assert len(history.provider.calls) == provider_calls
+        assert provider_calls == 8
+        await q.close()
+        await history.close()
+
+    asyncio.run(run())
+
+
+def test_owned_manual_refresh_wins_and_equal_requests_coalesce(tmp_path):
+    a = app_for(tmp_path)
+    q, history = a.state.quotes, a.state.history
+
+    async def run():
+        entered, release = asyncio.Event(), asyncio.Event()
+        original_quote = history.quote
+        calls = []
+
+        async def slow_quote(security, force=False, interval='1d'):
+            calls.append((security['canonical_id'], force))
+            entered.set()
+            await release.wait()
+            return await original_quote(security, force, interval)
+
+        history.quote = slow_quote
+        client = (await q.register())['client']
+        owner = await select_scope(q, client, 1, 'stocks')
+        automatic = await owned_start(q, owner, 'stocks', automatic=True)
+        await asyncio.wait_for(entered.wait(), 2)
+        manual = await owned_start(q, owner, 'stocks', sequence=3, force=True)
+        assert manual['job'] != automatic['job']
+        assert not (await owned_start(q, owner, 'stocks', sequence=2, automatic=True))['accepted']
+        assert not q.status('stocks', owner=owner, sequence=1, job_id=automatic['job'])['accepted']
+        retry = await owned_start(q, owner, 'stocks', sequence=3, force=True)
+        assert retry['job'] == manual['job']
+        duplicate = await owned_start(q, owner, 'stocks', sequence=4, force=True)
+        assert duplicate['job'] == manual['job']
+        assert not q.status('stocks', owner=owner, sequence=3, job_id=manual['job'])['accepted']
+        await q.cancel(manual['job'])  # An unowned request cannot cancel it.
+        assert q.status('stocks', owner=owner, sequence=4, job_id=manual['job'])['pending'] == 8
+        release.set()
+        await q.clients[client].task
+        result = q.status('stocks', owner=owner, sequence=4, job_id=manual['job'])
+        assert all(row['state'] == 'ready' for row in result['rows'].values())
+        assert len({key for key, force in calls if force}) == sum(force for _,force in calls) == 8
+        assert len(history.provider.calls) == 8 and history.provider.maximum <= 2
+        await q.close()
+        await history.close()
+
+    asyncio.run(run())
+
+
+def test_pending_provider_completion_and_scope_release_are_isolated(tmp_path):
+    a = app_for(tmp_path)
+    q, history = a.state.quotes, a.state.history
+
+    async def run():
+        entered, complete = asyncio.Event(), asyncio.Event()
+        original_quote = history.quote
+
+        async def provider_work():
+            entered.set()
+            await complete.wait()
+
+        download = asyncio.create_task(provider_work())
+
+        async def slow_quote(security, force=False, interval='1d'):
+            if interval == '15m':
+                await asyncio.shield(download)
+            return await original_quote(security, force, interval)
+
+        history.quote = slow_quote
+        first, second = [(await q.register())['client'] for _ in range(2)]
+        old = await select_scope(q, first, 1, 'stocks', '15m')
+        other = await select_scope(q, second, 1, 'us')
+        old_job = await owned_start(q, old, 'stocks', timeframe='15m')
+        await asyncio.wait_for(entered.wait(), 2)
+        other_job = await owned_start(q, other, 'us')
+        current = await select_scope(q, first, 2, 'stocks', '1h')
+        assert not q.status('stocks', '15m', old, 1, old_job['job'])['accepted']
+        assert q.status('us', owner=other)['job'] == other_job['job']
+        assert not (await owned_start(q, current, 'stocks', timeframe='15m'))['accepted']
+        await owned_start(q, current, 'stocks', timeframe='1h')
+        await q.clients[first].task
+        complete.set()
+        await download
+        cached = q.status('stocks', '1h')['rows']
+        assert all(row['value']['timeframe'] == '1h' for row in cached.values())
+        assert not any(row['value'] for row in q.status('stocks', '15m')['rows'].values())
+        await q.release(first)
+        assert not (await owned_start(q, current, 'stocks', timeframe='1h', force=True))['accepted']
+        remount = (await q.register())['client']
+        assert remount != first
+        new = await select_scope(q, remount, 1, 'stocks', '1h')
+        assert q.status('stocks', '1h', new)['rows'] == cached
+        assert q.status('us', owner=other)['job'] == other_job['job']
+        await q.close()
+        await history.close()
+        assert not q.clients and not q.values and not history.inflight
+
+    asyncio.run(run())
+
+
+def test_flagged_scope_keeps_cached_provenance_and_honest_missing_status(tmp_path):
+    a = app_for(tmp_path)
+    q, history = a.state.quotes, a.state.history
+
+    async def run():
+        client = (await q.register())['client']
+        ordinary = await select_scope(q, client, 1, 'stocks')
+        await owned_start(q, ordinary, 'stocks')
+        await q.clients[client].task
+        rows = q.status('stocks', owner=ordinary)['rows']
+        key = next(iter(rows))
+        item = next(row for row in q.items('stocks') if row.get('canonical_id') == key)
+        q.db.set_flag(key, 'red', item['symbol'], item['name'], item['exchange'], 'yahoo', 'equity')
+        flagged = await select_scope(q, client, 2, 'color:red')
+        assert q.status('color:red', owner=flagged)['rows'] == {key: rows[key]}
+
+        history.provider.error = 'missing'
+        await owned_start(q, flagged, 'color:red', force=True)
+        await q.clients[client].task
+        failed = q.status('color:red', owner=flagged)['rows'][key]
+        assert failed['state'] == 'missing' and failed['stale'] and failed['error']
+        assert failed['value'] == rows[key]['value']
+        assert await q.retire(flagged)
+        restored = q.status('color:red')['rows'][key]
+        assert restored['state'] == 'ready' and restored['stale'] and restored['value'] == failed['value']
+
+        intraday = await select_scope(q, client, 3, 'color:red', '5m')
+        await owned_start(q, intraday, 'color:red', timeframe='5m')
+        await q.clients[client].task
+        missing = q.status('color:red', '5m', intraday)['rows'][key]
+        assert missing['state'] == 'missing' and missing['value'] is None and not missing['stale']
+        await q.close()
+        await history.close()
+
+    asyncio.run(run())
+
+
+def test_owned_endpoints_tombstone_and_scope_bounds(tmp_path):
+    a = app_for(tmp_path)
+    with TestClient(a, headers={'Authorization':'Bearer '+TOKEN}) as client:
+        route, selection = '/api/quotes/client', '/api/quotes/selection'
+        leases = [client.post(route).json()['client'] for _ in range(a.state.quotes.MAX_CLIENTS)]
+        assert len(set(leases)) == len(leases)
+        assert client.post(route).status_code == 503
+        owner = dict(client=leases[0], generation=2)
+        assert client.request('DELETE', selection, json=owner).json() == {'cancelled':True}
+        assert client.put(selection, json=dict(watchlist='stocks', ownership=owner)).json() == {'accepted':False}
+        assert client.put(selection, json=dict(watchlist='stocks', ownership=dict(owner, generation=0))).status_code == 422
+        assert client.put(selection, json=dict(watchlist='stocks', ownership=dict(owner, generation=True))).status_code == 422
+        assert client.get('/api/quotes/status', params=dict(watchlist='stocks', client=leases[0])).status_code == 422
+        assert client.delete(route, params=dict(client='bad')).status_code == 422
+        assert client.delete(route, params=dict(client=leases[0])).status_code == 200
+        assert client.post(route).json()['client'] not in leases
+        assert client.post('/api/quotes/snapshot', json=dict(watchlist='stocks', ownership=dict(owner, generation=3, sequence=1))).json() == {'accepted':False}
+    assert not a.state.quotes.clients
+
+
+def test_shutdown_cancels_active_workers_in_all_owned_scopes(tmp_path):
+    a = app_for(tmp_path)
+    q, history = a.state.quotes, a.state.history
+
+    async def run():
+        all_entered = asyncio.Event()
+        unfinished = asyncio.Event()
+        entered, cancelled = [], []
+
+        async def pending_quote(security, force=False, interval='1d'):
+            key = security['canonical_id']
+            entered.append(key)
+            if len(entered) == 4:
+                all_entered.set()
+            try:
+                await unfinished.wait()
+            finally:
+                cancelled.append(key)
+
+        history.quote = pending_quote
+        client_a, client_b = [(await q.register())['client'] for _ in range(2)]
+        owner_a = await select_scope(q, client_a, 1, 'stocks')
+        owner_b = await select_scope(q, client_b, 1, 'us')
+        await owned_start(q, owner_a, 'stocks')
+        await owned_start(q, owner_b, 'us')
+        jobs = [scope.task for scope in q.clients.values()]
+        await asyncio.wait_for(all_entered.wait(), 2)
+        assert q.status('stocks', owner=owner_a)['active_jobs'] == 2
+        await q.close()
+        await history.close()
+        assert sorted(cancelled) == sorted(entered)
+        assert all(job.cancelled() for job in jobs)
+        assert not q.clients and not q.values
+        assert q.status('stocks')['active_jobs'] == 0
+        assert not (await owned_start(q, owner_a, 'stocks'))['accepted']
+
+    asyncio.run(run())
+
+
+def test_evicted_quote_is_no_longer_reported_ready(tmp_path):
+    a = app_for(tmp_path)
+    q, history = a.state.quotes, a.state.history
+
+    async def run():
+        q.MAX_VALUES = 4
+        client = (await q.register())['client']
+        owner = await select_scope(q, client, 1, 'stocks')
+        await owned_start(q, owner, 'stocks')
+        await q.clients[client].task
+        done = q.status('stocks', owner=owner)
+        assert done['pending'] == 0 and done['cached_values'] == 4
+        assert len(done['rows']) == 8
+        assert sum(row['state'] == 'ready' for row in done['rows'].values()) == 4
+        assert all(row['state'] == 'missing' for row in done['rows'].values() if row['value'] is None)
+        await q.close()
+        await history.close()
+
     asyncio.run(run())

@@ -42,6 +42,27 @@ async function startStreamBridge(){
 let alertNotifications:AlertNotifications|undefined;
 let updates:ApplicationUpdates|undefined;
 const requests=new Map<string,AbortController>();
+const quoteClientPath='/api/quotes/client';
+const quoteDocuments=new WeakMap<Electron.WebContents,{clients:Set<string>;closed:boolean}>();
+
+function getQuoteDocument(contents:Electron.WebContents) {
+  let document=quoteDocuments.get(contents);
+  if(!document) {
+    document={clients:new Set<string>(),closed:false};
+    quoteDocuments.set(contents,document);
+  }
+  return document;
+}
+
+function releaseQuoteDocument(contents:Electron.WebContents) {
+  const previous=quoteDocuments.get(contents);
+  if(!previous)return;
+  previous.closed=true;
+  quoteDocuments.delete(contents);
+  for(const client of previous.clients) {
+    void localFetch(quoteClientPath+'?client='+client,'DELETE').catch(()=>{});
+  }
+}
 const auth=randomBytes(32).toString('hex');
 const root=join(__dirname,'../..');
 const dev=!app.isPackaged&&process.env.IMT_DEV==='1';
@@ -71,7 +92,7 @@ if(dev&&!process.env.IMT_TEST_DATA_DIR){const directory=join(app.getPath('appDat
 if(process.env.IMT_TEST_DATA_DIR){mkdirSync(process.env.IMT_TEST_DATA_DIR,{recursive:true,mode:0o700});app.setPath('userData',process.env.IMT_TEST_DATA_DIR);}
 const alertPath=(path:string)=>/^\/api\/alerts(?:\/(?:status|settings|history(?:\/clear)?|[a-f0-9]{32}(?:\/delete)?))?$/.test(path);
 const flagPath=(path:string)=>/^\/api\/flags(?:\/.*)?$/.test(path);
-const allowed=new Set(['/api/studies/context','/api/streams/status','/api/streams/consumers','/api/streams/events','/api/streams/lifecycle','/api/hyperliquid/catalogue','/api/crypto-migration/candidates','/api/providers/status','/api/crypto-migration/preview','/api/crypto-migration/postpone','/api/crypto-migration/commit','/api/crypto-migration/restore','/health','/workspace','/api/securities/search','/api/securities/refresh','/api/history','/api/history/refresh','/api/quotes/snapshot','/api/quotes/status','/api/quotes/cancel','/api/refresh/preferences','/api/history/status','/api/history/preferences','/api/cache/clear','/api/instruments/search','/api/instruments/discover','/api/markets','/api/indices','/api/indicators/calculate','/api/provider/status','/api/watchlists/mutate','/api/watchlists/import/preview','/api/watchlists/import/commit','/api/flags','/api/flags/remove','/api/flags/clear','/api/flags/aliases']);
+const allowed=new Set([quoteClientPath,'/api/quotes/selection','/api/studies/context','/api/streams/status','/api/streams/consumers','/api/streams/events','/api/streams/lifecycle','/api/hyperliquid/catalogue','/api/crypto-migration/candidates','/api/providers/status','/api/crypto-migration/preview','/api/crypto-migration/postpone','/api/crypto-migration/commit','/api/crypto-migration/restore','/health','/workspace','/api/securities/search','/api/securities/refresh','/api/history','/api/history/refresh','/api/quotes/snapshot','/api/quotes/status','/api/quotes/cancel','/api/refresh/preferences','/api/history/status','/api/history/preferences','/api/cache/clear','/api/instruments/search','/api/instruments/discover','/api/markets','/api/indices','/api/indicators/calculate','/api/provider/status','/api/watchlists/mutate','/api/watchlists/import/preview','/api/watchlists/import/commit','/api/flags','/api/flags/remove','/api/flags/clear','/api/flags/aliases']);
 function python(){const candidate=backendExecutable(root,false);if(!existsSync(candidate))throw new Error('Run npm run setup to install the local Python backend.');return candidate;}
 async function startBackend(){
   const executable=app.isPackaged?backendExecutable(process.resourcesPath,true):python();
@@ -162,9 +183,20 @@ ipcMain.handle('api',async(event,path:string,method='GET',body?:unknown,requestI
   if(JSON.stringify(body??'').length>(url.pathname.startsWith('/api/watchlists/import/')?1_500_000:url.pathname==='/api/indicators/calculate'?16_000_000:(url.pathname==='/workspace'||url.pathname==='/api/screener/presets')?4_000_000:256_000))throw new Error('Request too large');
   if(requestId!==undefined&&(typeof requestId!=='string'||requestId.length>80||requests.has(requestId)))throw new Error('Invalid request identifier');
   const controller=new AbortController();if(requestId)requests.set(requestId,controller);
+  const document=url.pathname===quoteClientPath?getQuoteDocument(event.sender):undefined;
   const operation=localFetch(url.pathname+url.search,method,body,controller.signal);
   if((url.pathname==='/workspace'||url.pathname==='/api/refresh/preferences'||url.pathname==='/api/screener/presets'||alertPath(url.pathname)||flagPath(url.pathname)||url.pathname.startsWith('/api/watchlists/')||url.pathname.startsWith('/api/crypto-migration/'))&&(method==='PUT'||method==='POST'||method==='DELETE')){pendingSaves.add(operation);operation.finally(()=>pendingSaves.delete(operation)).catch(()=>{});}
-  try{return await operation;}
+  try{
+    const value=await operation;
+    if(document){
+      if(method==='POST'&&typeof value?.client==='string'&&/^[a-f0-9]{32}$/.test(value.client)){
+        if(document.closed)void localFetch(quoteClientPath+'?client='+value.client,'DELETE').catch(()=>{});
+        else document.clients.add(value.client);
+      }
+      if(method==='DELETE')document.clients.delete(url.searchParams.get('client')||'');
+    }
+    return value;
+  }
   catch(e){const failure=e as Error&{kind?:string;code?:string;retry_after?:number;retryable?:boolean;http_status?:number};return {__terminal_error:{message:controller.signal.aborted?'Outdated chart request cancelled.':failure.message,kind:controller.signal.aborted?'cancelled':failure.kind??'temporary',code:controller.signal.aborted?'cancelled':failure.code??failure.kind??'connection',retry_after:failure.retry_after??0,retryable:!controller.signal.aborted&&(failure.retryable??true),http_status:failure.http_status}};}
   finally{if(requestId)requests.delete(requestId);}
 });
@@ -232,8 +264,13 @@ ipcMain.handle('external',async(event,url:string)=>{
 });
 function createWindow(){
   window=new BrowserWindow({width:1440,height:920,minWidth:1050,minHeight:650,title:PRODUCT_NAME,backgroundColor:'#0c1017',...(process.platform==='darwin'?{titleBarStyle:'hiddenInset' as const,trafficLightPosition:{x:17,y:9}}:{titleBarStyle:'default' as const}),webPreferences:{preload:join(__dirname,'preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+  const contents=window.webContents;
   window.webContents.on('did-finish-load',()=>{void readiness?.then(()=>localFetch('/api/streams/events?cursor=0&wait=0','GET')).then(value=>window?.webContents.send('market-stream',value)).catch(()=>{});});
-  window.webContents.on('render-process-gone',()=>{void localFetch('/api/streams/consumers','PUT',{consumers:[]}).catch(()=>{});});
+  window.webContents.on('did-start-navigation',event=>{
+    if(event.isMainFrame&&!event.isSameDocument)releaseQuoteDocument(contents);
+  });
+  window.webContents.on('render-process-gone',()=>{releaseQuoteDocument(contents);void localFetch('/api/streams/consumers','PUT',{consumers:[]}).catch(()=>{});});
+  window.webContents.once('destroyed',()=>releaseQuoteDocument(contents));
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));window.webContents.on('will-navigate',e=>e.preventDefault());
   window.webContents.session.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));window.webContents.session.setPermissionCheckHandler(()=>false);
   if(dev)void window.loadURL('http://127.0.0.1:5173');else void window.loadFile(join(root,'desktop/dist/index.html'));
