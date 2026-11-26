@@ -65,19 +65,19 @@ if __name__=='__main__':
  sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM);sock.bind(('127.0.0.1',0));sock.listen(128)
  print(json.dumps({'ready':True,'port':sock.getsockname()[1]}),flush=True)
  start=time.monotonic();base=time.time();clock=lambda:base+(time.monotonic()-start)*30
+ # Replay needs more than 100 bars independently of minute rollover. Keep the
+ # forming snapshot and WebSocket revision on the same fixture sequence.
+ candle_count=120 if os.environ.get('IMT_REPLAY_SERIES_UI')=='1' else 100
  hyper_client=None
  if os.environ.get('IMT_HYPERLIQUID_UI')=='1':
   from app.providers.hyperliquid import HyperliquidClient
   from app.request_budget import RequestBudget
   from hyperliquid_fixtures import PublicFixture
-  # Replay needs more than 100 real fixture bars even when no clock minute rolls
-  # over between the REST snapshot and the first WebSocket update.
-  candle_count=120 if os.environ.get('IMT_REPLAY_SERIES_UI')=='1' else 100
   hyper_client=HyperliquidClient(RequestBudget(2),PublicFixture(candle_count),min_interval=0,weight_limit=100000)
  stream_connector=None
  if os.environ.get('IMT_STREAM_UI')=='1':
   from stream_fixtures import FixtureConnector
-  stream_connector=FixtureConnector()
+  stream_connector=FixtureConnector(candle_count)
  app=create_app(stream_connector=stream_connector,hyperliquid_client=hyper_client,provider=AlertUIFixture(clock) if os.environ.get('IMT_ALERT_UI')=='1' else UIFixture(count=8000))
  if os.environ.get('IMT_ALERT_UI')=='1':
   app.state.alerts.clock=clock;app.state.alerts.started=clock();app.state.history.config['min_interval']=0
