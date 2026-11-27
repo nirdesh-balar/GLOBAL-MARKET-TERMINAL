@@ -158,6 +158,7 @@ try{
   await singleRow(indicators.getByRole('group',{name:'Indicator library views'}));
   await shot('indicators-light');
   await page.keyboard.press('Escape');
+  await expect.poll(async()=>(await call('/workspace')).theme).toBe('light');
   await app.close();
   await launch();
   await expect(page.locator('.theme-light')).toBeVisible();
