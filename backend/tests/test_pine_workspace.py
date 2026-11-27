@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models import AppliedPineScript
+from app.models import AppliedPineScript, Pane
 from app.registry import matches_category
 from app.study_recipes import PineScript, StudyRecipe
 
@@ -47,3 +47,13 @@ def test_rejects_invalid_storage_metadata(revisions):
 ])
 def test_market_tab_filters(category, kind, country, original, expected):
     assert matches_category(dict(kind=kind, country=country, category=original), category) == expected
+
+
+def test_layout_preserves_ordinary_budget_and_valid_local_height():
+    instance = AppliedPineScript(id=INSTANCE_ID, name='Example', script_id=SCRIPT_ID)
+    layout = {str(i): {'height': 104} for i in range(21)}
+    layout[INSTANCE_ID] = {'height': 160}
+    pane = Pane(id='0', symbol='AAPL', token='test', study_layout=layout, local_studies=[instance])
+    assert pane.study_layout[INSTANCE_ID].height == 160
+    with pytest.raises(ValidationError, match='At most 21 ordinary'):
+        Pane(id='0', symbol='AAPL', token='test', study_layout=layout)

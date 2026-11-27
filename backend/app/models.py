@@ -440,6 +440,9 @@ class Pane(SymbolEntry):
     @model_validator(mode='after')
     def unique_indicators(self):
         if len({r.id for r in self.indicators})!=len(self.indicators):raise ValueError('Indicator IDs must be unique within a pane')
+        local_ids = {study.id for study in self.local_studies}
+        if len(self.study_layout.keys() - local_ids) > 21:
+            raise ValueError('At most 21 ordinary study pane preferences are supported')
         return self
 class Watchlist(BaseModel):
     market:str|None=None

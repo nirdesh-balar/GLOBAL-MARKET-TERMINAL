@@ -198,6 +198,7 @@ try{
   await expect.poll(async()=>(await series()).length).toBe(5);
   await button('Remove local study Hilega-Milega acceptance',pane()).click();
   await expect.poll(async()=>(await series()).length).toBe(1);
+  await expect.poll(async()=>Boolean((await call('/workspace')).panes[0].study_layout[id])).toBe(false);
   await openScripts();
   await button('Remove EMA acceptance',manager()).click();
   await button('Cancel',manager()).click();

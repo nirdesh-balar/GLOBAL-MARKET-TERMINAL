@@ -33,6 +33,11 @@ import './flags/flags.css';
 import { api, price, symbolLabel } from './services/api';
 import type { Health, Workspace, Instrument, Pane, ChartQuote, SymbolEntry, IndicatorConfig } from './types';
 
+function localStudyPatch(pane:Pane, local_studies:NonNullable<Pane['local_studies']>){
+  const retained=new Set(local_studies.map(study=>study.id));
+  const removed=new Set((pane.local_studies??[]).filter(study=>!retained.has(study.id)).map(study=>study.id));
+  return {local_studies,study_layout:removed.size?Object.fromEntries(Object.entries(pane.study_layout??{}).filter(([id])=>!removed.has(id))):pane.study_layout};
+}
 type SearchIntent = { kind: 'chart' | 'indices'; paneId: string } | { kind: 'watchlist'; listId: string; name: string };
 
 export default function App(){
@@ -199,7 +204,7 @@ export default function App(){
     return()=>{if(saveTimeout.current)clearTimeout(saveTimeout.current);};
   },[workspace]);
   useEffect(()=>{const handle=(e:KeyboardEvent)=>{if(!chartsOpen||alertSeed)return;const input=e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement||e.target instanceof HTMLTextAreaElement;const modal=!!document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"]');if(e.key==='Escape'){if(workspaceMenuOpen){setWorkspaceMenuOpen(false);workspaceButtonRef.current?.focus();return;}if(modal){closeSearch();setSettings(false);setIndicatorPane(null);return;}if(layoutMenu){setLayoutMenu(false);return;}if(tool!=='cursor'){setTool('cursor');return;}if(focus){setFocus(false);return;}if(expanded){setExpanded(null);return;}if(nativeState.fullscreen)void window.terminal.windowControl('exit').catch(e=>setError(e.message));return;}if(modal)return;if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openChartSearch(active);}if(!input&&!e.metaKey&&!e.ctrlKey&&!e.altKey){if(e.key==='f'){setExpanded(v=>v===active?null:active);}if(e.key==='i'){setIndicatorPane(active);}}};window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);},[active,chartsOpen,alertSeed,expanded,focus,nativeState.fullscreen,layoutMenu,tool,closeSearch,openChartSearch]);
-  const updatePane=(id:string,value:Partial<Pane>)=>setWorkspace(w=>w?{...w,panes:w.panes.map(p=>p.id===id?{...p,...value}:p)}:w);
+  const updatePane=(id:string,value:Partial<Pane>)=>setWorkspace(w=>w?{...w,panes:w.panes.map(p=>p.id===id?{...p,...value,...(value.local_studies?localStudyPatch(p,value.local_studies):{})}:p)}:w);
   const entry=(row:Instrument|SymbolEntry):SymbolEntry=>({symbol:row.symbol,token:row.token,instrument_id:(row as Instrument).id||(row as SymbolEntry).instrument_id,kind:row.kind,name:row.name,exchange:row.exchange,canonical_id:row.canonical_id,provider:row.provider,category:row.category,country:row.country,currency:row.currency,timezone:row.timezone,calendar:row.calendar,precision:row.precision,contract:row.contract,market_type:row.market_type,native_id:row.native_id,base_asset:row.base_asset,quote_asset:row.quote_asset,identity_version:row.identity_version,legacy_unresolved:row.legacy_unresolved,native_mapping:row.native_mapping,size_decimals:row.size_decimals,trading_availability:row.trading_availability,verified_at:row.verified_at});
   const addSearchResult = async (listId: string, row: Instrument|SymbolEntry) => {
     const id = row.canonical_id || ('id' in row ? row.id : row.instrument_id) || row.token;
@@ -290,7 +295,7 @@ export default function App(){
     if(editor?.scriptId===scriptId)setEditor(null);
     setWorkspace(current=>current?{...current,pine_scripts:current.pine_scripts?.filter(item=>item.id!==scriptId),
       panes:current.panes.map(pane=>pane.local_studies?.some(item=>'script_id' in item&&item.script_id===scriptId)?
-        {...pane,local_studies:pane.local_studies.filter(item=>!('script_id' in item)||item.script_id!==scriptId)}:pane)}:current);
+        {...pane,...localStudyPatch(pane,pane.local_studies.filter(item=>!('script_id' in item)||item.script_id!==scriptId))}:pane)}:current);
   };
   const inspectVisible=chartsOpen&&dataWindow&&!focus&&!orderFlowOpen;
   const flowVisible=chartsOpen&&orderFlowOpen&&!focus;

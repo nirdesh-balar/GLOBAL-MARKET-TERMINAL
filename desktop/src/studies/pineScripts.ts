@@ -42,7 +42,7 @@ export function pineSeries(rows:Candle[], instances:readonly AppliedStudy[], scr
     const output=runPine(program,rows);
     return output.plots.map((plot,index)=>({
       id:item.id,name:plot.name,pane:program.overlay?'main':item.id,
-      histogram:false,color:'#7f9feb',width:plot.width,style:plot.hline?2:0,levels:[],
+      histogram:false,color:plot.points.at(-1)?.color?.slice(0,7)??'#7f9feb',width:plot.width,style:plot.hline?2:0,levels:[],
       points:plot.points.map(point=>({...point,color:point.color??'#00000000'})),
       scripted:true,
       scriptedFills:output.fills.filter(fill=>fill.left===index).map(fill=>({
