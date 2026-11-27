@@ -38,8 +38,8 @@ async function checkLayout(viewport){
     const overlaps=ohlc.some((item,i)=>ohlc.slice(i+1).some(other=>
       item.left<other.right&&other.left<item.right&&item.top<other.bottom&&other.top<item.bottom));
     const layout=node.__chart.options().layout;
-    const volume=node.__chart.panes()[1]?.getHTMLElement();
-    const header=document.querySelector('[data-study-header=volume]');
+    const study=node.__chart.panes()[1]?.getHTMLElement();
+    const header=document.querySelector('.study-pane-controls');
     return {viewport:[innerWidth,innerHeight,devicePixelRatio],height:plot.height,bottom:bottom.bottom,
       footerBottom:box(footer).bottom,watchRowsEnd:box(document.querySelector('[data-testid=watchlist-rows]')).bottom,
       footerTop:box(footer).top,summaryFits:summary.scrollWidth<=summary.clientWidth,
@@ -47,7 +47,7 @@ async function checkLayout(viewport){
       indicatorFont:getComputedStyle(document.querySelector('.study-legend-name')).fontSize,
       valueFont:getComputedStyle(document.querySelector('.study-legend-row .study-values')).fontSize,
       watchFooterFont:getComputedStyle(summary).fontSize,axisHeight:node.__chart.timeScale().height(),
-      volumeDelta:volume&&header?Math.abs(box(volume).top-box(header).top):null};
+      studyDelta:study&&header?Math.abs(box(study).top-box(header).top):null};
   });
   assert.deepEqual(data.viewport,viewport);
   assert.equal(data.bottom,viewport[1]-1,'Only the chart border remains below the controls');
@@ -59,7 +59,7 @@ async function checkLayout(viewport){
   assert.equal(data.indicatorFont,'13px');
   assert.equal(data.valueFont,'12px');
   assert.equal(data.watchFooterFont,'9px');
-  assert.ok(data.volumeDelta!==null&&data.volumeDelta<=1);
+  assert.ok(data.studyDelta!==null&&data.studyDelta<=1);
   viewports.push(data);
 }
 
@@ -70,10 +70,8 @@ try{
   await button('Layout 1').click();
   await button('Indicators').click();
   await button('Add Volume').click();
+  await button('Add RSI').click();
   await button('Close indicators').click();
-  await button('Edit Volume').click();
-  await button('Move to Separate Pane Below').click();
-  await button('Apply settings').click();
   await page.getByTestId('watchlist-symbol-ICICIBANK-EQ').click();
   await expect(canvas()).toHaveAttribute('data-history-symbol','yahoo:ICICIBANK.NS:NSE:equity',{timeout:30000});
   await expect(canvas()).toHaveAttribute('data-rendered-bars',/^[1-9]/);

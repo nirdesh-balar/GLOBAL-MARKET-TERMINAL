@@ -152,38 +152,23 @@ try {
   await button('Close indicators').click();
   await expect(legend()).toBeVisible();
 
-  const beforeMoves=await request('/api/history/status');
+  const beforeSettings=await request('/api/history/status');
   const activeStudies=await request('/workspace');
   await canvas().evaluate(node=>{node.__volumeTestStudies=node.__chart.panes().slice(1).map(p=>p.getSeries()[0]);});
   await button('Edit Volume',overlay()).click();
+  await expect(settings().getByLabel('Volume placement')).toHaveCount(0);
   await settings().getByLabel('Up bar color').fill('#12ab34');
-  await button('Move to Separate Pane Below',settings()).click();
   await button('Apply settings',settings()).click();
-  await expect.poll(async()=> (await volume())[0]?.index).toBe(3);
-  await expect(button('Move Volume down',header())).toBeDisabled();
-  await button('Move Volume up',header()).click();
-  await expect.poll(async()=> (await volume())[0]?.index).toBe(2);
-  await button('Move Volume up',header()).click();
-  await expect.poll(async()=> (await volume())[0]?.index).toBe(1);
-  await expect(button('Move Volume up',header())).toBeDisabled();
-  await button('Move Volume down',header()).click();
-  await expect.poll(async()=> (await volume())[0]?.index).toBe(2);
+  await expect.poll(async()=> (await volume())[0]?.data[0]?.color).toBe('#12ab3455');
   assert.equal(await canvas().evaluate(node=>node.__chart.panes()[1].getSeries()[0]===node.__volumeTestStudies[0]
-    &&node.__chart.panes()[3].getSeries()[0]===node.__volumeTestStudies[1]),true,'Movement preserves both study series');
+    &&node.__chart.panes()[2].getSeries()[0]===node.__volumeTestStudies[1]),true,'Volume settings preserve both study series');
   await saved();
-  await verifyVolume(expected,'0',2,'#12ab3455');
-  const placement=(await request('/workspace')).panes[0].volume_settings;
-  assert.equal(placement.position,1);
-  await page.screenshot({path:join(output,'fixture-pane.png')});
-  await button('Pane settings volume',header()).click();
-  await button('Move to Main Chart',settings()).click();
-  await button('Apply settings',settings()).click();
-  await expect.poll(async()=> (await volume())[0]?.index).toBe(0);
+  await verifyVolume(expected,'0',0,'#12ab3455');
   assert.equal((await geometry()).empty,0);
   assert.deepEqual((await geometry()).range,beforeHide.range);
-  const afterMoves=await request('/api/history/status');
-  assert.equal(afterMoves.history_requests,beforeMoves.history_requests);
-  assert.equal(afterMoves.provider_requests,beforeMoves.provider_requests);
+  const afterSettings=await request('/api/history/status');
+  assert.equal(afterSettings.history_requests,beforeSettings.history_requests);
+  assert.equal(afterSettings.provider_requests,beforeSettings.provider_requests);
   assert.deepEqual((await request('/workspace')).panes[0].indicators,activeStudies.panes[0].indicators);
 
   await button('Historical replay').click();
@@ -250,33 +235,31 @@ try {
   await chart('1').getByRole('button',{name:'Indicators pane 1'}).click();
   await button('Add Volume',manager()).click();
   await button('Close indicators').click();
-  await button('Edit Volume',overlay('1')).click();
-  await button('Move to Separate Pane Below',settings()).click();
-  await button('Apply settings',settings()).click();
-  await expect.poll(async()=> (await volume('1'))[0]?.index).toBe(1);
+  await expect.poll(async()=> (await volume('1'))[0]?.index).toBe(0);
   await expect.poll(async()=> (await volume())[0]?.index).toBe(0);
-  await button('Hide study volume',header('1')).click();
-  await expect.poll(()=>volume('1')).toEqual([]);
+  await button('Hide Volume',overlay('1')).click();
+  await expect.poll(async()=> (await volume('1')).length).toBe(0);
+  await expect.poll(async()=> (await request('/workspace')).panes[1].volume).toBe(false);
   await saved();
   await app.close();
   await start();
   await expect.poll(async()=> (await volume())[0]?.index).toBe(0);
-  await expect.poll(()=>volume('1')).toEqual([]);
+  await expect.poll(async()=> (await volume('1')).length).toBe(0);
   const restarted=await request('/workspace');
-  assert.equal(restarted.panes[0].volume_settings.position,1);
+  assert.equal(restarted.panes[0].volume_settings.position,'last');
   assert.equal(restarted.panes[0].volume_settings.placement,'chart');
-  assert.equal(restarted.panes[1].volume_settings.placement,'pane');
+  assert.equal(restarted.panes[1].volume_settings.placement,'chart');
   await chart('1').getByRole('button',{name:'Indicators pane 1'}).click();
   await manager().getByRole('button',{name:/^Active indicators/}).click();
   await button('Visibility volume',row()).click();
   await button('Close indicators').click();
-  await expect.poll(async()=> (await volume('1'))[0]?.index).toBe(1);
+  await expect.poll(async()=> (await volume('1'))[0]?.index).toBe(0);
   await expect(page.getByTestId('quote-refresh-status')).toHaveText(/Updated at .+ · Auto 300s/,{timeout:45000});
   assert.deepEqual(rendererErrors,[]);
   await writeFile(join(output,'native-regression.json'),JSON.stringify({band,bars:expected.length,missingVolume:true,zeroVolume:true,staleRetained:true,delayedSymbolWithoutOldBars:true,
-    lifecycleRequests:afterMoves.history_requests-beforeMoves.history_requests,
-    providerRequests:afterMoves.provider_requests-beforeMoves.provider_requests,rendererErrors},null,2));
-  console.log('PASS new chart, scaled overlay, bars and crosshair, moves without rebuilding studies, hidden/placement restart, replay, timeframe and four independent charts.');
+    lifecycleRequests:afterSettings.history_requests-beforeSettings.history_requests,
+    providerRequests:afterSettings.provider_requests-beforeSettings.provider_requests,rendererErrors},null,2));
+  console.log('PASS new chart, scaled overlay, bars and crosshair, settings without rebuilding studies, visibility restart, replay, timeframe and four independent charts.');
 } catch (error) {
   await page?.screenshot({path:join(output,'failure.png')}).catch(()=>{});
   console.error(rendererErrors);

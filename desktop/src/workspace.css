@@ -213,15 +213,17 @@
   min-height: 19px;
   padding: 0 3px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--canvas) 86%, transparent);
+  background: transparent;
   white-space: nowrap;
 }
-.study-legend-row:is(:hover, :focus-within) { background: var(--surface); }
+.study-legend-row:is(:hover, :focus-within) { background: color-mix(in srgb, var(--canvas) 38%, transparent); }
 .study-legend-name, .study-legend-row > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.study-legend-row[data-visible="false"] .study-legend-name { opacity: .64; }
+.study-legend-name { color: var(--text); }
+.study-legend-parameters, .study-values > [data-study-output]:not([data-value]) { color: var(--muted); }
+.study-legend-row[data-visible="false"] .study-legend-name { color: var(--muted); }
 .study-legend-actions { display: inline-flex; flex: none; opacity: 0; }
 .study-legend-row:is(:hover, :focus-within) .study-legend-actions { opacity: 1; }
-.terminal-shell .studies-legend .study-legend-actions > button {
+.terminal-shell .study-legend-row .study-legend-actions > button {
   width: 20px;
   height: 19px;
   padding: 0;
@@ -229,7 +231,7 @@
   color: var(--muted);
   opacity: 1;
 }
-.terminal-shell .studies-legend .study-legend-actions > button:is(:hover, :focus-visible) { color: var(--text); }
+.terminal-shell .study-legend-row .study-legend-actions > button:is(:hover, :focus-visible) { color: var(--text); }
 /* A selected drawing tool must reach the chart even under a legend row. */
 .terminal-shell .chart-pane[data-drawing-active="true"] .study-legend-row,
 .terminal-shell .chart-pane[data-drawing-active="true"] .study-legend-actions > button {
@@ -248,20 +250,21 @@
 }
 .terminal-shell .study-pane-controls {
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0 0 7px 0;
   right: auto;
-  max-width: calc(100% - 86px);
+  max-width: calc(100% - 82px);
+  gap: 5px;
 }
-.terminal-shell .study-pane-controls > button:first-child { max-width: clamp(76px, 24cqw, 160px); }
-.terminal-shell .study-pane-controls > button:first-child > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.terminal-shell .study-pane-controls .study-pane-collapse {
+  padding: 0;
+  min-width: 16px;
+  min-height: 19px;
+  justify-content: center;
 }
-.terminal-shell .study-pane-controls button:hover { background: var(--hover); }
+.study-pane-collapse[aria-expanded="true"] { opacity: 0; }
+.study-legend-row:is(:hover, :focus-within) .study-pane-collapse { opacity: 1; }
+@media (hover: none) {
+  .study-pane-collapse[aria-expanded="true"] { opacity: 1; }
+}
 .terminal-shell .bottom-chart-toolbar { height: 32px; min-height: 32px; background: var(--surface); }
 .terminal-shell .bottom-chart-toolbar :is(.range-toolbar, .price-controls) { font-variant-numeric: tabular-nums; }
 .terminal-shell .range-toolbar .go-date { padding-inline-start: 3px; border-inline-start: 1px solid var(--border); }
@@ -455,8 +458,7 @@
 .terminal-shell .ohlc b { font-size: var(--chart-header-font); font-weight: 560; }
 .terminal-shell .legend-title,
 .terminal-shell .ohlc,
-.terminal-shell .study-legend-name,
-.terminal-shell .study-pane-controls > button:first-child { font-size: var(--chart-header-font); }
+.terminal-shell .study-legend-name { font-size: var(--chart-header-font); }
 .terminal-shell .ohlc-change-metric,
 .terminal-shell .studies-legend,
 .terminal-shell .study-values,
@@ -592,36 +594,8 @@
 .chart-source-detail p{margin:0}
 .chart-source-detail p+p{margin-top:6px}
 
-.terminal-shell .volume-pane-controls { gap: 4px; }
-.terminal-shell .volume-pane-label { padding-inline: 4px; white-space: nowrap; }
-.terminal-shell .volume-order-controls { display: inline-flex; gap: 2px; }
-
-/* Crosshair values can change on pointer down. Keep the buttons in place while clicking. */
-.study-legend-row.volume-legend-row { width: 224px; }
+/* Crosshair values can change on pointer down. Keep the Volume buttons in place. */
+.study-legend-row.volume-legend-row { width: 215px; }
 .volume-legend-readout { display: inline-flex; flex: 1; min-width: 0; align-items: baseline; gap: 5px; }
 .volume-legend-readout [data-study-output] { overflow: hidden; text-overflow: ellipsis; }
 .volume-legend-readout .study-legend-name { flex-shrink: 0; }
-.terminal-shell .volume-legend-menu {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  padding: 4px;
-  min-width: 154px;
-  max-width: calc(100vw - 16px);
-  max-height: calc(100vh - 16px);
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 6px 20px #0005;
-}
-.terminal-shell .volume-legend-menu button {
-  display: flex;
-  width: 100%;
-  justify-content: flex-start;
-  padding: 5px 7px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 1;
-}

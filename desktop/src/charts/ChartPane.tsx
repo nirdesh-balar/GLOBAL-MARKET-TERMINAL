@@ -1,8 +1,8 @@
 import {VolumeSettingsDialog} from '../components/VolumeSettingsDialog';
-import {VOLUME_OVERLAY_MARGINS,VOLUME_SCALE_ID,volumeColors,volumeInstance,volumeInstancePatch,volumePanePosition,volumePoint,volumeSettings,volumeValue} from './volumeIndicator';
-import {recipeSeries} from '../studies/recipes';
+import {VOLUME_OVERLAY_MARGINS,VOLUME_SCALE_ID,volumeColors,volumeInstance,volumeInstancePatch,volumePoint,volumeSettings,volumeValue} from './volumeIndicator';
+import {recipeSeries, type AppliedStudy} from '../studies/recipes';
+import {RecipeSettingsDialog} from '../studies/RecipeSettingsDialog';
 import {pineSeries,type PineScript} from '../studies/pineScripts';
-import {StudyValues} from './StudyLegend';
 import {chartDividends} from './dividends';
 import type {CandleInspection} from '../components/ChartDataWindow';
 import {chartPoint,chartPoints,createMainSeries,styleColors} from './chartStyles';
@@ -74,7 +74,7 @@ function streamLabel(state:string){
     connecting:'Connecting',pending:'Waiting for live data',disabled:'Live data unavailable',unavailable:'Live data unavailable'} as Record<string,string>)[state]??'Live data unavailable';
 }
 
-export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,pineScripts,onScriptEdit,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onIndexDetails,onMigration,onExpand,onData,onVolume,onStudyPaneCount,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{inspect?:boolean;singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;pineScripts?:readonly PineScript[];onScriptEdit?:(id:string)=>void;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onIndexDetails:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;onStudyPaneCount:(id:string,count:number)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
+export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,pineScripts,onScriptEdit,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onIndexDetails,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{inspect?:boolean;singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;pineScripts?:readonly PineScript[];onScriptEdit?:(id:string)=>void;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onIndexDetails:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
   const instrumentZone=pane.timezone||'Asia/Kolkata';
   const precision=pane.precision??2;
   const instrumentKey=pane.canonical_id||pane.instrument_id||pane.symbol;
@@ -138,8 +138,14 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const rowsRef=useRef(rows);rowsRef.current=rows;const indexed=useMemo(()=>new Map(rows.map(r=>[r.time,r])),[rows]);const indexedRef=useRef(indexed);indexedRef.current=indexed;
   const candleIndexMap=useMemo(()=>new Map(rows.map((r,i)=>[r.time,i])),[rows]);
   const drawing=useDrawings({container,chart,primitive,pane,rows,interactionScope:liveIdentity+'/'+replay,tool:active?tool:'cursor',magnet,onChange,onActive,onTool});
+  const [recipeId,setRecipeId]=useState<string|null>(null);
+  const pendingRecipe=pane.local_studies?.find(item=>item.id===recipeId);
+  const openLocalStudy=(item:AppliedStudy)=>{
+    if('script_id' in item)onScriptEdit?.(item.script_id);
+    else setRecipeId(item.id);
+  };
   const volumeConfig=volumeSettings(pane);
-  const {placement:volumePlacement,position:volumePosition,up_color:volumeUpColor,down_color:volumeDownColor}=volumeConfig;
+  const {up_color:volumeUpColor,down_color:volumeDownColor}=volumeConfig;
   const volumeStyle=useMemo(()=>volumeColors(theme,{up_color:volumeUpColor,down_color:volumeDownColor}),[theme,volumeUpColor,volumeDownColor]);
   const volumeInfo=useMemo(()=>volumeContext(pane),[pane.provider,pane.base_asset,pane.kind]);
   const volumeZeroIsMissing=!!volumeInfo.zero_volume_is_missing;
@@ -462,20 +468,18 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     const matchesHistory=dataFor.current===identity;
     const studies=matchesHistory?computed.series:[];
     indicatorRender.current=renderIndicatorPanes(c,studies,paneHeights.current,mainSeries.current??undefined);
-    onStudyPaneCount(pane.id,indicatorRender.current.slots.size);
     setStudyEpoch(v=>v+1);
     if(previous)c.timeScale().setVisibleLogicalRange(previous);if(manualPrice)setPriceScaleRange(c.priceScale('right'),manualPrice.from,manualPrice.to);
   },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
 
-  // Volume owns one series. Moving or removing it never rebuilds other studies.
+  // Volume owns one series on the existing price pane and never rebuilds other studies.
   useEffect(()=>{
     const c=chart.current;
     if(!c)return;
-    const overlay=volumePlacement==='chart';
     let histogram=volumeSeries.current;
     const range=c.timeScale().getVisibleLogicalRange();
     let topologyChanged=false;
-    if(histogram&&(!pane.volume||(histogram.getPane().paneIndex()===0)!==overlay)){
+    if(histogram&&!pane.volume){
       c.removeSeries(histogram);
       histogram=null;
       renderedVolume.current=null;
@@ -483,28 +487,14 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     }
     if(pane.volume&&!histogram){
       histogram=c.addSeries(HistogramSeries,{
-        priceScaleId:overlay?VOLUME_SCALE_ID:'right',
+        priceScaleId:VOLUME_SCALE_ID,
         priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false,
-      },overlay?0:c.panes().length);
-      if(overlay){
-        histogram.priceScale().applyOptions({scaleMargins:VOLUME_OVERLAY_MARGINS,autoScale:true});
-        histogram.setSeriesOrder(0);
-      }
+      },0);
+      histogram.priceScale().applyOptions({scaleMargins:VOLUME_OVERLAY_MARGINS,autoScale:true});
+      histogram.setSeriesOrder(0);
       topologyChanged=true;
     }
     volumeSeries.current=histogram;
-    if(histogram&&!overlay){
-      const current=histogram.getPane().paneIndex();
-      const target=1+volumePanePosition(volumePosition,c.panes().length-2);
-      // Swapping adjacent native panes works before the next widget paint and
-      // preserves the order, height and series identity of the other panes.
-      for(let index=current;index!==target;){
-        const next=index+Math.sign(target-index);
-        c.swapPanes(index,next);
-        index=next;
-        topologyChanged=true;
-      }
-    }
     if(histogram&&dataFor.current!==liveIdentity){
       if(renderedVolume.current)histogram.setData([]);
       renderedVolume.current=null;
@@ -526,7 +516,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
       if(range)c.timeScale().setVisibleLogicalRange(range);
       setStudyEpoch(v=>v+1);
     }
-  },[chartEpoch,computed,rows,liveIdentity,pane.volume,volumePlacement,volumePosition,volumeStyle,volumeZeroIsMissing]);
+  },[chartEpoch,computed,rows,liveIdentity,pane.volume,volumeStyle,volumeZeroIsMissing]);
   useLayoutEffect(()=>{
     const c=chart.current;if(!c)return;const range=c.timeScale().getVisibleLogicalRange(),price=c.priceScale('right').getVisibleRange(),wasHidden=previousHidden.current;previousHidden.current=hidden;layoutResizing.current=true;
     if(hidden){layoutSnapshot.current={range,price};return;}
@@ -565,10 +555,12 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const selectRange=(value:string)=>{setRange(value);setRangeNotice('');if(value==='MAX'||value==='ALL'){setRequested({});return;}const end=new Date(),start=value==='YTD'?new Date(marketMidnight(marketDay(end.getTime()/1000,chartZone).slice(0,4)+'-01-01',chartZone)*1000):new Date(end.getTime()-rangeDays[value]*86400000);setRequested({start:start.toLocaleDateString('en-CA',{timeZone:chartZone}),end:end.toLocaleDateString('en-CA',{timeZone:chartZone})});};
   const applyCustom=()=>{if(!dates.start||!dates.end||dates.start>dates.end){setRangeNotice('Choose a start date on or before the end date.');return;}setRequested(dates);setRange('CUSTOM');setCustom(false);};
   const importNSE=async()=>{setLoading(true);setError('');try{const result=await window.terminal.selectFiles('history',pane.symbol);if(result){setSource('nse');setAdjusted(false);setRefresh(r=>r+1);}}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
-  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,volumeSeries,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),pane.volume,volumePlacement,volumePosition]),onChange);
+  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane])]),onChange);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
-  const displayedVolume=volumeValue(dataFor.current===liveIdentity?displayed:null,volumeZeroIsMissing);
-  const overlayVolume=volumePlacement==='chart'?volumeInstance(pane):null;
+  const legendCandle=dataFor.current===liveIdentity?displayed:null;
+  const displayedVolume=volumeValue(legendCandle,volumeZeroIsMissing);
+  const volumeColor=legendCandle&&(legendCandle.close>=legendCandle.open?volumeStyle.bullish:volumeStyle.bearish);
+  const overlayVolume=volumeInstance(pane);
   const volumeStale=!!data?.stale||!!refreshError;
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
@@ -625,16 +617,14 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     <div className="chart-legend"><div className="legend-title"><CandlestickChart className="legend-symbol" size={13}/><strong className="legend-symbol">{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong><span><span className="legend-timeframe">{pane.timeframe} · </span>{marketIdentity(pane)} · {data?.currency||pane.currency||"Currency unconfirmed"}</span>{(pane.chart_type==='heikin-ashi'||pane.chart_type==='line-break')&&<span className="demo-mini" title="Chart shape is calculated. Header, drawings and indicators use provider candles.">Calculated chart</span>}{replay!==null&&<span className="demo-mini">Replay</span>}{(data?.stale||refreshError)&&<span className="chart-stale" title={refreshError||data?.provider_error?.message||data?.notice}>Stale</span>}{pane.kind==='future'&&<span className="demo-mini" title={data?.contract||pane.contract}>{(data?.contract||pane.contract||'').startsWith('continuous')?'CONTINUOUS · NOT AN EXPIRY':'EXPIRING FUTURE'}</span>}</div><div className="ohlc">{displayed?<>{['open','high','low','close'].map((key,i)=><span key={key}>{['O','H','L','C'][i]} <b className={displayed.close>=displayed.open?'positive':'negative'}>{formatActualPrice(displayed[key as 'open'])}</b></span>)}{ohlcChange&&<span className={`ohlc-change-metric ${ohlcChange.positive?'positive':ohlcChange.negative?'negative':'neutral'}`} data-testid={`ohlc-change-${pane.id}`}>{ohlcChange.text}</span>}</>:<span>{loading?'Fetching history…':'No candles'}</span>}</div><div className="studies-legend">
       <StudyLegend id={pane.id} indicators={pane.indicators} values={legendValues}
         volumeInfo={volumeInfo} referenceLabels={referenceLabels} globallyHidden={!!pane.indicators_hidden}
-        volume={overlayVolume?{instance:overlayVolume,value:displayedVolume,stale:volumeStale,
+        paneStudyIds={workspace.headers.map(header=>header.id)} localStudies={pane.local_studies}
+        onLocalVisibility={id=>onChange({local_studies:pane.local_studies?.map(item=>item.id===id?{...item,visible:!item.visible}:item)})}
+        onLocalRemove={id=>onChange({local_studies:pane.local_studies?.filter(item=>item.id!==id)})}
+        onLocalSettings={openLocalStudy}
+        volume={overlayVolume?{instance:overlayVolume,value:displayedVolume,color:volumeColor?.slice(0,7),stale:volumeStale,
           onChange:instance=>onChange(volumeInstancePatch(instance)),onSettings:()=>setEditVolume(true)}:undefined}
         onVisibility={id=>onChange({indicators:pane.indicators.map(i=>i.id===id?{...i,visible:!i.visible}:i)})}
         onSettings={setEditIndicator} onRemove={id=>onChange({indicators:pane.indicators.filter(i=>i.id!==id)})}/>
-      {!pane.indicators_hidden&&pane.local_studies?.map(item=><div key={item.id} className="local-study-legend">
-        <button onClick={()=>onChange({local_studies:pane.local_studies?.map(value=>value.id===item.id?{...value,visible:!value.visible}:value)})}
-          aria-label={(item.visible?'Hide ':'Show ')+item.name}>{item.name}</button>
-        {item.visible&&<StudyValues values={legendValues.get(item.id)}/>}
-        <button aria-label={'Remove local study '+item.name} onClick={()=>onChange({local_studies:pane.local_studies?.filter(value=>value.id!==item.id)})}><X size={11}/></button>
-      </div>)}
       <div className="study-legend-meta">
         {pane.indicators.some(i=>i.visible&&isVolume(i.kind))&&!pane.indicators_hidden&&
           <small data-testid={`volume-source-units-${pane.id}`}>Volume input · {volumeInfo.volume_unit}</small>}
@@ -648,10 +638,9 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         }}><BellPlus size={14}/></button>}
     {countdown&&lastCandle&&<CandleCountdown id={pane.id} chart={chart} series={mainSeries}
       generation={chartEpoch} price={lastCandle.close} bounds={countdown}/>}
-    <StudyPaneControls values={legendValues} volume={displayedVolume} volumeStale={volumeStale} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
-      if(id==='volume'){setEditVolume(true);return;}
+    <StudyPaneControls values={legendValues} volumeInfo={volumeInfo} referenceLabels={referenceLabels} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
       const script=pane.local_studies?.find(item=>item.id===id);
-      if(script&&'script_id' in script)onScriptEdit?.(script.script_id);
+      if(script)openLocalStudy(script);
       else setEditIndicator(pane.indicators.find(i=>i.id===id)??null);
     }}/></div></div>{loading&&<div className="chart-overlay chart-loading" role="status" data-testid={`chart-loading-${pane.id}`}><RefreshCw size={14} className="spin"/> {waiting?'Waiting for provider…':'Loading chart…'}</div>}{error&&<div className={`chart-overlay error ${data?'chart-cached-error':''}`} role="status" data-testid={legacyCrypto(pane)?`legacy-migration-${pane.id}`:`chart-error-${pane.id}`}><strong>{legacyCrypto(pane)?'Migration required':data?'Showing cached data':failure?failureTitle(failure):'Unsupported instrument'}</strong><p>{legacyCrypto(pane)?legacyMessage:error}</p><div className="connection-actions">{legacyCrypto(pane)?<><button onClick={()=>onMigration(true)}>Choose Hyperliquid Market</button><button onClick={()=>onMigration(false)}>Open Migration</button></>:<>{(!failure||failure.retryable)&&<button disabled={loading||retryClock<retryUntil} onClick={doRefresh}>Retry{retryClock<retryUntil?` (${Math.ceil((retryUntil-retryClock)/1000)}s)`:null}</button>}<button onClick={onSearch}>Change Symbol</button></>}{pane.kind==='equity'&&pane.exchange==='NSE'&&<button onClick={importNSE}><Upload size={13}/> Select official NSE files</button>}</div></div>}
     {stream.enabled&&pane.provider==='hyperliquid'&&<div className="stream-status" data-testid={`stream-status-${pane.id}`} data-state={replay!==null?'replay':!streamEnabled?'paused':streamFrame?.state||stream.state}>{replay!==null?'Live updates paused during replay':!streamEnabled?'Live updates paused':streamLabel(streamFrame?.state||stream.state)}{streamEnabled&&replay===null&&streamFrame?.received_at?` · ${new Date(streamFrame.received_at*1000).toLocaleTimeString()}`:''}</div>}
@@ -669,7 +658,12 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         setTimeZoneOpen(false);
       }}/>}
     {appearanceOpen&&<ChartSettings pane={pane} theme={theme} onChange={onChange} onClose={()=>setAppearanceOpen(false)}/>}
-    {editVolume&&<VolumeSettingsDialog value={volumeConfig} theme={theme} adjacentPanes={indicatorRender.current.slots.size}
+    {pendingRecipe&&'recipe' in pendingRecipe&&<RecipeSettingsDialog name={pendingRecipe.name} recipe={pendingRecipe.recipe}
+      onClose={()=>setRecipeId(null)} onSave={recipe=>{
+        onChange({local_studies:pane.local_studies?.map(item=>item.id===pendingRecipe.id?{...pendingRecipe,recipe}:item)});
+        setRecipeId(null);
+      }}/>}
+    {editVolume&&<VolumeSettingsDialog value={volumeConfig} theme={theme}
       onClose={()=>setEditVolume(false)} onSave={volume_settings=>onChange({volume_settings})}/>}
     {editIndicator&&<IndicatorSettingsDialog value={editIndicator} onClose={()=>setEditIndicator(null)} onSave={i=>onChange({indicators:pane.indicators.map(old=>old.id===i.id?i:old)})}/>}
     {custom&&<div className="custom-range"><input type="date" aria-label="Range start" value={dates.start} onChange={e=>setDates({...dates,start:e.target.value})}/><span>to</span><input type="date" aria-label="Range end" value={dates.end} onChange={e=>setDates({...dates,end:e.target.value})}/><button onClick={applyCustom}>Apply</button><button onClick={()=>setCustom(false)}><X size={13}/></button></div>}

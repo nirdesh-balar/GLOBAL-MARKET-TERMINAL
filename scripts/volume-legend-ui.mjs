@@ -14,7 +14,6 @@ const button = (name, scope = page) => scope.getByRole('button', { name, exact: 
 const pane = (id = '0') => page.getByTestId(`pane-${id}`);
 const canvas = (id = '0') => pane(id).locator('.chart-canvas');
 const row = (id = '0') => pane(id).getByTestId(`study-legend-${id}-volume`);
-const panel = () => row().getByRole('group', { name: 'Volume actions' });
 const field = (id = '0') => page.getByTestId(`volume-legend-${id}`);
 const dedicated = (id = '0') => page.getByTestId(`study-controls-${id}-volume`);
 const count = () => page.getByTestId('study-legend-count-0');
@@ -39,14 +38,6 @@ async function launch() {
   page.on('pageerror',error=>errors.push(error.message));
   await page.setViewportSize({width:1440,height:834});
   await expect(button('Chart layout')).toBeVisible({timeout});
-}
-async function openActions() {
-  await button('More Volume actions',row()).click();
-  await expect(panel()).toBeVisible();
-}
-async function selectAction(name) {
-  await openActions();
-  await button(name,panel()).click();
 }
 async function verifyFooter() {
   await expect(page.getByTestId('quote-refresh-status')).toHaveText(/Updated at .+ · Auto 300s/,{timeout});
@@ -93,8 +84,8 @@ try {
   const value=()=>field().locator('[data-study-output=Volume]');
   await page.mouse.move(1290,200);
   await expect(value()).toHaveAttribute('data-value',String(data.candles.at(-1).volume));
-  const more = button('More Volume actions', row());
-  const {x: actionsX} = await more.boundingBox();
+  const remove = button('Remove Volume', row());
+  const {x: actionsX} = await remove.boundingBox();
   for(const i of [1,2,10]){
     const bar=data.candles[i];
     const box=await canvas().boundingBox();
@@ -104,7 +95,7 @@ try {
     await expect(canvas()).toHaveAttribute('data-crosshair-time',String(bar.time));
     if(bar.volume===null)await expect(field()).toHaveText('Volume unavailable');
     else await expect(value()).toHaveAttribute('data-value',String(bar.volume));
-    assert.equal((await more.boundingBox()).x, actionsX);
+    assert.equal((await remove.boundingBox()).x, actionsX);
   }
 
   await idle();
@@ -129,7 +120,7 @@ try {
   await expect(actions).toHaveCSS('opacity','1');
   await page.keyboard.press('Enter');
   await expect(settings()).toBeVisible();
-  await expect(settings().getByLabel('Volume placement')).toHaveValue('chart');
+  await expect(settings().getByLabel('Volume placement')).toHaveCount(0);
   await settings().getByLabel('Up bar color').fill('#25ab54');
   await button('Apply settings',settings()).click();
   await expect.poll(async()=> (await histogram())[0]?.data[0]?.color).toBe('#25ab5455');
@@ -143,44 +134,13 @@ try {
   await at(0);
   await expect.poll(async()=> (await histogram())[0]?.data[0]?.color).toBe('#25ab5455');
 
-  const overflow=button('More Volume actions',row());
-  await overflow.focus();
-  await page.keyboard.press('Enter');
-  await expect(panel()).toBeVisible();
-  await expect(button('Move Volume down',panel())).toBeDisabled();
-  await page.keyboard.press('Escape');
-  await expect(panel()).toBeHidden();
-  await expect(overflow).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(panel()).toBeVisible();
-  await page.keyboard.press('Tab');
-  await expect(button('Move Volume up',panel())).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(panel()).toBeHidden();
-  await expect(overflow).toBeFocused();
-  await selectAction('Move Volume up');
-  assert.deepEqual(await legendOrder(),['EMA 20','VWMA 20','Volume','VWAP session']);
-  await selectAction('Move Volume down');
-  assert.deepEqual(await legendOrder(),['EMA 20','VWMA 20','VWAP session','Volume']);
-  await selectAction('Move Volume up');
-  await saved();
-  assert.equal((await workspace()).panes[0].volume_settings.legend_position,2);
+  await expect(button('More Volume actions', row())).toHaveCount(0);
+  await expect(row().locator('.study-legend-actions button')).toHaveCount(3);
   const originalStudyHandles=await canvas().evaluate(node=>node.__legendSeries
     .filter(s=>s.seriesType()!=='Histogram').every(s=>node.__chart.panes()[0].getSeries().includes(s)));
   assert.ok(originalStudyHandles);
-
-  await selectAction('Move to Separate Pane');
-  await expect(row()).toHaveCount(0);
-  await expect(dedicated()).toBeVisible();
-  await at(1);
-  await expect(field()).toHaveCount(1);
-  await expect(count()).toHaveText('3');
-  await button('Pane settings volume',dedicated()).click();
-  await button('Move to Main Chart',settings()).click();
-  await button('Apply settings',settings()).click();
-  await at(0);
   await expect(dedicated()).toHaveCount(0);
-  assert.deepEqual(await legendOrder(),['EMA 20','VWMA 20','Volume','VWAP session']);
+  assert.deepEqual(await legendOrder(),['EMA 20','VWMA 20','VWAP session','Volume']);
   await idle();
   const after=await counters();
   assert.equal(after.provider_requests,before.provider_requests);
@@ -198,12 +158,12 @@ try {
   await launch();
   await expect(row()).toBeVisible();
   await expect(button('Show Volume',row())).toBeVisible();
-  assert.equal((await workspace()).panes[0].volume_settings.legend_position,2);
+  assert.equal((await workspace()).panes[0].volume_settings.up_color,'#25ab54');
   await expect.poll(histogram).toEqual([]);
   await button('Show Volume',row()).click();
   await at(0);
   await expect(row('1')).toHaveCount(0);
-  await selectAction('Remove Volume');
+  await button('Remove Volume',row()).click();
   await expect(row()).toHaveCount(0);
   await expect(dedicated()).toHaveCount(0);
   await expect(count()).toHaveText('3');
@@ -219,7 +179,7 @@ try {
   await writeFile(join(output,'native-regression.json'),JSON.stringify({bars:data.candles.length,band,
     chartHistoryDelta:after.history_requests-before.history_requests,providerDelta:after.provider_requests-before.provider_requests,
     screenshots:[1440,834],restarts:2,rendererErrors:errors},null,2));
-  console.log('PASS Volume legend values, hover and keyboard, collapse, hide/show, settings, ordering, both placements, remove, two restarts and zero extra requests.');
+  console.log('PASS Volume legend values, hover and keyboard, collapse, hide/show, settings, direct remove, two restarts and zero extra requests.');
 } catch(error) {
   await shot('failure').catch(()=>{});
   console.error(errors);

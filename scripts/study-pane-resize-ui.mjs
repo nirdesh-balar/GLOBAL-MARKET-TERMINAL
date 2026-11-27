@@ -13,10 +13,11 @@ await mkdir('test-results', { recursive: true });
 const bundle = await build({ entryPoints: ['desktop/src/charts/indicators.ts'], bundle: true,
   platform: 'node', format: 'esm', write: false });
 const { defaultIndicator } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'));
-const indicators = ['RSI', 'STOCHRSI', 'MACD', 'ATR', 'ADX'].map(kind => defaultIndicator(kind, 'resize-' + kind));
-const initialLayout = Object.fromEntries([['volume', 124], ['resize-RSI', 148], ['resize-STOCHRSI', 128],
+const indicators = ['ROC', 'RSI', 'STOCHRSI', 'MACD', 'ATR', 'ADX'].map(kind => defaultIndicator(kind, 'resize-' + kind));
+const initialLayout = Object.fromEntries([['resize-ROC', 124], ['resize-RSI', 148], ['resize-STOCHRSI', 128],
   ['resize-MACD', 116], ['resize-ATR', 108], ['resize-ADX', 104]].map(([id, height]) => [id, { height, collapsed: false }]));
 const studyIds = Object.keys(initialLayout);
+const legacyVolumeLayout = { height: 124, collapsed: false };
 const evidence = { profile, samples: [], persisted: {}, rendererErrors: [] };
 let app, page;
 const launch = async () => {
@@ -64,7 +65,7 @@ async function resize(id, pixels, name) {
     const held = await geometry();
     lastTop = row(held, id).top;
     evidence.samples.push({ name, fraction, held: true, rows: held });
-    if (fraction === 0.67 && name === 'volume-expand') await screenshot('while-held');
+    if (fraction === 0.67 && name === 'first-study-expand') await screenshot('while-held');
     assert.ok(aligned(held), `Headers during ${name} before mouse release: ${JSON.stringify(held)}`);
   });
   await ready();
@@ -89,21 +90,24 @@ try {
   workspace.layout = 1;
   workspace.panes[0].volume = true;
   workspace.panes[0].indicators = indicators;
-  workspace.panes[0].study_layout = initialLayout;
+  workspace.panes[0].study_layout = { ...initialLayout, volume: legacyVolumeLayout };
   await request('/workspace', 'PUT', workspace);
   await page.reload();
   await ready();
+  await expect(pane().getByTestId('study-controls-0-volume')).toHaveCount(0);
+  assert.deepEqual(await canvas().evaluate(node => node.__chart.panes().flatMap((pane, index) =>
+    pane.getSeries().filter(series => series.options().priceScaleId === 'gmt-volume').map(() => index))), [0]);
   await screenshot('initial');
   await idleHistory();
   const creationCount = await canvas().getAttribute('data-chart-creations');
   const providerBefore = (await request('/api/history/status')).provider_requests;
-  await resize('volume', -48, 'volume-expand');
-  await resize('volume', 26, 'volume-shrink');
-  await resize('resize-RSI', -32, 'rsi-expand');
-  await resize('resize-RSI', 20, 'rsi-shrink');
+  await resize('resize-RSI', -48, 'first-study-expand');
+  await resize('resize-RSI', 26, 'first-study-shrink');
+  await resize('resize-STOCHRSI', -32, 'stochastic-expand');
+  await resize('resize-STOCHRSI', 20, 'stochastic-shrink');
   await button('Collapse study resize-STOCHRSI').click();
   await expect.poll(async () => row(await geometry(), 'resize-STOCHRSI').height).toBeLessThan(40);
-  await resize('volume', -22, 'volume-with-stochastic-collapsed');
+  await resize('resize-RSI', -22, 'first-study-with-stochastic-collapsed');
   await button('Expand study resize-STOCHRSI').click();
   await ready();
   await expect.poll(async () => row(await geometry(), 'resize-STOCHRSI').height).toBeGreaterThan(100);
@@ -114,10 +118,11 @@ try {
   await expect(canvas()).toHaveAttribute('data-chart-creations', creationCount);
   const expected = await saved();
   evidence.persisted.afterDrag = expected;
-  for (const id of ['resize-MACD', 'resize-ATR', 'resize-ADX']) {
+  assert.deepEqual(expected.volume, legacyVolumeLayout);
+  for (const id of ['resize-MACD', 'resize-ATR', 'resize-ADX', 'resize-ROC']) {
     assert.deepEqual(expected[id], initialLayout[id], 'Unmoved studies keep their saved height');
   }
-  await dragStudySeparator(page, canvas(), 'volume', 0);
+  await dragStudySeparator(page, canvas(), 'resize-RSI', 0);
   assert.deepEqual(await saved(), expected, 'A separator click keeps saved heights');
   const retained = async label => {
     await ready();

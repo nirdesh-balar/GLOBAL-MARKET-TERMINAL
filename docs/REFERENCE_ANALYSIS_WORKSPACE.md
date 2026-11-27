@@ -40,9 +40,11 @@ Symbol Search uses one directory for chart and Watchlist selection. Open Data Wi
 
 ## Chart Volume
 
-Add Volume from Indicators → Technicals. New charts begin without it. Main Chart — Bottom draws on an independent scale in the lower part of the existing price pane. The Volume name, crosshair value, and controls appear in the upper-left study legend. Hover or focus the row for visibility, settings, and more actions. The row menu can reorder Volume in the legend, move it to a separate pane, or remove it. Collapsing the legend leaves the bars visible. Hiding Volume keeps the row available to show it again. In a separate pane, use the pane header to change position and drag the native separator to resize it. Settings can return Volume to the main chart. Removing it persists across launches.
+Add Volume from Indicators → Technicals. New charts begin without it. When shown, Volume uses its independent scale at the bottom of the main price chart. Its legend row provides visibility, color settings, and direct removal. Collapsing the main legend leaves the plots visible. A hidden indicator can be shown again from its row.
 
-The version 2 settings format records placement, separate pane order, and optional overlay legend order. Existing explicit visible flags and saved settings preserve the separate position and saved height. Old profiles did not record the source of a serialized true flag, so explicit old true values retain their rendering. Missing preferences and new or padded panes start without Volume. Legacy presets and unrelated chart data follow their existing restore paths. The crosshair time scale and Data Window still show candle timestamps.
+Saved Volume data retains legacy placement, order, height and collapse preferences for older builds. The current chart displays an explicitly enabled legacy Volume on the main price pane and preserves its colors, visibility and candle values. An explicit removal persists.
+
+Overlay studies appear in the main legend. Visible separate-pane studies use their own headers. Their pane order and resize behavior follow the saved study list and layout. Names use the theme's neutral foreground, while readings use each output's configured color. Pointer hover and keyboard focus reveal actions in both locations.
 
 ## Stages D and E · Local studies and provider-derived detail
 

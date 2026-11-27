@@ -35,4 +35,4 @@ Pine-compatible Editor native Windows validation remains pending. Run the shared
 
 Chart toolbar and Volume indicator native Windows validation remains pending. Run `node scripts/volume-indicator-ui.mjs` with the native launcher adapted to Windows, then verify Technicals search, hide/show, above/below pane order, resize, profile restart and keyboard access to About and licenses.
 
-For the Volume placement redesign, include the top-left legend and its keyboard-accessible Volume controls, middle-pane order after restart, and independent price scaling at each native DPI. WIN-CHARTGRID and WIN-ELECTRON44 remain pending.
+For the Volume placement redesign, include the transparent legends, plot-colored values, keyboard-accessible Volume controls, separate study order after restart, and independent price scaling at each native DPI. WIN-CHARTGRID and WIN-ELECTRON44 remain pending.

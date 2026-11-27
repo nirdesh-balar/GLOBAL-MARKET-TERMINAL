@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-27 · Transparent study legends and Volume controls
+
+- Use neutral study names, muted input parameters, and plot-colored candle readings in transparent chart legends and study headers. Hover or keyboard focus exposes direct visibility, settings, and removal actions.
+- Keep Volume on the main pane’s independent bottom scale. Preserve legacy pane preferences in stored data while using the current chart layout. RSI, MACD and other pane studies retain their independent scales and resize behavior.
+
 ## 2026-11-27 · Volume controls in the chart legend
 
 - Place the main-chart Volume name, candle value, and controls in the upper-left study legend. Keep the bars on their existing scale at the bottom of the price pane. A dedicated Volume pane retains its own header.

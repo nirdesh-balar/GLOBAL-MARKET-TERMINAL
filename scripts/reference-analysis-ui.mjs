@@ -182,6 +182,14 @@ try{
   await app.close();
   await mount();
   await expect(pane().getByRole('button',{name:'Hide Local momentum study'})).toBeVisible();
+  const appliedRecipe = (await request('/workspace')).panes[0].local_studies[0];
+  await pane().getByTestId(`study-controls-0-${appliedRecipe.id}`).getByRole('button', {name:`Pane settings ${appliedRecipe.id}`}).click();
+  const legacySettings = page.getByRole('dialog',{name:'Legacy study settings'});
+  await expect(legacySettings.getByLabel('RSI length')).toHaveValue(String(appliedRecipe.recipe.rsi));
+  await legacySettings.getByLabel('RSI length').fill(String(appliedRecipe.recipe.rsi+1));
+  await legacySettings.getByRole('button',{name:'Apply settings',exact:true}).click();
+  await expect.poll(async()=>(await request('/workspace')).panes[0].local_studies[0])
+    .toEqual({...appliedRecipe,recipe:{...appliedRecipe.recipe,rsi:appliedRecipe.recipe.rsi+1}});
   await pane().getByRole('button',{name:'Hide Local momentum study'}).click();
   await expect(pane().getByRole('button',{name:'Show Local momentum study'})).toBeVisible();
   await pane().getByRole('button',{name:'Remove local study Local momentum study'}).click();

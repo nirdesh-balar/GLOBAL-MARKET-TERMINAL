@@ -85,17 +85,15 @@ try {
   const originalCanvas = await canvas(0).getAttribute('data-chart-creations');
   const count = () => page.getByTestId('study-legend-count-0');
   const legend = id => button(`Indicator legend pane ${id}`, pane(id));
-  await expect(count()).toHaveText('4');
+  await expect(count()).toHaveText('5');
   await expect(row('ema20')).toContainText('EMA 20');
   await expect(row('ema9')).toContainText('EMA 9');
   assert.ok(await row('ema20').evaluate(element => {
     const row = element.getBoundingClientRect();
-    const list = element.parentElement.getBoundingClientRect();
-    if (list.right - row.right < 8) return false;
-    const target = document.elementFromPoint((list.right + row.right) / 2, row.top + row.height / 2);
+    const target = document.elementFromPoint(row.right + 12, row.top + row.height / 2);
     return !!target?.closest('.chart-canvas');
   }), 'Blank legend space leaves the chart available for drawing and zooming');
-  await expect(pane(0).locator('.study-pane-controls')).toHaveCount(3);
+  await expect(pane(0).locator('.study-pane-controls')).toHaveCount(2);
   await expect(pane(0).locator('.study-pane-controls').getByText('Height', { exact: true })).toHaveCount(0);
 
   if (process.env.GMT_LEGEND_RECORD === '1') {
@@ -129,8 +127,8 @@ try {
   await canvas(0).hover({ position: { x: exactPoint.x, y: exactPoint.y } });
   await expect(canvas(0)).toHaveAttribute('data-crosshair-time',String(exactPoint.time));
   await expect.poll(numericValue).toBeCloseTo(expected[exactPoint.index], 8);
-  await expect(row('stoch').locator('[data-study-output]')).toHaveCount(2);
-  const colors = await row('stoch').locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => node.style.color));
+  await expect(pane(0).getByTestId('study-controls-0-stoch').locator('[data-study-output]')).toHaveCount(2);
+  const colors = await pane(0).getByTestId('study-controls-0-stoch').locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => node.style.color));
   assert.equal(new Set(colors).size, 2);
   await page.mouse.move(6, 9);
   await expect.poll(numericValue).toBeCloseTo(expected.at(-1), 8);
@@ -193,7 +191,7 @@ try {
   await legend(0).click();
   await expect(legend(0)).toHaveAttribute('aria-expanded', 'false');
   await expect(row('ema20')).toBeHidden();
-  await expect(count()).toHaveText('4');
+  await expect(count()).toHaveText('5');
   await expect(canvas(0)).toHaveAttribute('data-study-series', beforeCollapse);
   await snap('collapsed');
   await button('Chart layout').click();
@@ -205,7 +203,8 @@ try {
   await button('Layout 1').click();
   await button('Visibility menu').click();
   await button('Hide indicators').click();
-  await expect(legend(0)).toHaveCount(0);
+  await expect(count()).toHaveText('1');
+  await expect(row('ema20')).toHaveCount(0);
   await expect.poll(async () => (await studies()).length).toBe(0);
   await button('Visibility menu').click();
   await expect(button('Hide indicators')).toHaveText('Show indicators');
@@ -215,7 +214,7 @@ try {
   await legend(0).click();
 
   await button('Remove EMA 10', row('ema9')).click();
-  await expect(count()).toHaveText('3');
+  await expect(count()).toHaveText('4');
   await expect(row('ema9')).toHaveCount(0);
   await expect.poll(async () => plot(await studies(), 'ema9')).toBe(false);
   assert.deepEqual((await saveState()).indicators.map(i => i.id), ['ema20', 'rsi', 'stoch']);
@@ -223,7 +222,7 @@ try {
   const manager = page.getByRole('dialog', { name: 'Indicator manager' });
   await manager.getByLabel('Add EMA', { exact: true }).click();
   await manager.getByLabel('Close indicators', { exact: true }).click();
-  await expect(count()).toHaveText('4');
+  await expect(count()).toHaveText('5');
 
   await zone('Kolkata', /^Asia\/Kolkata/);
   await expect(clock()).toHaveText(/^\d\d:\d\d:\d\d UTC\+5:30$/);

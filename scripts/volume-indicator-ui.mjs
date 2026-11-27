@@ -89,8 +89,10 @@ try {
   await page.reload();
   await ready('0', icici);
   await ready('1', nifty);
-  await expect(header('0')).toBeVisible();
-  await expect(header('1')).toBeVisible();
+  await expect(header('0')).toHaveCount(0);
+  await expect(legend('0')).toBeVisible();
+  await expect(header('1')).toHaveCount(0);
+  await expect(legend('1')).toBeVisible();
   await expect(page.getByTestId('quote-refresh-status')).toHaveText(/Updated at .+ · Auto 300s/, { timeout: 30000 });
   await expect(legend('1')).toHaveText('Volume unavailable');
   assert.equal((await volumes('1'))[0].data.filter(point => 'value' in point).length, 0);
@@ -102,7 +104,7 @@ try {
   assert.ok(expected.length >= 75 && expected.every(bar => bar.value === 100));
   await expect(legend('0')).toHaveText('Volume 100.00');
   await expect(legend('0')).not.toContainText(/historical|am|pm/);
-  await expect.poll(async () => (await volumes('0'))[0]?.height).toBeGreaterThanOrEqual(120);
+  await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(0);
   const [original] = await volumes('0');
   assert.equal((await volumes('0')).length, 1, 'Exactly one native histogram for a pre-existing Volume pane');
   assert.deepEqual(original.data.map(({time,value})=>({time,value})), expected);
@@ -132,30 +134,33 @@ try {
   await expect(volumeRow()).toHaveCount(1);
   await button('Settings volume', volumeRow()).click();
   const settings = page.getByRole('dialog', { name: 'Volume settings' });
-  await button('Move to Separate Pane Below', settings).click();
+  await expect(settings.getByLabel('Volume placement')).toHaveCount(0);
   await settings.getByLabel('Up bar color').fill('#12ab34');
   await button('Apply settings', settings).click();
-  await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(2);
+  await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(0);
   await expect.poll(async () => (await volumes('0'))[0]?.data[0]?.color).toBe('#12ab3455');
   await button('Visibility volume', volumeRow()).click();
   await expect(button('Visibility volume', volumeRow())).toHaveAttribute('aria-pressed', 'false');
   await expect(header('0')).toHaveCount(0);
-  await expect(legend('0')).toHaveCount(0);
-  await expect(header('1')).toBeVisible();
+  await expect(legend('0')).toHaveText('Volume');
+  await expect(header('1')).toHaveCount(0);
+  await expect(legend('1')).toBeVisible();
   await saved();
   const hidden = (await state()).panes[0];
-  assert.deepEqual(hidden.volume_settings, { version: 2, placement: 'pane', position: 'last', up_color: '#12ab34', down_color: null, legend_position: null });
+  assert.deepEqual(hidden.volume_settings, { version: 2, placement: 'pane', position: 'first', up_color: '#12ab34', down_color: null, legend_position: null });
   assert.equal(hidden.volume, false);
   assert.deepEqual(hidden.study_layout.volume, fixture.panes[0].study_layout.volume);
   await button('Visibility volume', volumeRow()).click();
-  await expect(header('0')).toBeVisible();
+  await expect(header('0')).toHaveCount(0);
+  await expect(legend('0')).toBeVisible();
   await expect.poll(async () => (await volumes('0'))[0]?.data[0]?.color).toBe('#12ab3455');
   await button('Delete volume', volumeRow()).click();
   await expect(volumeRow()).toHaveCount(0);
   await button('Close indicators').click();
   await expect(header('0')).toHaveCount(0);
   const priceHeight = () => canvas('0').evaluate(node => node.__chart.panes()[0].getHeight());
-  await expect.poll(priceHeight).toBeGreaterThan(beforePane.priceHeight + 90);
+  await expect.poll(priceHeight).toBe(beforePane.priceHeight);
+  await expect(legend('0')).toHaveCount(0);
   evidence.priceHeightAfter = await priceHeight();
   await expect(page.getByTestId('study-controls-0-volume-test-rsi')).toBeVisible();
   assert.deepEqual(await canvas('0').evaluate(node => node.__mainSeries.data()), beforePane.data);
@@ -176,7 +181,8 @@ try {
   await ready('1', nifty);
   await expect(header('0')).toHaveCount(0);
   assert.deepEqual(await state(), removed);
-  await expect(header('1')).toBeVisible();
+  await expect(header('1')).toHaveCount(0);
+  await expect(legend('1')).toBeVisible();
 
   await idle();
   const beforeAdd = await history();
@@ -191,9 +197,9 @@ try {
   await expect(header('0')).toHaveCount(0);
   await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(0);
   await button('Edit Volume',page.getByTestId('study-legend-0-volume')).click();
-  await button('Move to Separate Pane Below').click();
+  await expect(page.getByRole('dialog', {name:'Volume settings'}).getByLabel('Volume placement')).toHaveCount(0);
   await button('Apply settings').click();
-  await expect.poll(async () => (await volumes('0'))[0]?.height).toBeGreaterThanOrEqual(120);
+  await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(0);
   assert.deepEqual((await volumes('0'))[0].data.map(({time,value})=>({time,value})), expected);
   await saved();
   await idle();
@@ -208,19 +214,20 @@ try {
   await launch();
   await ready('0', icici);
   await ready('1', nifty);
-  await expect(header('0')).toBeVisible();
+  await expect(header('0')).toHaveCount(0);
+  await expect(legend('0')).toBeVisible();
   assert.deepEqual(await state(), restored);
   assert.equal((await volumes('0')).length, 1);
   assert.deepEqual(evidence.rendererErrors, []);
   Object.assign(evidence, { historyBarsVerified: expected.length, absentHistoryState: await legend('1').innerText(),
-    legacyHeight: original.height, priceHeightBefore: beforePane.priceHeight, profileRestarts: 2,
+    legacyHeight: (await state()).panes[0].study_layout.volume.height, priceHeightBefore: beforePane.priceHeight, profileRestarts: 2,
     lifecycleExtraHistoryRequests: afterRemoval.history_requests - requestsBefore.history_requests,
     lifecycleExtraProviderRequests: afterRemoval.provider_requests - requestsBefore.provider_requests,
     readdExtraProviderRequests: afterAdd.provider_requests - beforeAdd.provider_requests,
     readdExtraHistoryRequests: afterAdd.history_requests - beforeAdd.history_requests });
   // Request counters are scoped to their native backend process.
   assert.ok(requestsBefore.provider_requests >= 1);
-  console.log(`PASS Volume add/hide/show/remove/order, ${expected.length} exact fixture bars, legacy height, independent charts, keyboard attribution, autosave, two restarts, and zero extra requests on re-add.`);
+  console.log(`PASS Volume add/hide/show/remove, ${expected.length} exact fixture bars, preserved legacy pane preferences, independent charts, keyboard attribution, autosave, two restarts, and zero extra requests on re-add.`);
 } catch (error) {
   await screenshot('failure').catch(() => {});
   throw error;

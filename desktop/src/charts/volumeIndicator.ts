@@ -8,14 +8,11 @@ export const defaultVolumeSettings: VolumeSettings = { version: 2, placement: 'c
 const legacyVolumeSettings: VolumeSettings = { ...defaultVolumeSettings, placement: 'pane', position: 'first' };
 
 export function volumeSettings(pane: Pane): VolumeSettings {
+  // Retain the saved placement/order for compatibility with earlier builds.
+  // Current charts present both legacy and newly added Volume on the price pane.
   return pane.volume_settings ?? legacyVolumeSettings;
 }
 
-export function volumePanePosition(position: VolumeSettings['position'], otherPanes: number) {
-  if (position === 'first') return 0;
-  if (position === 'last') return otherPanes;
-  return Math.min(position, otherPanes);
-}
 export type VolumeInstance = VolumeSettings & { visible: boolean };
 
 export function volumeInstance(pane: Pane): VolumeInstance | null {

@@ -1,13 +1,12 @@
-import {volumeInstance,volumeInstancePatch} from './volumeIndicator';
-import {VolumeControls} from '../components/VolumeControls';
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, Eye, Settings2, X } from 'lucide-react';
-import type { ISeriesApi, IChartApi } from 'lightweight-charts';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { IChartApi } from 'lightweight-charts';
 import type { Pane, StudyLayout } from '../types';
 import type { Study } from './indicators';
+import type { VolumeContext } from './volume';
 import type { renderIndicatorPanes } from './IndicatorPane';
-import { chartHeight, studyHeight, PRICE_MIN, STUDY_MIN, VOLUME_DEFAULT } from './studyLayout';
-import { StudyValues, studyLegendName, type LegendValue } from './StudyLegend';
+import { chartHeight, studyHeight, PRICE_MIN, STUDY_MIN } from './studyLayout';
+import { StudyValues, StudyLegendActions, StudyLegendLabel, StudyLegendMetadata, studyLegendName, type LegendValue, type StudyReferenceLabels } from './StudyLegend';
 
 interface StudyHeader {
   id: string;
@@ -26,7 +25,6 @@ export function useStudyWorkspace(
   container: RefObject<HTMLDivElement | null>,
   viewport: RefObject<HTMLDivElement | null>,
   render: RefObject<ReturnType<typeof renderIndicatorPanes>>,
-  volumeSeries: RefObject<ISeriesApi<'Histogram'> | null>,
   pane: Pane,
   series: Study[],
   revision: string,
@@ -45,15 +43,11 @@ export function useStudyWorkspace(
     let fitFrame = 0, measureFrame = 0, saveFrame = 0;
     let drag: { pointer: number; width: number; height: number; stretch: Map<number, number> } | null = null;
     const { pane, series } = latest.current;
-    const volumeIndex=volumeSeries.current?.getPane().paneIndex();
-    const groups: StudyHeader[] = [
-      ...(volumeIndex!==undefined&&volumeIndex>0 ? [{ id: 'volume', group: 'volume', index: volumeIndex, name: 'Volume' }] : []),
-      ...[...render.current.slots].map(([group, nativePane]) => {
-        const study = series.find(item => item.pane === group);
-        const config = pane.indicators.find(item => item.id === study?.id);
-        return { id: study?.id ?? group, group, index: nativePane.paneIndex(), name: config?.kind ?? group };
-      }),
-    ].sort((a,b)=>a.index-b.index);
+    const groups: StudyHeader[] = [...render.current.slots].map(([group, nativePane]) => {
+      const study = series.find(item => item.pane === group);
+      const config = pane.indicators.find(item => item.id === study?.id);
+      return { id: study?.id ?? group, group, index: nativePane.paneIndex(), name: config?.kind ?? group };
+    }).sort((a,b)=>a.index-b.index);
     setHeaders(previous => previous.length === groups.length && previous.every((header, i) =>
       header.id === groups[i].id && header.group === groups[i].group &&
       header.index === groups[i].index && header.name === groups[i].name) ? previous : groups);
@@ -195,17 +189,17 @@ export function useStudyWorkspace(
       window.removeEventListener('blur', cancel);
       layoutHeaders.current = () => {};
     };
-  }, [revision, pane.study_layout, pane.volume]);
+  }, [revision, pane.study_layout]);
 
   useLayoutEffect(() => { layoutHeaders.current(); }, [headers]);
   return { height, headers, headerLayer };
 }
 
-export function StudyPaneControls({ rows, layer, pane, values, volume, volumeStale, onChange, onSettings }: {
+export function StudyPaneControls({ rows, layer, pane, values, volumeInfo, referenceLabels, onChange, onSettings }: {
   rows: StudyHeader[];
   values: ReadonlyMap<string, LegendValue[]>;
-  volume: number | null;
-  volumeStale: boolean;
+  volumeInfo: VolumeContext;
+  referenceLabels: StudyReferenceLabels;
   layer: RefObject<HTMLDivElement | null>;
   pane: Pane;
   onChange: (value: Partial<Pane>) => void;
@@ -214,51 +208,35 @@ export function StudyPaneControls({ rows, layer, pane, values, volume, volumeSta
   const change = (id: string, value: Partial<StudyLayout>) => onChange({
     study_layout: {
       ...retainedStudyLayout(pane),
-      [id]: { height: id === 'volume' ? VOLUME_DEFAULT : STUDY_MIN, collapsed: false, ...pane.study_layout?.[id], ...value },
+      [id]: { height: STUDY_MIN, collapsed: false, ...pane.study_layout?.[id], ...value },
     },
   });
 
   return <div className="study-pane-headers" ref={layer}>
     {rows.map(({ id, name }) => {
-      const instance=id==='volume'?volumeInstance(pane):null;
-      if (instance?.visible&&instance.placement==='pane') {
-        const collapsed=!!pane.study_layout?.volume?.collapsed;
-        return <div key={id} className="study-pane-controls volume-pane-controls"
-          data-study-header={id} data-testid={`study-controls-${pane.id}-volume`} onPointerDown={event=>event.stopPropagation()}>
-          <button aria-label={`${collapsed?'Expand':'Collapse'} study volume`} aria-expanded={!collapsed}
-            onClick={()=>change(id,{collapsed:!collapsed})}>{collapsed?<ChevronRight size={12}/>:<ChevronDown size={12}/>}</button>
-          <span data-testid={`volume-legend-${pane.id}`} className="volume-pane-label">
-            Volume{!collapsed&&(volume===null?' unavailable':<> <StudyValues values={[{name:'Volume',color:'var(--muted)',value:volume}]}/></>)}
-          </span>
-          {!collapsed&&volumeStale&&<small title="Showing stored Volume history">Stale</small>}
-          <VolumeControls volume={instance} adjacentPanes={rows.filter(row=>row.id!=='volume').length}
-            onSettings={()=>onSettings(id)} onChange={value=>onChange(volumeInstancePatch(value))}/>
-        </div>;
-      }
-      if (id==='volume') return null;
       const collapsed = !!pane.study_layout?.[id]?.collapsed;
       const indicator = pane.indicators.find(item => item.id === id);
       const local=pane.local_studies?.find(item=>item.id===id);
       const label=indicator?studyLegendName(indicator):local?.name??name;
-      return <div key={id} className="study-pane-controls" data-study-header={id}
+      return <div key={id} className="study-pane-controls study-legend-row" data-study-header={id}
         data-testid={`study-controls-${pane.id}-${id}`} onPointerDown={event => event.stopPropagation()}>
         <button aria-label={`${collapsed ? 'Expand' : 'Collapse'} study ${id}`} aria-expanded={!collapsed}
-          title="Collapse / expand this study pane" onClick={() => change(id, { collapsed: !collapsed })}>
-          {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}<span title={label}>{label}</span>
+          className="study-pane-collapse" title="Collapse / expand this study pane" onClick={() => change(id, { collapsed: !collapsed })}>
+          {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
         </button>
-        {!collapsed && <StudyValues values={values.get(id)} />}
-        {(indicator||(local&&'script_id' in local)) && <button title="Study settings" aria-label={`Pane settings ${id}`} onClick={() => onSettings(id)}>
-          <Settings2 size={12} />
-        </button>}
-        <button title="Hide this study" aria-label={`Hide study ${id}`} onClick={() => local ? onChange({local_studies:pane.local_studies?.map(item=>item.id===id?{...item,visible:false}:item)})
-            : onChange({ indicators: pane.indicators.map(item => item.id === id ? { ...item, visible: false } : item) })}>
-          <Eye size={12} />
-        </button>
-        <button title="Remove this indicator" aria-label={`Remove study ${id}`}
-          onClick={() => local?onChange({local_studies:pane.local_studies?.filter(item=>item.id!==id)}):
-            onChange({ indicators: pane.indicators.filter(item => item.id !== id) })}>
-          <X size={12} />
-        </button>
+        <StudyLegendLabel label={label} parameters={!!indicator} />
+        {!collapsed && <>
+          <StudyValues values={values.get(id)} />
+          {indicator && <StudyLegendMetadata chartId={pane.id} indicator={indicator} volumeInfo={volumeInfo} referenceLabels={referenceLabels} />}
+        </>}
+        <StudyLegendActions visible label={label} visibilityLabel={local ? undefined : `Hide study ${id}`} settingsId={`legend-settings-${id}`} settingsLabel={`Pane settings ${id}`}
+          removeLabel={local ? `Remove local study ${local.name}` : `Remove study ${id}`} onSettings={() => onSettings(id)}
+          onVisibility={() => local
+            ? onChange({ local_studies: pane.local_studies?.map(item => item.id === id ? { ...item, visible: false } : item) })
+            : onChange({ indicators: pane.indicators.map(item => item.id === id ? { ...item, visible: false } : item) })}
+          onRemove={() => local
+            ? onChange({ local_studies: pane.local_studies?.filter(item => item.id !== id) })
+            : onChange({ indicators: pane.indicators.filter(item => item.id !== id) })} />
       </div>;
     })}
   </div>;
