@@ -57,3 +57,30 @@ def evaluate_study_rule(rule, rows):
     before, last = values[-2:]
     matched = before <= rule.level < last if rule.direction == 'above' else before >= rule.level > last
     return matched, last
+
+
+class PineRevision(BaseModel):
+    """Persist source and compiler metadata only. The renderer validates source on every compile."""
+    model_config = ConfigDict(extra='forbid', strict=True)
+    number: int = Field(ge=1)
+    version: Literal[4, 5, 6]
+    source: str = Field(min_length=1, max_length=8192)
+    title: str = Field(min_length=1, max_length=64)
+    overlay: bool
+    plot_count: int = Field(ge=1, le=8)
+
+
+class PineScript(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    id: str = Field(pattern=r'^[0-9a-f-]{36}$')
+    name: str = Field(min_length=1, max_length=64)
+    language: Literal['pine-subset'] = 'pine-subset'
+    category: Literal['indicator'] = 'indicator'
+    revisions: list[PineRevision] = Field(min_length=1, max_length=5)
+
+    @model_validator(mode='after')
+    def increasing_revisions(self):
+        numbers = [revision.number for revision in self.revisions]
+        if numbers != sorted(set(numbers)):
+            raise ValueError('Script revisions must increase')
+        return self

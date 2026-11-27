@@ -1,4 +1,4 @@
-from .study_recipes import LocalStudy, StudyRecipe
+from .study_recipes import LocalStudy, PineScript, StudyRecipe
 from typing import Literal
 from pydantic import BaseModel,Field,model_validator,field_validator,ConfigDict,ValidationError
 Timeframe=Literal['1m','5m','15m','30m','1h','4h','1d','1w','1M','1Y']
@@ -382,9 +382,16 @@ class AppliedStudy(BaseModel):
     recipe:StudyRecipe
     visible:bool=True
 
+class AppliedPineScript(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    id: str = Field(pattern=r'^[0-9a-f-]{36}$')
+    name: str = Field(min_length=1, max_length=64)
+    script_id: str = Field(pattern=r'^[0-9a-f-]{36}$')
+    visible: bool = True
+
 class Pane(SymbolEntry):
-    local_studies:list[AppliedStudy]=Field(default_factory=list,max_length=3)
-    study_layout:dict[str,StudyLayout]=Field(default_factory=dict,max_length=21)
+    local_studies:list[AppliedStudy | AppliedPineScript]=Field(default_factory=list,max_length=3)
+    study_layout:dict[str,StudyLayout]=Field(default_factory=dict,max_length=24)
     @field_validator("study_layout")
     @classmethod
     def bounded_study_layout(cls,value):
@@ -492,6 +499,7 @@ class StudyLibrary(BaseModel):
 
 class Workspace(BaseModel):
     local_studies:list[LocalStudy]=Field(default_factory=list,max_length=20)
+    pine_scripts: list[PineScript] = Field(default_factory=list, max_length=20)
     study_library:StudyLibrary=Field(default_factory=StudyLibrary)
     chart_grid: GridPreferences = Field(default_factory=GridPreferences)
     unsupported_indicator_archive:list[dict]=Field(default_factory=list,max_length=1024)
@@ -570,6 +578,12 @@ class Workspace(BaseModel):
     hidden_symbols:dict[str,list[str]]=Field(default_factory=dict)
     @model_validator(mode='after')
     def validate_ids(self):
+        script_ids = {script.id for script in self.pine_scripts}
+        if len(script_ids) != len(self.pine_scripts):
+            raise ValueError('Script IDs must be unique')
+        if any(isinstance(item, AppliedPineScript) and item.script_id not in script_ids
+               for pane in self.panes for item in pane.local_studies):
+            raise ValueError('Applied scripts must refer to a saved script')
         if len({item.id for item in self.local_studies})!=len(self.local_studies):raise ValueError('Local study IDs must be unique')
         if len({p.id for p in self.panes})!=8:raise ValueError('Pane identifiers must be unique')
         if len({w.id for w in self.watchlists})!=len(self.watchlists):raise ValueError('Watchlist IDs must be unique')

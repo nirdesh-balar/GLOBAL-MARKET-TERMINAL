@@ -1,7 +1,7 @@
 import {ChartStyleOptions} from '../charts/ChartStyleOptions';
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
-  Minimize2, Scan, Save, Ellipsis, Database, ChartNoAxesCombined, List } from 'lucide-react';
+  Minimize2, Scan, Save, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
 import { providerLabel } from '../providers/label';
@@ -20,8 +20,6 @@ interface HeaderProps {
   pane: Pane;
   layoutMenu: boolean;
   onSearch: () => void;
-  onIndices: () => void;
-  onIndexDetails: () => void;
   onChange: (value: Partial<Pane>) => void;
   onIndicators: () => void;
   onLayoutMenu: () => void;
@@ -41,7 +39,7 @@ interface HeaderProps {
 }
 
 export function TerminalHeader({
-  workspace, pane, layoutMenu, onSearch, onIndices, onIndexDetails, onChange, onIndicators, onLayoutMenu,
+  workspace, pane, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
   onLayout, onTheme, onSettings, onChartSettings, onSync, focused,
   expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
 }: HeaderProps) {
@@ -101,8 +99,6 @@ export function TerminalHeader({
         <SlidersHorizontal size={15} />
       </button>
       <div className="toolbar-divider" />
-      <button aria-label="Search indices" title="Search indices" onClick={onIndices}><ChartNoAxesCombined size={16}/></button>
-      {pane.kind==='index'&&<button aria-label="Index constituents" title="Index constituents" onClick={onIndexDetails}><List size={16}/></button>}
       <button aria-label="Historical replay" title="Historical candle replay" onClick={() => command(pane.id, 'replay')}>
         <Play size={15} /><span className="replay-word">Replay</span>
       </button>

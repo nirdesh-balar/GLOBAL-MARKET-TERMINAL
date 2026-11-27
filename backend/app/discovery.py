@@ -6,6 +6,7 @@ import yfinance as yf
 from yfinance.exceptions import YFRateLimitError
 from .providers.base import ProviderError
 from .market_router import selectable
+from .registry import matches_category
 class DiscoveryService:
     def __init__(self,registry,history):
         self.registry,self.history=registry,history;self.cache=OrderedDict();self.inflight={}
@@ -54,7 +55,7 @@ class DiscoveryService:
         # Yahoo may match a name synonym absent in quote text. Apply filters, not query again.
         rows={r['canonical_id']:r for r in local}
         for r in remote:
-            if selectable(r) and (not category or r['category']==category) and (not exchange or exchange.casefold() in r['exchange'].casefold()) and (not country or country.casefold() in r['country'].casefold()):rows.setdefault(r['canonical_id'],r)
+            if selectable(r) and matches_category(r,category) and (not exchange or exchange.casefold() in r['exchange'].casefold()) and (not country or country.casefold() in r['country'].casefold()):rows.setdefault(r['canonical_id'],r)
         return dict(results=list(rows.values())[:limit],warning=warning,scope='Official NSE directory + cached metadata + Yahoo search; no complete global universe claim')
     async def close(self):
         for t in list(self.inflight.values()):t.cancel()

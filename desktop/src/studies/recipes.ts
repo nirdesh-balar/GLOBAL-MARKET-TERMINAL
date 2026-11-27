@@ -7,7 +7,8 @@ export type RecipeOutput='rsi'|'ema'|'wma';
 export interface RecipeRule {recipe:StudyRecipe;output:RecipeOutput;direction:'above'|'below';level:number}
 export interface StudyRevision extends RecipeRule {number:number}
 export interface LocalStudy {id:string;name:string;category:'indicator'|'rule'|'library';revisions:StudyRevision[]}
-export interface AppliedStudy {id:string;name:string;recipe:StudyRecipe;visible:boolean}
+interface StudyInstance {id:string;name:string;visible:boolean}
+export type AppliedStudy=StudyInstance&({recipe:StudyRecipe}|{script_id:string});
 
 export const defaultRecipe:StudyRecipe={version:1,source:'close',rsi:9,ema:3,wma:21};
 export const recipeSources:PriceSource[]=['close','open','high','low','HL2','HLC3','OHLC4'];
@@ -29,7 +30,7 @@ export function recipeValues(rows:Candle[],recipe:StudyRecipe){
 }
 export function recipeSeries(rows:Candle[],applied:readonly AppliedStudy[]):Study[]{
   return applied.flatMap(item=>{
-    if(!item.visible||!validRecipe(item.recipe))return [];
+    if(!item.visible||!('recipe' in item)||!validRecipe(item.recipe))return [];
     const values=recipeValues(rows,item.recipe);
     return (['rsi','ema','wma'] as const).map((key,index)=>({
       id:item.id,name:index===0?'RSI':key.toUpperCase()+' of RSI',pane:item.id,histogram:false,

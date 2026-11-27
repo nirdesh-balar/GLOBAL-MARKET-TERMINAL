@@ -28,3 +28,5 @@ The reference analysis workspace adds native selectors, keyboard-managed dialogs
 5. For the rc.6 portable package, place the native `win-unpacked` output at `release-candidate-rc6/win-unpacked` inside a disposable `GMT_WORKSPACE`. Run `python scripts/create-portable-release-rc6.py` there, inspect its archive, then run the portable acceptance script on a separate extraction.
 
 For future changes, record the ID, source SHA and files, shared-source status, expected Windows impact, implementation and test commands, and blockers. Use **Windows review pending**, **Windows implementation pending**, **Windows native testing pending**, and **Windows verified** as applicable. Record the native machine class, exact candidate, date and results before marking a row verified.
+
+Pine-compatible Editor native Windows validation remains pending. Run the shared numerical and UI scripts with a temporary profile, then verify keyboard editing, source scrolling, side-dock resizing, script revisions, fill rendering, pane resizing and fullscreen/Escape at normal and scaled DPI.

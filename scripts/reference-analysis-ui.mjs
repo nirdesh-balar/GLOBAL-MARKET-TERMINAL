@@ -57,7 +57,7 @@ try{
   await expect.poll(()=>canvas().evaluate(node=>node.__chart.priceScale('left').width())).toBe(0);
   await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
   let search=page.getByRole('dialog',{name:'Search stocks and indices'});
-  await search.getByRole('button',{name:'India equities',exact:true}).click();
+  await search.getByRole('button',{name:'IN Stocks',exact:true}).click();
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('RELIANCE');
   await expect(search.getByTestId('search-result-RELIANCE.NS')).toBeEnabled({timeout:30000});
   await screenshot('0013-search');
@@ -81,6 +81,7 @@ try{
   await inspector().getByRole('button',{name:'Close Data Window'}).click();
   await expect(inspector()).toHaveCount(0);
 
+  await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
   await page.getByRole('button',{name:'Search indices',exact:true}).click();
   search=page.getByRole('dialog',{name:'Search indices'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('NIFTY');
@@ -101,6 +102,7 @@ try{
   await expect(details).toHaveCount(0);
   await expect.poll(async()=>(await request('/workspace')).watchlists.find(item=>item.id===listId).items.filter(row=>row.canonical_id===indexIdentity).length).toBe(1);
   assert.equal((await request('/workspace')).panes[0].canonical_id,selected);
+  await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
   await page.getByRole('button',{name:'Search indices',exact:true}).click();
   search=page.getByRole('dialog',{name:'Search indices'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('Nifty 50');
@@ -117,34 +119,39 @@ try{
   const add=manager().getByRole('button',{name:'Add RSI',exact:true});
   await expect(add).toBeVisible();
   await add.click();
-  await manager().getByRole('button',{name:'Recently used'}).click();
+  await manager().getByRole('button',{name:'Recently Used'}).click();
   await expect(add).toBeVisible();
   await screenshot('0117-indicator-library');
-  await manager().getByLabel('Search indicators').fill('');
+  await manager().getByRole('button',{name:'Close indicators'}).click();
+  await expect.poll(async()=>(await request('/workspace')).study_library.recent[0]).toBe('RSI');
+  const legacy=await request('/workspace');
+  const recipe={version:1,source:'close',rsi:9,ema:3,wma:21};
+  const recipeRevision={number:1,recipe,output:'rsi',direction:'above',level:50};
+  legacy.local_studies=[
+    {id:'aaaa-aaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa',name:'Local momentum study',category:'indicator',revisions:[recipeRevision,{...recipeRevision,number:2,recipe:{...recipe,ema:4}}]},
+    {id:'bbbb-bbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb',name:'Momentum cross 50',category:'rule',revisions:[recipeRevision]},
+  ];
+  await request('/workspace','PUT',legacy);
+  await page.reload();
+  await expect(canvas()).toHaveAttribute('data-history-symbol',/^yahoo:%5ENSEI:/,{timeout:30000});
+  await page.getByRole('button',{name:'Indicators',exact:true}).click();
   await manager().getByRole('button',{name:'My Scripts'}).click();
-  const create=async(name,category='indicator')=>{
-    await manager().getByRole('button',{name:'New study',exact:true}).click();
-    await manager().getByLabel('Study name',{exact:true}).fill(name);
-    await manager().getByLabel('Study type',{exact:true}).selectOption(category);
-    await manager().getByRole('button',{name:'Verify',exact:true}).click();
-    await expect(manager().getByRole('status')).toHaveText('Verified');
-    await manager().getByRole('button',{name:'Save revision'}).click();
-    await expect(manager().getByRole('status')).toHaveText('Saved revision 1');
-  };
-  await create('Local momentum study');
-  await manager().getByLabel('EMA length').fill('4');
-  await manager().getByRole('button',{name:'Verify',exact:true}).click();
-  await manager().getByRole('button',{name:'Save revision'}).click();
-  await expect(manager().getByLabel('Load study revision')).toHaveValue('2');
-  await manager().getByLabel('Load study revision').selectOption('1');
+  await manager().getByRole('button',{name:'Local momentum study',exact:true}).click();
+  const editor=page.getByRole('complementary',{name:'Pine-compatible Editor'});
+  await expect(editor.getByLabel('Script revision')).toHaveValue('2');
+  await editor.getByLabel('Script revision').selectOption('1');
+  await expect(editor.getByLabel('Pine source code')).toHaveValue(/ta\.ema\(value, 3\)/);
+  await expect(editor).toContainText('Legacy revision retained');
   await screenshot('0302-local-editor');
-  await manager().getByRole('button',{name:'Add to Chart',exact:true}).click();
+  await editor.getByRole('button',{name:'Close editor'}).click();
+  await page.getByRole('button',{name:'Indicators',exact:true}).click();
+  await manager().getByRole('button',{name:'My Scripts'}).click();
+  await manager().getByRole('button',{name:'Add legacy Local momentum study to Chart'}).click();
   await expect(pane().getByRole('button',{name:'Hide Local momentum study'})).toBeVisible();
   await expect.poll(async()=>JSON.parse(await canvas().getAttribute('data-study-series')).filter(s=>s.name.includes('of RSI')&&s.valid>0).length).toBe(2);
 
   await page.getByRole('button',{name:'Indicators',exact:true}).click();
   await manager().getByRole('button',{name:'My Scripts'}).click();
-  await create('Momentum cross 50','rule');
   await manager().getByRole('button',{name:'Create local alert'}).click();
   const alert=page.getByRole('dialog',{name:'Create historical alert'});
   await expect(alert).toContainText('RSI crosses above 50 on completed candles');

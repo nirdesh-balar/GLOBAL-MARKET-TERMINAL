@@ -37,12 +37,12 @@ const wait = live ? 90000 : 30000;
 
 async function activate(row) {
   await page.getByLabel('Search stocks and indices', { exact: true }).click();
-  await page.locator('[data-market-category="' + (row.market_type === 'spot' ? 'crypto_spot' : 'crypto_perpetual') + '"]').click();
+  await page.locator('[data-market-category=crypto]').click();
   const query = page.getByPlaceholder('Search symbol, company, index or ISIN');
   await query.pressSequentially(row.native_id);
   await expect(query).toHaveValue(row.native_id);
   const result=page.getByTestId('search-result-' + row.canonical_id);
-  await expect(result).toContainText('hyperliquid · '+row.market_type,{timeout:wait});
+  await expect(result).toContainText('Crypto · '+(row.market_type==='spot'?'Spot':'Perpetual'),{timeout:wait});
   await result.click({ timeout: wait });
   await expect(canvas()).toHaveAttribute('data-history-symbol', row.canonical_id, { timeout: wait });
   await expect(canvas()).toHaveAttribute('data-rendered-bars', /^[1-9]/, { timeout: wait });

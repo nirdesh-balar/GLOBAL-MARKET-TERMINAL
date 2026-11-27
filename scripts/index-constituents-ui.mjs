@@ -67,7 +67,7 @@ try{
   await expect(search.locator('select')).toHaveCount(0);
   await expect(search.getByRole('textbox')).toHaveCount(1);
   await singleRow(search.getByRole('group',{name:'Market categories'}));
-  await b('India equities',search).click();
+  await b('IN Stocks',search).click();
   const input=search.getByRole('textbox');
   await input.fill('RELIANCE.NS');
   await expect(search.getByTestId('search-result-RELIANCE.NS')).toBeEnabled({timeout:30000});
@@ -78,11 +78,12 @@ try{
   await chart('yahoo:RELIANCE.NS:NSE:equity','1d');
 
   const unchanged=(await call('/workspace')).watchlists;
-  await searchChart('US equities','AAPL','AAPL','yahoo:AAPL:NASDAQ:equity');
-  await searchChart('Indices','NIFTY BANK','^NSEBANK',bank);
-  await searchChart('Crypto Perpetual','BTC','hyperliquid:perpetual:BTC:BTC:USDC','hyperliquid:perpetual:BTC:BTC:USDC');
+  await searchChart('Stocks','AAPL','AAPL','yahoo:AAPL:NASDAQ:equity');
+  await searchChart('IN Indices','NIFTY BANK','^NSEBANK',bank);
+  await searchChart('Crypto','BTC','hyperliquid:perpetual:BTC:BTC:USDC','hyperliquid:perpetual:BTC:BTC:USDC');
   assert.deepEqual((await call('/workspace')).watchlists,unchanged);
 
+  await b('Search stocks and indices').click();
   await b('Search indices').click();
   search=page.getByRole('dialog',{name:'Search indices'});
   await expect(search.locator('select')).toHaveCount(0);
@@ -120,7 +121,9 @@ try{
   await chart(nifty,'1d');
   await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},csvFile);
   const before=await history();
-  await b('Index constituents').click();
+  await b('Search stocks and indices').click();
+  await b('Search indices').click();
+  await page.getByTestId('search-result-^NSEI').click();
   await expect(details()).toContainText('Constituent membership and weights are unavailable');
   await details().getByLabel('Membership as-of date').fill('2026-10-31');
   await b('Import official CSV',details()).click();
@@ -147,7 +150,7 @@ try{
 
   await b('Indicators').click();
   const indicators=page.getByRole('dialog',{name:'Indicator manager'});
-  await singleRow(indicators.getByRole('group',{name:'Indicator library views'}));
+  await expect(indicators.getByRole('navigation',{name:'Indicator library views'}).getByRole('button')).toHaveCount(4);
   await singleRow(indicators.getByRole('group',{name:'Indicator types'}));
   await expect(indicators.getByLabel('Indicator category',{exact:true})).toHaveCount(0);
   await shot('indicators');
@@ -155,13 +158,14 @@ try{
   await b('Toggle theme').click();
   await expect(page.locator('.theme-light')).toBeVisible();
   await b('Indicators').click();
-  await singleRow(indicators.getByRole('group',{name:'Indicator library views'}));
+  await expect(indicators.getByRole('navigation',{name:'Indicator library views'}).getByRole('button')).toHaveCount(4);
   await shot('indicators-light');
   await page.keyboard.press('Escape');
   await expect.poll(async()=>(await call('/workspace')).theme).toBe('light');
   await app.close();
   await launch();
   await expect(page.locator('.theme-light')).toBeVisible();
+  await b('Search stocks and indices').click();
   await b('Search indices').click();
   await page.getByTestId('search-result-^NSEI').click({timeout:30000});
   await expect(details().getByRole('table',{name:'NIFTY 50 constituents'}).locator('tbody tr')).toHaveCount(50);

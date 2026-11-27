@@ -14,6 +14,11 @@ interface StudyHeader {
   name: string;
 }
 
+function retainedStudyLayout(pane:Pane) {
+  return Object.fromEntries(Object.entries(pane.study_layout ?? {}).filter(([id])=>
+    id==='volume'||pane.indicators.some(indicator=>indicator.id===id)||pane.local_studies?.some(study=>study.id===id)));
+}
+
 export function useStudyWorkspace(
   chart: RefObject<IChartApi | null>,
   container: RefObject<HTMLDivElement | null>,
@@ -153,8 +158,7 @@ export function useStudyWorkspace(
         if (!grewOrShrank.size) return;
 
         const current = latest.current.pane;
-        const layout = Object.fromEntries(Object.entries(current.study_layout ?? {}).filter(([id]) =>
-          id === 'volume' || current.indicators.some(indicator => indicator.id === id)));
+        const layout = retainedStudyLayout(current);
         let changed = false;
         for (const { id, index } of groups) {
           const study = panes[index];
@@ -201,8 +205,7 @@ export function StudyPaneControls({ rows, layer, pane, values, volume, onChange,
 }) {
   const change = (id: string, value: Partial<StudyLayout>) => onChange({
     study_layout: {
-      ...Object.fromEntries(Object.entries(pane.study_layout ?? {}).filter(([key]) =>
-        key === 'volume' || pane.indicators.some(indicator => indicator.id === key))),
+      ...retainedStudyLayout(pane),
       [id]: { height: id === 'volume' ? VOLUME_DEFAULT : STUDY_MIN, collapsed: false, ...pane.study_layout?.[id], ...value },
     },
   });
@@ -211,7 +214,8 @@ export function StudyPaneControls({ rows, layer, pane, values, volume, onChange,
     {rows.map(({ id, name }) => {
       const collapsed = !!pane.study_layout?.[id]?.collapsed;
       const indicator = pane.indicators.find(item => item.id === id);
-      const label = indicator ? studyLegendName(indicator) : name;
+      const local=pane.local_studies?.find(item=>item.id===id);
+      const label=indicator?studyLegendName(indicator):local?.name??name;
       return <div key={id} className="study-pane-controls" data-study-header={id}
         data-testid={`study-controls-${pane.id}-${id}`} onPointerDown={event => event.stopPropagation()}>
         <button aria-label={`${collapsed ? 'Expand' : 'Collapse'} study ${id}`} aria-expanded={!collapsed}
@@ -220,16 +224,18 @@ export function StudyPaneControls({ rows, layer, pane, values, volume, onChange,
         </button>
         {!collapsed && <StudyValues values={id === 'volume'
           ? [{ name: 'Volume', color: 'var(--muted)', value: volume }] : values.get(id)} />}
-        {id !== 'volume' && <button title="Study settings" aria-label={`Pane settings ${id}`} onClick={() => onSettings(id)}>
+        {(indicator||(local&&'script_id' in local)) && <button title="Study settings" aria-label={`Pane settings ${id}`} onClick={() => onSettings(id)}>
           <Settings2 size={12} />
         </button>}
         <button title="Hide this study" aria-label={`Hide study ${id}`} onClick={() => id === 'volume'
           ? onChange({ volume: false })
-          : onChange({ indicators: pane.indicators.map(item => item.id === id ? { ...item, visible: false } : item) })}>
+          : local ? onChange({local_studies:pane.local_studies?.map(item=>item.id===id?{...item,visible:false}:item)})
+            : onChange({ indicators: pane.indicators.map(item => item.id === id ? { ...item, visible: false } : item) })}>
           <Eye size={12} />
         </button>
         {id !== 'volume' && <button title="Remove this indicator" aria-label={`Remove study ${id}`}
-          onClick={() => onChange({ indicators: pane.indicators.filter(item => item.id !== id) })}>
+          onClick={() => local?onChange({local_studies:pane.local_studies?.filter(item=>item.id!==id)}):
+            onChange({ indicators: pane.indicators.filter(item => item.id !== id) })}>
           <X size={12} />
         </button>}
       </div>;
