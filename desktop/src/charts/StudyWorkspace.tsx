@@ -1,4 +1,4 @@
-import {VOLUME_OVERLAY_MARGINS,volumeInstance,volumeInstancePatch} from './volumeIndicator';
+import {volumeInstance,volumeInstancePatch} from './volumeIndicator';
 import {VolumeControls} from '../components/VolumeControls';
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { ChevronDown, ChevronRight, Eye, Settings2, X } from 'lucide-react';
@@ -46,18 +46,17 @@ export function useStudyWorkspace(
     let drag: { pointer: number; width: number; height: number; stretch: Map<number, number> } | null = null;
     const { pane, series } = latest.current;
     const volumeIndex=volumeSeries.current?.getPane().paneIndex();
-    const headers: StudyHeader[] = [
-      ...(volumeIndex!==undefined ? [{ id: 'volume', group: 'volume', index: volumeIndex, name: 'Volume' }] : []),
+    const groups: StudyHeader[] = [
+      ...(volumeIndex!==undefined&&volumeIndex>0 ? [{ id: 'volume', group: 'volume', index: volumeIndex, name: 'Volume' }] : []),
       ...[...render.current.slots].map(([group, nativePane]) => {
         const study = series.find(item => item.pane === group);
         const config = pane.indicators.find(item => item.id === study?.id);
         return { id: study?.id ?? group, group, index: nativePane.paneIndex(), name: config?.kind ?? group };
       }),
     ].sort((a,b)=>a.index-b.index);
-    const groups = headers.filter(header=>header.index!==0);
-    setHeaders(previous => previous.length === headers.length && previous.every((header, i) =>
-      header.id === headers[i].id && header.group === headers[i].group &&
-      header.index === headers[i].index && header.name === headers[i].name) ? previous : headers);
+    setHeaders(previous => previous.length === groups.length && previous.every((header, i) =>
+      header.id === groups[i].id && header.group === groups[i].group &&
+      header.index === groups[i].index && header.name === groups[i].name) ? previous : groups);
 
     const observed = new Set<HTMLElement>();
     const positions = () => {
@@ -92,10 +91,6 @@ export function useStudyWorkspace(
       // The chart updates its native rows on its own frame. ResizeObserver
       // delivers their new sizes before paint, including during a held drag.
       const tops = new Map(rows.map(({ id, top }) => [id, `${top}px`]));
-      if (volumeIndex === 0 && nodes[0]) {
-        const rect = nodes[0].getBoundingClientRect();
-        tops.set('volume', `${rect.top - origin + Math.max(0, rect.height * VOLUME_OVERLAY_MARGINS.top - 25)}px`);
-      }
       for (const header of layer.children) {
         const node = header as HTMLElement;
         const top = tops.get(node.dataset.studyHeader || '') ?? '';
@@ -224,15 +219,14 @@ export function StudyPaneControls({ rows, layer, pane, values, volume, volumeSta
   });
 
   return <div className="study-pane-headers" ref={layer}>
-    {rows.map(({ id, index, name }) => {
+    {rows.map(({ id, name }) => {
       const instance=id==='volume'?volumeInstance(pane):null;
-      if (instance) {
-        const overlay=index===0;
-        const collapsed=!overlay&&!!pane.study_layout?.volume?.collapsed;
-        return <div key={id} className={`study-pane-controls volume-pane-controls${overlay?' volume-overlay-controls':''}`}
+      if (instance?.visible&&instance.placement==='pane') {
+        const collapsed=!!pane.study_layout?.volume?.collapsed;
+        return <div key={id} className="study-pane-controls volume-pane-controls"
           data-study-header={id} data-testid={`study-controls-${pane.id}-volume`} onPointerDown={event=>event.stopPropagation()}>
-          {!overlay&&<button aria-label={`${collapsed?'Expand':'Collapse'} study volume`} aria-expanded={!collapsed}
-            onClick={()=>change(id,{collapsed:!collapsed})}>{collapsed?<ChevronRight size={12}/>:<ChevronDown size={12}/>}</button>}
+          <button aria-label={`${collapsed?'Expand':'Collapse'} study volume`} aria-expanded={!collapsed}
+            onClick={()=>change(id,{collapsed:!collapsed})}>{collapsed?<ChevronRight size={12}/>:<ChevronDown size={12}/>}</button>
           <span data-testid={`volume-legend-${pane.id}`} className="volume-pane-label">
             Volume{!collapsed&&(volume===null?' unavailable':<> <StudyValues values={[{name:'Volume',color:'var(--muted)',value:volume}]}/></>)}
           </span>

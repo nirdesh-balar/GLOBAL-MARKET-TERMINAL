@@ -1,5 +1,5 @@
 import {VolumeSettingsDialog} from '../components/VolumeSettingsDialog';
-import {VOLUME_OVERLAY_MARGINS,VOLUME_SCALE_ID,volumeColors,volumePanePosition,volumePoint,volumeSettings,volumeValue} from './volumeIndicator';
+import {VOLUME_OVERLAY_MARGINS,VOLUME_SCALE_ID,volumeColors,volumeInstance,volumeInstancePatch,volumePanePosition,volumePoint,volumeSettings,volumeValue} from './volumeIndicator';
 import {recipeSeries} from '../studies/recipes';
 import {pineSeries,type PineScript} from '../studies/pineScripts';
 import {StudyValues} from './StudyLegend';
@@ -568,6 +568,8 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,volumeSeries,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),pane.volume,volumePlacement,volumePosition]),onChange);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
   const displayedVolume=volumeValue(dataFor.current===liveIdentity?displayed:null,volumeZeroIsMissing);
+  const overlayVolume=volumePlacement==='chart'?volumeInstance(pane):null;
+  const volumeStale=!!data?.stale||!!refreshError;
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
   const lastCandle=rows.at(-1);
@@ -623,6 +625,8 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     <div className="chart-legend"><div className="legend-title"><CandlestickChart className="legend-symbol" size={13}/><strong className="legend-symbol">{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong><span><span className="legend-timeframe">{pane.timeframe} · </span>{marketIdentity(pane)} · {data?.currency||pane.currency||"Currency unconfirmed"}</span>{(pane.chart_type==='heikin-ashi'||pane.chart_type==='line-break')&&<span className="demo-mini" title="Chart shape is calculated. Header, drawings and indicators use provider candles.">Calculated chart</span>}{replay!==null&&<span className="demo-mini">Replay</span>}{(data?.stale||refreshError)&&<span className="chart-stale" title={refreshError||data?.provider_error?.message||data?.notice}>Stale</span>}{pane.kind==='future'&&<span className="demo-mini" title={data?.contract||pane.contract}>{(data?.contract||pane.contract||'').startsWith('continuous')?'CONTINUOUS · NOT AN EXPIRY':'EXPIRING FUTURE'}</span>}</div><div className="ohlc">{displayed?<>{['open','high','low','close'].map((key,i)=><span key={key}>{['O','H','L','C'][i]} <b className={displayed.close>=displayed.open?'positive':'negative'}>{formatActualPrice(displayed[key as 'open'])}</b></span>)}{ohlcChange&&<span className={`ohlc-change-metric ${ohlcChange.positive?'positive':ohlcChange.negative?'negative':'neutral'}`} data-testid={`ohlc-change-${pane.id}`}>{ohlcChange.text}</span>}</>:<span>{loading?'Fetching history…':'No candles'}</span>}</div><div className="studies-legend">
       <StudyLegend id={pane.id} indicators={pane.indicators} values={legendValues}
         volumeInfo={volumeInfo} referenceLabels={referenceLabels} globallyHidden={!!pane.indicators_hidden}
+        volume={overlayVolume?{instance:overlayVolume,value:displayedVolume,stale:volumeStale,
+          onChange:instance=>onChange(volumeInstancePatch(instance)),onSettings:()=>setEditVolume(true)}:undefined}
         onVisibility={id=>onChange({indicators:pane.indicators.map(i=>i.id===id?{...i,visible:!i.visible}:i)})}
         onSettings={setEditIndicator} onRemove={id=>onChange({indicators:pane.indicators.filter(i=>i.id!==id)})}/>
       {!pane.indicators_hidden&&pane.local_studies?.map(item=><div key={item.id} className="local-study-legend">
@@ -644,7 +648,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         }}><BellPlus size={14}/></button>}
     {countdown&&lastCandle&&<CandleCountdown id={pane.id} chart={chart} series={mainSeries}
       generation={chartEpoch} price={lastCandle.close} bounds={countdown}/>}
-    <StudyPaneControls values={legendValues} volume={displayedVolume} volumeStale={!!data?.stale||!!refreshError} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
+    <StudyPaneControls values={legendValues} volume={displayedVolume} volumeStale={volumeStale} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
       if(id==='volume'){setEditVolume(true);return;}
       const script=pane.local_studies?.find(item=>item.id===id);
       if(script&&'script_id' in script)onScriptEdit?.(script.script_id);

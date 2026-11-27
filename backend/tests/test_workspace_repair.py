@@ -142,7 +142,7 @@ def test_volume_placement_migrates_without_adding_to_new_or_removed_panes():
     assert hidden.volume is False
     assert hidden.volume_settings.model_dump() == {
         'version': 2, 'placement': 'pane', 'position': 'last',
-        'up_color': '#12ab34', 'down_color': None,
+        'up_color': '#12ab34', 'down_color': None, 'legend_position': None,
     }
     assert Pane.model_validate(hidden.model_dump()) == hidden
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Eye, EyeOff, SlidersHorizontal, X } from 'lucide-react';
+import { VolumeControls } from '../components/VolumeControls';
+import type { VolumeInstance } from './volumeIndicator';
 import type { Candle, Indicator } from '../types';
 import { indicatorLabel, type Study } from './indicators';
 import { isVolume, volumeUnits, type VolumeContext } from './volume';
@@ -50,7 +52,7 @@ export function StudyValues({ values }: { values?: LegendValue[] }) {
 }
 
 export function StudyLegend({ id, indicators, values, volumeInfo, referenceLabels, globallyHidden,
-  onVisibility, onSettings, onRemove }: {
+  onVisibility, onSettings, onRemove, volume }: {
   id: string;
   indicators: readonly Indicator[];
   values: ReadonlyMap<string, LegendValue[]>;
@@ -60,9 +62,63 @@ export function StudyLegend({ id, indicators, values, volumeInfo, referenceLabel
   onVisibility: (id: string) => void;
   onSettings: (indicator: Indicator) => void;
   onRemove: (id: string) => void;
+  volume?: {
+    instance: VolumeInstance;
+    value: number | null;
+    stale: boolean;
+    onChange: (value: VolumeInstance | null) => void;
+    onSettings: () => void;
+  };
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  if (!indicators.length || globallyHidden) return null;
+  const legendIndicators = globallyHidden ? [] : indicators;
+  if (!legendIndicators.length && !volume) return null;
+  const rows = legendIndicators.map(indicator => {
+    const { id: key, visible } = indicator;
+    const name = studyLegendName(indicator);
+    const reference = referenceLabels.get(key);
+    return <div className="study-legend-row" key={key} data-testid={`study-legend-${id}-${key}`}
+      data-visible={visible}>
+      <span className="study-legend-name" style={{ color: indicator.color }} title={name}>{name}</span>
+      {visible && <StudyValues values={values.get(key)} />}
+      {isVolume(indicator.kind) && visible &&
+        <small data-testid={`volume-study-unit-${id}-${key}`} title="Provider-specific volume units; cumulative values use loaded history.">
+          {volumeUnits(indicator, volumeInfo)}
+        </small>}
+      {reference && visible &&
+        <small data-testid={`reference-status-${id}-${key}`} title={reference.title}>{reference.brief}</small>}
+      {indicator.kind === 'VRVP' && visible && <small>{volumeInfo.volume_unit}</small>}
+      <span className="study-legend-actions">
+        <button type="button" aria-label={`${visible ? 'Hide' : 'Show'} ${name}`}
+          title={`${visible ? 'Hide' : 'Show'} ${name}`} onClick={() => onVisibility(key)}>
+          {visible ? <Eye size={13} /> : <EyeOff size={13} />}
+        </button>
+        <button type="button" data-testid={`legend-settings-${key}`} aria-label={`Edit ${name}`} title={`Edit ${name}`} onClick={() => onSettings(indicator)}>
+          <SlidersHorizontal size={13} />
+        </button>
+        <button type="button" aria-label={`Remove ${name}`} title={`Remove ${name}`} onClick={() => onRemove(key)}>
+          <X size={13} />
+        </button>
+      </span>
+    </div>;
+  });
+  if(volume){
+    const {instance,value,stale,onChange,onSettings}=volume;
+    const count=legendIndicators.length;
+    const index=Math.min(instance.legend_position??count,count);
+    rows.splice(index,0,<div className="study-legend-row volume-legend-row" key="volume-overlay"
+      data-testid={`study-legend-${id}-volume`} data-visible={instance.visible}>
+      <span className="volume-legend-readout" data-testid={`volume-legend-${id}`}>
+        <span className="study-legend-name">Volume</span>
+        {instance.visible&&(value===null?' unavailable':<> <StudyValues values={[{name:'Volume',color:'var(--muted)',value}]}/></>)}
+      </span>
+      {instance.visible&&stale&&<small title="Showing stored Volume history">Stale</small>}
+      <div className="study-legend-actions">
+        <VolumeControls volume={instance} adjacentPanes={0} onChange={onChange} onSettings={onSettings}
+          legendOrder={{index,count}}/>
+      </div>
+    </div>);
+  }
   const rowsId = `study-legend-rows-${id}`;
   return <div className="study-legend-list">
     <button className="study-legend-toggle" type="button" aria-label={`Indicator legend pane ${id}`}
@@ -70,38 +126,8 @@ export function StudyLegend({ id, indicators, values, volumeInfo, referenceLabel
       title={collapsed ? 'Expand indicator legend' : 'Collapse indicator legend'}
       onClick={() => setCollapsed(value => !value)}>
       {collapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-      <span data-testid={`study-legend-count-${id}`}>{indicators.length}</span>
+      <span data-testid={`study-legend-count-${id}`}>{rows.length}</span>
     </button>
-    <div id={rowsId} className="study-legend-rows" hidden={collapsed}>
-      {indicators.map(indicator => {
-        const { id: key, visible } = indicator;
-        const name = studyLegendName(indicator);
-        const reference = referenceLabels.get(key);
-        return <div className="study-legend-row" key={key} data-testid={`study-legend-${id}-${key}`}
-          data-visible={visible}>
-          <span className="study-legend-name" style={{ color: indicator.color }} title={name}>{name}</span>
-          {visible && <StudyValues values={values.get(key)} />}
-          {isVolume(indicator.kind) && visible &&
-            <small data-testid={`volume-study-unit-${id}-${key}`} title="Provider-specific volume units; cumulative values use loaded history.">
-              {volumeUnits(indicator, volumeInfo)}
-            </small>}
-          {reference && visible &&
-            <small data-testid={`reference-status-${id}-${key}`} title={reference.title}>{reference.brief}</small>}
-          {indicator.kind === 'VRVP' && visible && <small>{volumeInfo.volume_unit}</small>}
-          <span className="study-legend-actions">
-            <button type="button" aria-label={`${visible ? 'Hide' : 'Show'} ${name}`}
-              title={`${visible ? 'Hide' : 'Show'} ${name}`} onClick={() => onVisibility(key)}>
-              {visible ? <Eye size={13} /> : <EyeOff size={13} />}
-            </button>
-            <button type="button" data-testid={`legend-settings-${key}`} aria-label={`Edit ${name}`} title={`Edit ${name}`} onClick={() => onSettings(indicator)}>
-              <SlidersHorizontal size={13} />
-            </button>
-            <button type="button" aria-label={`Remove ${name}`} title={`Remove ${name}`} onClick={() => onRemove(key)}>
-              <X size={13} />
-            </button>
-          </span>
-        </div>;
-      })}
-    </div>
+    <div id={rowsId} className="study-legend-rows" hidden={collapsed}>{rows}</div>
   </div>;
 }

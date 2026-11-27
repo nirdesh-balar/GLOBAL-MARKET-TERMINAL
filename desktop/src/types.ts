@@ -26,6 +26,7 @@ export interface VolumeSettings {
   up_color?: string | null;
   down_color?: string | null;
   position: 'first' | 'last' | number;
+  legend_position?: number | null;
 }
 export type StudyLibraryKind = IndicatorKind | 'VOLUME';
 export interface Pane extends SymbolEntry {local_studies?:import('./studies/recipes').AppliedStudy[];study_layout?:Record<string,StudyLayout>;auto_refresh:boolean;auto_follow:boolean;id:string;timeframe:Timeframe;chart_type:import('./charts/chartStyles').ChartStyle;indicators:IndicatorConfig[];volume:boolean;volume_settings?:VolumeSettings|null;scale:ScaleSettings;appearance:ChartAppearance;display_timezone?:string|null;drawing_sets:Record<string,Drawing[]>;drawings_locked:boolean;drawings_hidden:boolean;indicators_hidden?:boolean}

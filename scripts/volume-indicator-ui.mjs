@@ -144,7 +144,7 @@ try {
   await expect(header('1')).toBeVisible();
   await saved();
   const hidden = (await state()).panes[0];
-  assert.deepEqual(hidden.volume_settings, { version: 2, placement: 'pane', position: 'last', up_color: '#12ab34', down_color: null });
+  assert.deepEqual(hidden.volume_settings, { version: 2, placement: 'pane', position: 'last', up_color: '#12ab34', down_color: null, legend_position: null });
   assert.equal(hidden.volume, false);
   assert.deepEqual(hidden.study_layout.volume, fixture.panes[0].study_layout.volume);
   await button('Visibility volume', volumeRow()).click();
@@ -187,9 +187,10 @@ try {
   await button('Recently Used', manager()).click();
   await expect(button('Add Volume', manager())).toBeDisabled();
   await button('Close indicators').click();
-  await expect(header('0')).toBeVisible();
+  await expect(legend('0')).toBeVisible();
+  await expect(header('0')).toHaveCount(0);
   await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(0);
-  await button('Pane settings volume',header('0')).click();
+  await button('Edit Volume',page.getByTestId('study-legend-0-volume')).click();
   await button('Move to Separate Pane Below').click();
   await button('Apply settings').click();
   await expect.poll(async () => (await volumes('0'))[0]?.height).toBeGreaterThanOrEqual(120);

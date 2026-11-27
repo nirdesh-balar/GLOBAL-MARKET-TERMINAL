@@ -15,6 +15,7 @@ const rendererErrors=[];
 const icici='yahoo:ICICIBANK.NS:NSE:equity';
 const legend=(id='0')=>page.getByTestId(`volume-legend-${id}`);
 const header=(id='0')=>page.getByTestId(`study-controls-${id}-volume`);
+const overlay=(id='0')=>page.getByTestId(`study-legend-${id}-volume`);
 const settings=()=>page.getByRole('dialog',{name:'Volume settings'});
 const row=()=>manager().getByTestId('indicator-volume');
 const saved=()=>expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
@@ -90,7 +91,8 @@ try {
   await button('Close indicators').click();
   await expect.poll(async()=> (await volume()).map(series=>series.index)).toEqual([0]);
   await expect(legend()).toBeVisible();
-  await expect(chart('0').locator('.chart-legend').getByTestId('volume-legend-0')).toHaveCount(0);
+  await expect(chart('0').locator('.chart-legend').getByTestId('volume-legend-0')).toHaveCount(1);
+  await expect(header()).toHaveCount(0);
 
   const history = interval=>request('/api/history?'+new URLSearchParams({symbol:icici,interval}));
   const expected = (await history('15m')).candles;
@@ -107,7 +109,7 @@ try {
     const pane=node.__chart.panes()[0],height=pane.getHeight();
     const series=pane.getSeries().find(s=>s.options().priceScaleId==='gmt-volume');
     return {height,zero:series.priceToCoordinate(0),top:series.priceToCoordinate(Math.max(...series.data().map(p=>p.value??0))),
-      seriesOrder:series.seriesOrder(),legendBottom:node.parentElement.querySelector('[data-study-header=volume]').getBoundingClientRect().bottom-
+      seriesOrder:series.seriesOrder(),legendBottom:node.parentElement.querySelector('[data-testid=study-legend-0-volume]').getBoundingClientRect().bottom-
         pane.getHTMLElement().getBoundingClientRect().top};
   });
   assert.ok(band.legendBottom<=band.top+3&&band.top>=band.height*.88&&band.zero<band.height);
@@ -139,9 +141,10 @@ try {
   await expect.poll(async()=> (await geometry()).count).toBe(3);
   await saved();
   const beforeHide=await geometry();
-  await button('Hide study volume',header()).click();
+  await button('Hide Volume',overlay()).click();
   await expect.poll(volume).toEqual([]);
-  await expect(legend()).toHaveCount(0);
+  await expect(legend()).toHaveText('Volume');
+  await expect(header()).toHaveCount(0);
   assert.deepEqual(await geometry(),beforeHide,'The independent overlay neither resizes the chart nor changes the price scale');
   await button('Indicators').click();
   await manager().getByRole('button',{name:/^Active indicators/}).click();
@@ -152,7 +155,7 @@ try {
   const beforeMoves=await request('/api/history/status');
   const activeStudies=await request('/workspace');
   await canvas().evaluate(node=>{node.__volumeTestStudies=node.__chart.panes().slice(1).map(p=>p.getSeries()[0]);});
-  await button('Pane settings volume',header()).click();
+  await button('Edit Volume',overlay()).click();
   await settings().getByLabel('Up bar color').fill('#12ab34');
   await button('Move to Separate Pane Below',settings()).click();
   await button('Apply settings',settings()).click();
@@ -222,7 +225,7 @@ try {
     };
   });
   await button('Refresh pane 0').click();
-  await expect(header().getByText('Stale',{exact:true})).toBeVisible();
+  await expect(overlay().getByText('Stale',{exact:true})).toBeVisible();
   assert.deepEqual((await volume())[0].data,beforeRefresh);
   await page.getByTestId('watchlist-symbol-SBIN-EQ').click();
   await expect.poll(()=>app.evaluate(()=>typeof globalThis.__releaseVolumeHistory)).toBe('function');
@@ -235,7 +238,7 @@ try {
     delete globalThis.__gmtVolumeFetch;
   });
   await expect(canvas()).toHaveAttribute('data-history-symbol','yahoo:SBIN.NS:NSE:equity',{timeout:45000});
-  await expect(header().getByText('Stale',{exact:true})).toHaveCount(0);
+  await expect(overlay().getByText('Stale',{exact:true})).toHaveCount(0);
   await expect.poll(async()=> (await volume())[0]?.data.find(p=>p.value!==undefined)?.value).toBe(100);
   await page.getByTestId('watchlist-symbol-ICICIBANK-EQ').click();
   await expect(canvas()).toHaveAttribute('data-history-symbol',icici,{timeout:45000});
@@ -247,7 +250,7 @@ try {
   await chart('1').getByRole('button',{name:'Indicators pane 1'}).click();
   await button('Add Volume',manager()).click();
   await button('Close indicators').click();
-  await button('Pane settings volume',header('1')).click();
+  await button('Edit Volume',overlay('1')).click();
   await button('Move to Separate Pane Below',settings()).click();
   await button('Apply settings',settings()).click();
   await expect.poll(async()=> (await volume('1'))[0]?.index).toBe(1);

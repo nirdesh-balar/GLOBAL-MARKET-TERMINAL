@@ -594,5 +594,34 @@
 
 .terminal-shell .volume-pane-controls { gap: 4px; }
 .terminal-shell .volume-pane-label { padding-inline: 4px; white-space: nowrap; }
-.terminal-shell .volume-overlay-controls { border-radius: 5px; }
 .terminal-shell .volume-order-controls { display: inline-flex; gap: 2px; }
+
+/* Crosshair values can change on pointer down. Keep the buttons in place while clicking. */
+.study-legend-row.volume-legend-row { width: 224px; }
+.volume-legend-readout { display: inline-flex; flex: 1; min-width: 0; align-items: baseline; gap: 5px; }
+.volume-legend-readout [data-study-output] { overflow: hidden; text-overflow: ellipsis; }
+.volume-legend-readout .study-legend-name { flex-shrink: 0; }
+.terminal-shell .volume-legend-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 4px;
+  min-width: 154px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 20px #0005;
+}
+.terminal-shell .volume-legend-menu button {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  padding: 5px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 1;
+}

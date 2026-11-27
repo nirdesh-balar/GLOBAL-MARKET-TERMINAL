@@ -1,5 +1,12 @@
 # Codex development log
 
+## 2026-11-27 · Volume controls in the chart legend
+
+- Place the main-chart Volume name, candle value, and controls in the upper-left study legend. Keep the bars on their existing scale at the bottom of the price pane. A dedicated Volume pane retains its own header.
+- Preserve overlay legend order with a backward-compatible optional setting. Collapse hides the legend rows, hide keeps the Volume instance available to show again, and removal persists across restarts.
+- Local Apple Silicon verification passed 2,507 Python tests with one optional database-copy skip and 22 numerical scripts. The complete native run passed 44 of 47 UI scripts. Same-source diagnostic checks passed the original Watchlist resize, Stage 1 drawing and streaming fullscreen assertions. The documented intermittent fullscreen and focus issue remains open.
+- Normal eight-chart warm restore took 404 ms. Six Grid warm restores took 47.8–156.9 ms. Warm restores issued zero additional provider requests, and Grid peaked at eight charts and two concurrent new history requests. Native ICICIBANK 15m captures at 1440 × 834 matched across all 61,685 compared histogram pixels.
+
 ## 2026-11-27 · Volume placement and single legend
 
 - Add Volume from the indicator library only. Use a dedicated overlay scale at the bottom of the price pane by default, or move the instance to a resizable study pane. Native pane swaps preserve unrelated series and saved heights.

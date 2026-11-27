@@ -71,7 +71,7 @@ try{
   await button('Indicators').click();
   await button('Add Volume').click();
   await button('Close indicators').click();
-  await button('Pane settings volume').click();
+  await button('Edit Volume').click();
   await button('Move to Separate Pane Below').click();
   await button('Apply settings').click();
   await page.getByTestId('watchlist-symbol-ICICIBANK-EQ').click();

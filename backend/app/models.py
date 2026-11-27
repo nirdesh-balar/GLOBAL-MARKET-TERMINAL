@@ -404,6 +404,7 @@ class VolumeSettings(BaseModel):
     up_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
     down_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
     position: Literal['first', 'last'] | int = 'first'
+    legend_position: int | None = Field(default=None, strict=True, ge=0, le=20)
 
     @field_validator('position', mode='before')
     @classmethod
