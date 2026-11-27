@@ -1,10 +1,9 @@
-import {ChartStyleOptions} from '../charts/ChartStyleOptions';
+import {ChartTypeMenu} from '../charts/ChartTypeMenu';
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
   Minimize2, Scan, Save, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
-import { providerLabel } from '../providers/label';
 import type { Pane, Workspace } from '../types';
 import { useFlags } from '../flags/useFlags';
 import { FlagIcon } from './FlagIcon';
@@ -20,6 +19,7 @@ interface HeaderProps {
   pane: Pane;
   layoutMenu: boolean;
   onSearch: () => void;
+  onDiagnostics: () => void;
   onChange: (value: Partial<Pane>) => void;
   onIndicators: () => void;
   onLayoutMenu: () => void;
@@ -39,7 +39,7 @@ interface HeaderProps {
 }
 
 export function TerminalHeader({
-  workspace, pane, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
+  workspace, pane, layoutMenu, onSearch, onDiagnostics, onChange, onIndicators, onLayoutMenu,
   onLayout, onTheme, onSettings, onChartSettings, onSync, focused,
   expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
 }: HeaderProps) {
@@ -85,16 +85,13 @@ export function TerminalHeader({
       ><FlagIcon color={flagColor} filled={Boolean(flagColor)} size={15} /></button>
       {headerPicker && <ColorFlagPicker symbolName={pane.symbol} currentColor={flagColor} position={headerPicker}
         onSelectColor={col => void assignFlag(pane, col)} onRemoveFlag={() => void removeFlag(cid)} onClose={() => setHeaderPicker(null)} />}
-      <span className="header-exchange header-provider" title={providerLabel(pane)}>{providerLabel(pane)}</span>
       <div className="toolbar-divider" />
       <div className="timeframe-toolbar">
         {frames.map(interval => <button key={interval} aria-label={`Active timeframe ${interval}`}
           aria-pressed={pane.timeframe === interval} className={pane.timeframe === interval ? 'selected' : ''}
           onClick={() => onChange({ timeframe: interval })}>{timeframeLabel(interval)}</button>)}
       </div>
-      <select aria-label="Active chart type"  value={pane.chart_type} onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
-        <ChartStyleOptions/>
-      </select>
+      <ChartTypeMenu label="Active chart type" scope={pane.id} value={pane.chart_type} onChange={chart_type=>onChange({chart_type})}/>
       <button className="header-indicators" aria-label="Indicators" title="Indicators" onClick={onIndicators}>
         <SlidersHorizontal size={15} />
       </button>
@@ -146,6 +143,7 @@ export function TerminalHeader({
         <div className="tool-more-panel">
           <button aria-label="Settings" onClick={() => { if (more.current) more.current.open = false; onSettings(); }}><Settings2 size={14} /> Application settings</button>
           <button onClick={() => { if (more.current) more.current.open = false; onData(); }}><Database size={14} /> Chart data and source</button>
+          <button data-testid="provider-status" onClick={() => { if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); } onDiagnostics(); }}><Database size={14} /> Market data diagnostics</button>
         </div>
       </details>
       <button data-testid="macos-fullscreen" aria-label={nativeState.fullscreen ? `Exit ${OS_NAME} Fullscreen` : `Enter ${OS_NAME} Fullscreen`}

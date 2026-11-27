@@ -24,7 +24,7 @@ const launch = async () => {
     env: { ...process.env, IMT_TEST_DATA_DIR: profile, IMT_UI_FIXTURE: '1', IMT_OFFLINE: '1' } });
   page = await app.firstWindow();
   page.on('pageerror', error => evidence.rendererErrors.push(error.message));
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({ timeout: 45000 });
 };
 const pane = () => page.getByTestId('pane-0');
 const canvas = () => pane().locator('.chart-canvas');

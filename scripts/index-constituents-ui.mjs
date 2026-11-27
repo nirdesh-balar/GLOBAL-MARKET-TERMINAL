@@ -1,3 +1,4 @@
+import {openIndexConstituents} from './chart-menu-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -41,13 +42,13 @@ async function singleRow(group){
   }));
   assert.ok(positions.length>1&&positions.every(([y,height,scroll,width])=>y===positions[0][0]&&height===positions[0][1]&&scroll<=width));
 }
-async function searchChart(category,query,result,identity){
+async function searchChart(category,query,result,identity,interval='1d'){
   await b('Search stocks and indices').click();
   const search=page.getByRole('dialog',{name:'Search stocks and indices'});
   await b(category,search).click();
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill(query);
   await search.getByTestId('search-result-'+result).click({timeout:30000});
-  await chart(identity,'1d');
+  await chart(identity,interval);
 }
 try{
   await launch();
@@ -84,22 +85,21 @@ try{
   assert.deepEqual((await call('/workspace')).watchlists,unchanged);
 
   await b('Search stocks and indices').click();
-  await b('Search indices').click();
-  search=page.getByRole('dialog',{name:'Search indices'});
+  search=page.getByRole('dialog',{name:'Search stocks and indices'});
   await expect(search.locator('select')).toHaveCount(0);
-  const regions=search.getByRole('group',{name:'Market categories'});
-  await expect(regions.getByRole('button')).toHaveCount(2);
-  await singleRow(regions);
-  await b('Global',regions).click();
-  await expect(b('Global',regions)).toHaveAttribute('aria-pressed','true');
+  await expect(search.getByRole('button',{name:'Search indices',exact:true})).toHaveCount(0);
+  const markets=search.getByRole('group',{name:'Market categories'});
+  await singleRow(markets);
+  await b('Indices & ETFs',markets).click();
   await expect(search.getByTestId('search-result-^GSPC')).toBeEnabled({timeout:30000});
-  await b('India',regions).click();
-  await expect(search.getByTestId('search-result-^NSEI')).toBeEnabled({timeout:30000});
-  await shot('indices');
-  await search.getByTestId('search-result-^NSEI').click();
+  await search.getByTestId('search-result-^GSPC').click();
+  await chart('yahoo:%5EGSPC:NYSE:index','1d');
+  await searchChart('IN Indices','NIFTY 50','^NSEI',nifty);
+  await openIndexConstituents(page);
   await expect(details()).toContainText('NIFTY 50');
   await expect(b('Import official CSV',details())).toBeVisible();
   await b('View Chart',details()).click();
+  await b('Data controls pane 0').click();
   await chart(nifty,'1d');
   await expect(page.locator('.legend-title')).toContainText('INR');
   await expect(page.locator('.ohlc b')).toHaveCount(4);
@@ -121,9 +121,7 @@ try{
   await chart(nifty,'1d');
   await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},csvFile);
   const before=await history();
-  await b('Search stocks and indices').click();
-  await b('Search indices').click();
-  await page.getByTestId('search-result-^NSEI').click();
+  await openIndexConstituents(page);
   await expect(details()).toContainText('Constituent membership and weights are unavailable');
   await details().getByLabel('Membership as-of date').fill('2026-10-31');
   await b('Import official CSV',details()).click();
@@ -165,9 +163,8 @@ try{
   await app.close();
   await launch();
   await expect(page.locator('.theme-light')).toBeVisible();
-  await b('Search stocks and indices').click();
-  await b('Search indices').click();
-  await page.getByTestId('search-result-^NSEI').click({timeout:30000});
+  await searchChart('IN Indices','NIFTY 50','^NSEI',nifty,'1w');
+  await openIndexConstituents(page);
   await expect(details().getByRole('table',{name:'NIFTY 50 constituents'}).locator('tbody tr')).toHaveCount(50);
   await page.keyboard.press('Escape');
   await expect(details()).toHaveCount(0);

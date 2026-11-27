@@ -44,7 +44,7 @@ const snap = async name => {
   evidence.frames.push(file);
 };
 const ready = async () => {
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({ timeout: 45000 });
   await expect(page.locator('.chart-overlay')).toHaveCount(0, { timeout: 30000 });
   await expect(canvas(0)).toHaveAttribute('data-rendered-bars', /^[1-9]/);
 };

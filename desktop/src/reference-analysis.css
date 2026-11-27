@@ -36,8 +36,6 @@
 .search-result .result-description { min-width: 0; }
 .search-result .result-description small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .terminal-shell .search-result > button:last-child:not(.result-main) { width: 35px; height: 34px; align-self: center; margin-right: 4px; }
-.search-modal footer button { margin-left: auto; }
-.search-modal footer button + kbd { margin-left: 0; }
 .chart-data-window {
   width: 300px; flex: 0 0 300px; min-width: 0; overflow: auto;
   border-left: 1px solid var(--border); background: var(--panel); color: var(--text);

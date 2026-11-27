@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-27 · Chart menu, index access and data labels
+
+- Share a themed, grouped chart style menu between the main toolbar and chart panes. All 13 existing styles retain their stored identities and render from already loaded candles.
+- Open index constituents from the selected chart's Data controls. Symbol Search continues to find Indian and global indices through its normal categories.
+- Keep source names, retrieval timestamps and freshness disclosures in Data details and diagnostics. Keep the footer focused on save status and TradingView attribution. [Reference workflow](REFERENCE_ANALYSIS_WORKSPACE.md)
+
 ## 2026-11-27 · Reference UI corrections and index membership
 
 - Compact Symbol Search and Index Search into single-row category strips. Give Indicators full-width single-line navigation while retaining the existing categories, presets and typed study editor.

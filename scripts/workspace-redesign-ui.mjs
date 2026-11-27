@@ -1,3 +1,4 @@
+import { selectChartStyle } from './chart-menu-controls.mjs';
 import { openWatchlistOptions } from './watchlist-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -19,7 +20,7 @@ try {
   const page = await app.firstWindow();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', { name: 'Charts by TradingView', exact: true })).toBeVisible({ timeout: 45000 });
   const display = await page.context().newCDPSession(page);
   await display.send('Emulation.setDeviceMetricsOverride', {
     width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
@@ -151,11 +152,10 @@ try {
   await expect(secondPane.getByLabel('Indicators pane 1')).toBeVisible();
   await expect(secondPane.getByLabel('Create alert pane 1')).toBeVisible();
   await expect(page.locator('.chart-grid #tv-attr-logo')).toHaveCount(0);
-  const activeType = page.getByLabel('Active chart type', { exact: true });
-  await activeType.selectOption('line');
+  await selectChartStyle(page, 'line');
   await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('line');
-  await expect(secondPane.getByLabel('Chart type pane 1')).toHaveValue('line');
-  await activeType.selectOption('candles');
+  await expect(secondPane.getByRole('button', { name: 'Chart type pane 1', exact: true })).toHaveAttribute('data-chart-style', 'line');
+  await selectChartStyle(page, 'candles');
   await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('candles');
   await page.mouse.move(4,4);
   await capture('two-charts');
@@ -189,9 +189,9 @@ try {
   await page.getByLabel('Active timeframe 1d', { exact: true }).click();
   await expect(canvas).toHaveAttribute('data-history-interval', '1d');
   await ready();
-  await page.getByLabel('Active chart type').selectOption('line');
+  await selectChartStyle(page, 'line');
   await expect.poll(async () => (await workspace()).panes[0].chart_type).toBe('line');
-  await page.getByLabel('Active chart type').selectOption('candles');
+  await selectChartStyle(page, 'candles');
   await ready();
 
   const providerCount = (await historyStatus()).provider_requests;

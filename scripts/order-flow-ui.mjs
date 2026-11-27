@@ -1,3 +1,4 @@
+import {openDataProvenance} from './chart-menu-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
@@ -23,7 +24,7 @@ const launch = async () => {
   });
   page = await app.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({ timeout: 60000 });
 };
 const request = (path, method = 'GET', body) =>
   page.evaluate(([p, m, b]) => window.terminal.request(p, m, b), [path, method, body]);
@@ -112,7 +113,8 @@ try {
   await expect(canvas()).toHaveAttribute('data-rendered-bars', /^[1-9]/, { timeout: wait });
   await expect(page.getByTestId('pane-0').locator('.chart-overlay')).toHaveCount(0, { timeout: wait });
   if (live) {
-    await expect(page.getByTestId('pane-0').locator('.demo-mini').first()).toContainText('Yahoo Finance');
+    await expect(await openDataProvenance(page)).toContainText(/Yahoo Finance/i);
+    await page.getByRole('button',{name:'Data controls pane 0',exact:true}).click();
     assert.ok((await request('/api/history/status')).provider_requests > 0);
     report.yahooHistory = true;
   }

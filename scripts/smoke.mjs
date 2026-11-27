@@ -22,7 +22,7 @@ const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/
 await mkdir('test-results',{recursive:true});
 try{
  app=await launch();let page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));
- await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
+ await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
  const status=()=>page.evaluate(()=>window.terminal.request('/api/history/status'));const workspace=()=>page.evaluate(()=>window.terminal.request('/workspace'));
  assert.equal((await status()).provider_requests,2,'Only two visible histories at startup');
  for(const n of [1,2,4,6,8]){const start=Date.now();await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel(`Layout ${n}`,{exact:true}).click();await expect(page.locator('.chart-pane')).toHaveCount(n);await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});timings.push({layout:n,ms:Date.now()-start});}

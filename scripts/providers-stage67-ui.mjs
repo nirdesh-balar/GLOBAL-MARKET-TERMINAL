@@ -1,3 +1,4 @@
+import {openMarketDiagnostics} from './chart-menu-controls.mjs';
 import { chooseWatchlist } from './watchlist-controls.mjs';
 import {_electron as electron,expect} from './isolated-electron.mjs';
 import assert from 'node:assert/strict';
@@ -7,7 +8,7 @@ import {join,resolve} from 'node:path';
 const profile=await mkdtemp(join(tmpdir(),'imt-stage67a-ui-'));let app,page;const errors=[];
 const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/dist/Electron.app/Contents/MacOS/Electron'),args:['.'],env:{...process.env,IMT_UI_FIXTURE:'1',IMT_OFFLINE:'1',IMT_FAST_SCREENER_UI:'1',IMT_TEST_DATA_DIR:profile},timeout:60000});
 const request=(p,m='GET',b)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[p,m,b]);
-const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:45000});};
+const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({timeout:45000});};
 try{
  await mkdir('test-results',{recursive:true});app=await launch();await load();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect.poll(async()=>(await request('/api/quotes/status?watchlist=stocks')).pending,{timeout:30000}).toBe(0);
  const w=await request('/workspace'),crypto=w.watchlists.find(r=>r.id==='crypto').items.find(r=>r.symbol==='BTC-USD');
@@ -16,7 +17,7 @@ try{
  await chooseWatchlist(page, 'crypto');await expect.poll(async()=>(await request('/api/quotes/status?watchlist=crypto')).pending).toBe(0);
  await expect(page.locator('.watch-row')).toHaveCount(4);await expect(page.getByTestId('watchlist-symbol-BTC-USD').locator('..')).toContainText('Migration required');
  await expect.poll(async()=>(await request('/api/history/status')).active).toBe(0);const before=await request('/api/history/status');
- await page.getByTestId('provider-status').click();await expect(page.getByRole('dialog',{name:'Market data providers',exact:true})).toBeVisible();assert.equal(await page.getByRole('dialog',{name:'Market data providers',exact:true}).evaluate(el=>el.closest('.titlebar')===null),true,'Provider dialog must live outside the titlebar/drag region');await expect(page.getByTestId('provider-policy')).toContainText('Yahoo Finance — Non-Crypto');await expect(page.getByTestId('crypto-provider-pending')).toContainText('pending');
+ await openMarketDiagnostics(page);await expect(page.getByRole('dialog',{name:'Market data providers',exact:true})).toBeVisible();assert.equal(await page.getByRole('dialog',{name:'Market data providers',exact:true}).evaluate(el=>el.closest('.titlebar')===null),true,'Provider dialog must live outside the titlebar/drag region');await expect(page.getByTestId('provider-policy')).toContainText('Yahoo Finance — Non-Crypto');await expect(page.getByTestId('crypto-provider-pending')).toContainText('pending');
  const p=await request('/api/crypto-migration/preview');assert.equal(p.entries.length,4);assert.ok(p.entries.every(r=>!r.candidates.length));
  await expect(page.getByLabel('Replacement for BTC-USD',{exact:true})).toBeDisabled();await page.getByTestId('migration-confirm').check();await expect(page.getByTestId('migration-commit')).toBeDisabled();
  await page.screenshot({path:'test-results/stage67a-provider-migration-fixture.png'});

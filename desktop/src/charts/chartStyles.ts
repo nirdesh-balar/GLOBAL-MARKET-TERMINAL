@@ -5,9 +5,11 @@ import type {Candle} from '../types';
 import type {getCandleColors} from './appearance';
 
 export const chartStyleGroups = [
-  ['OHLC', [['bars','Bars'],['hlc-bars','HLC bars'],['candles','Candles'],['hollow','Hollow candles'],['high-low','High–low']]],
-  ['Close and area', [['line','Line'],['markers','Line with markers'],['steps','Step line'],['area','Area'],['baseline','Baseline'],['columns','Columns']]],
-  ['Calculated', [['heikin-ashi','Heikin Ashi'],['line-break','Three-line break · close only']]],
+  ['OHLC', [['bars','Bars'],['candles','Candles'],['hollow','Hollow Candles'],['hlc-bars','HLC Bars']]],
+  ['Line', [['line','Line'],['markers','Line with Markers'],['steps','Step Line']]],
+  ['Area', [['area','Area'],['baseline','Baseline']]],
+  ['Other prices', [['columns','Columns'],['high-low','High–Low']]],
+  ['Calculated', [['heikin-ashi','Heikin Ashi'],['line-break','Line Break']]],
 ] as const;
 export type ChartStyle = (typeof chartStyleGroups)[number][1][number][0];
 

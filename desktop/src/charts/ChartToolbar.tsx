@@ -1,6 +1,5 @@
-import {ChartStyleOptions} from './ChartStyleOptions';
+import {ChartTypeMenu} from './ChartTypeMenu';
 import { ChevronDown, SlidersHorizontal, RefreshCw, Volume2, Maximize2, Minimize2 } from 'lucide-react';
-import { providerLabel } from '../providers/label';
 import type { Pane } from '../types';
 import { TimeframeSelector } from './TimeframeSelector';
 import { symbolLabel } from '../services/api';
@@ -29,13 +28,10 @@ export function ChartToolbar({
         <button className="pane-symbol" title="Change this chart’s instrument" onClick={onSearch}>
           <span>{pane.kind === 'index' ? pane.name : symbolLabel(pane.symbol)}</span><ChevronDown size={13} />
         </button>
-        <span className="nse-tag" title={providerLabel(pane)}>{providerLabel(pane)}</span>
         <div className="divider" />
         <TimeframeSelector paneId={pane.id} value={pane.timeframe} onChange={timeframe => onChange({ timeframe })} />
-        <select aria-label={`Chart type pane ${pane.id}`} className="chart-type" value={pane.chart_type}
-          onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
-          <ChartStyleOptions/>
-        </select>
+        <ChartTypeMenu label={`Chart type pane ${pane.id}`} scope={pane.id} value={pane.chart_type}
+          onChange={chart_type=>onChange({chart_type})}/>
         <div className="grow" />
         <button aria-label={`Create alert pane ${pane.id}`} onClick={onAlert}>Alert</button>
         <button aria-label={`Indicators pane ${pane.id}`} onClick={onIndicators}>

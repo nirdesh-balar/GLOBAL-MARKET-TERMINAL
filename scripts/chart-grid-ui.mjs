@@ -38,7 +38,7 @@ const ready = async count => {
 const waitForApp = async () => {
   page = await app.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({ timeout: 45000 });
   await expect(page.locator('.chart-overlay')).toHaveCount(0, { timeout: 45000 });
 };
 async function measure(control, eventName, action, kind, count, label) {

@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {X} from 'lucide-react';
 import type {Candle,Pane} from '../types';
+import {marketIdentity} from '../providers/label';
 import {price,symbolLabel} from '../services/api';
 
 export interface CandleInspection {
@@ -31,7 +32,7 @@ export function ChartDataWindow({pane,onClose}:{pane:Pane;onClose:()=>void}){
     <header><h2>Data Window</h2><button aria-label="Close Data Window" onClick={onClose}><X size={16}/></button></header>
     <div className="data-window-body">
       <strong>{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong>
-      <p className="data-window-source">{[pane.exchange,pane.timeframe,current?.source,current?.currency].filter(Boolean).join(' · ')}</p>
+      <p className="data-window-source">{[marketIdentity(pane),pane.timeframe,current?.source,current?.currency].filter(Boolean).join(' · ')}</p>
       {candle&&current ? <>
         <p className="data-window-time">{new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:
           ['1d','1w','1M','1Y'].includes(current.interval)?undefined:'short',timeZone:current.zone}).format(candle.time*1000)} · {current.zone}</p>

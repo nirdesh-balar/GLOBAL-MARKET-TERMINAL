@@ -402,12 +402,6 @@
   padding-inline: 7px;
 }
 .terminal-shell .terminal-header .header-symbol strong { font-weight: 590; }
-.terminal-shell .terminal-header .header-provider {
-  max-width: 92px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--muted);
-}
 .terminal-shell .terminal-header .header-indicators {
   background: transparent;
   color: var(--muted);
@@ -527,11 +521,46 @@
   }
   .terminal-shell .chart-grid[data-count="1"] .chart-surface > .chart-legend { max-width: calc(100% - 190px); }
 }
-.terminal-shell .statusbar > .workspace-switch {
-  padding: 0 5px;
-  min-height: 17px;
-  font-size: 9px;
-  border-color: var(--border);
-  color: var(--text);
+
+.terminal-shell .chart-type-anchor {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+  min-width: 32px; height: 30px; padding: 0 5px; gap: 2px; border-radius: 5px;
+  color: var(--muted);
 }
-.terminal-shell .statusbar > .workspace-switch:hover { color: var(--workspace-accent); }
+.terminal-shell .chart-type-anchor[aria-expanded=true] {
+  color: var(--workspace-accent); background: var(--hover);
+}
+.chart-type-menu {
+  position: fixed; z-index: 92; overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin;
+  padding: 4px; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); background: var(--panel); box-shadow: 0 8px 24px #0006;
+}
+.chart-type-group + .chart-type-group {
+  border-top: 1px solid var(--border); margin-top: 3px; padding-top: 3px;
+}
+.chart-type-menu button {
+  width: 100%; min-height: 29px; justify-content: flex-start; gap: 9px;
+  padding: 4px 7px; border-radius: 4px; text-align: left; white-space: nowrap;
+}
+.chart-type-menu button > svg { flex: 0 0 auto; }
+.chart-type-menu button:hover, .chart-type-menu button:focus-visible {
+  color: var(--text); background: var(--hover);
+}
+.terminal-shell .chart-type-menu button:focus-visible {
+  outline-offset: -2px;
+}
+.chart-type-menu button[aria-checked=true] {
+  color: var(--workspace-accent); background: var(--hover);
+}
+.chart-type-check { margin-left: auto; }
+.chart-stale { color: var(--workspace-accent); }
+.terminal-shell .statusbar { gap: 8px; padding-inline: 9px; }
+@container (max-width: 380px) {
+  .terminal-shell .pane-toolbar .chart-type-anchor { order: 2; min-width: 30px; }
+}
+
+.chart-pane .history-controls details{position:static}
+.chart-source-detail{position:absolute;right:10px;bottom:calc(100% + 4px);box-sizing:border-box;width:min(350px,calc(100% - 20px));max-height:min(200px,40vh);overflow:auto;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);z-index:5;line-height:1.5;font-size:12px}
+.chart-source-detail p{margin:0}
+.chart-source-detail p+p{margin-top:6px}

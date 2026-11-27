@@ -1,3 +1,4 @@
+import {chartStylesMenu,openIndexConstituents,selectChartStyle} from './chart-menu-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -28,30 +29,45 @@ async function mount(){
 
 try{
   await mount();
+  // Both startup panes can fetch history before the layout changes to one pane.
+  // Finish those requests before taking the presentation-only baseline.
+  await expect.poll(()=>page.locator('.chart-pane:visible .chart-canvas').evaluateAll(charts=>
+    charts.length>0&&charts.every(chart=>Number(chart.dataset.renderedBars)>0)),{timeout:30000}).toBe(true);
   await page.getByRole('button',{name:'Chart layout',exact:true}).click();
   await page.getByRole('button',{name:'Layout 1',exact:true}).click();
   await expect(page.locator('.chart-pane:visible')).toHaveCount(1);
   const type=page.getByLabel('Active chart type',{exact:true});
+  const sidebar=page.getByTestId('watchlist-sidebar');
+  const toggleSidebar=page.getByRole('button',{name:'Toggle sidebar',exact:true});
+  // Watchlist snapshots share the backend queue with chart histories.
+  await toggleSidebar.click();
+  await expect(sidebar).toHaveCount(0);
+  await expect.poll(async()=>{const state=await history();return state.active+state.queued;},{timeout:30000}).toBe(0);
   const baseline=await history(),raw=await canvas().getAttribute('data-last-close');
-  const types=await type.locator('option').evaluateAll(options=>options.map(o=>o.value));
+  await type.click();
+  const types=await chartStylesMenu(page).getByRole('menuitemradio').evaluateAll(items=>items.map(item=>item.dataset.style));
+  await page.keyboard.press('Escape');
   assert.equal(types.length,13);
   const studyBefore=await canvas().getAttribute('data-study-series');
   for(const name of types){
-    await type.selectOption(name);
-    await expect(type).toHaveValue(name);
+    await selectChartStyle(page,name);
+    await expect(type).toHaveAttribute('data-chart-style',name);
     await waitHistory();
     await expect(canvas()).toHaveAttribute('data-last-close',raw);
   }
   await expect(canvas()).toHaveAttribute('data-study-series',studyBefore);
-  assert.equal((await history()).provider_requests,baseline.provider_requests,'Presentation styles reuse existing candles');
+  const afterStyles=await history();
+  assert.equal(afterStyles.history_requests,baseline.history_requests,'Presentation styles do not request history');
+  assert.equal(afterStyles.provider_requests,baseline.provider_requests,'Presentation styles reuse existing candles');
   await screenshot('0108-chart-style');
-  await type.selectOption('candles');
+  await toggleSidebar.click();
+  await expect(sidebar).toBeVisible();
+  await selectChartStyle(page,'candles');
   await page.getByRole('button',{name:'Active timeframe 1w',exact:true}).click();
   await expect(canvas()).toHaveAttribute('data-history-interval','1w',{timeout:30000});
   await page.getByRole('button',{name:'Active timeframe 1d',exact:true}).click();
   await expect(canvas()).toHaveAttribute('data-history-interval','1d',{timeout:30000});
 
-  const selected=(await request('/workspace')).panes[0].canonical_id;
   await expect(page.getByRole('button',{name:'Compare Symbol',exact:true})).toHaveCount(0);
   await expect(pane().locator('.compare-legend')).toHaveCount(0);
   await expect.poll(()=>canvas().evaluate(node=>node.__chart.priceScale('left').width())).toBe(0);
@@ -82,12 +98,13 @@ try{
   await expect(inspector()).toHaveCount(0);
 
   await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
-  await page.getByRole('button',{name:'Search indices',exact:true}).click();
-  search=page.getByRole('dialog',{name:'Search indices'});
+  search=page.getByRole('dialog',{name:'Search stocks and indices'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('NIFTY');
   const index=search.getByTestId('search-result-^NSEI');
   await expect(index).toBeEnabled({timeout:30000});
   await index.click();
+  await expect(canvas()).toHaveAttribute('data-history-symbol',/^yahoo:%5ENSEI:/,{timeout:30000});
+  await openIndexConstituents(page);
   const details=page.getByRole('dialog',{name:'Index details'});
   await expect(details).toContainText('Yahoo Finance');
   await expect(details).toContainText('Constituent membership and weights are unavailable');
@@ -101,16 +118,17 @@ try{
   await details.getByRole('button',{name:'Add to Watchlist'}).click();
   await expect(details).toHaveCount(0);
   await expect.poll(async()=>(await request('/workspace')).watchlists.find(item=>item.id===listId).items.filter(row=>row.canonical_id===indexIdentity).length).toBe(1);
-  assert.equal((await request('/workspace')).panes[0].canonical_id,selected);
+  assert.equal((await request('/workspace')).panes[0].canonical_id,indexIdentity);
   await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
-  await page.getByRole('button',{name:'Search indices',exact:true}).click();
-  search=page.getByRole('dialog',{name:'Search indices'});
+  search=page.getByRole('dialog',{name:'Search stocks and indices'});
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('Nifty 50');
   await expect(search.getByTestId('search-result-^NSEI')).toBeEnabled({timeout:30000});
   await search.getByTestId('search-result-^NSEI').press('Enter');
+  await openIndexConstituents(page);
   await expect(details).toContainText('NIFTY', {ignoreCase:true});
   await details.getByRole('button',{name:'View Chart'}).click();
   await expect(canvas()).toHaveAttribute('data-history-symbol',/^yahoo:%5ENSEI:/,{timeout:30000});
+  await page.getByRole('button',{name:'Data controls pane 0',exact:true}).click();
 
   await page.getByRole('button',{name:'Indicators',exact:true}).click();
   await manager().getByLabel('Search indicators').fill('RSI');

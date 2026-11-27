@@ -89,7 +89,7 @@ export function IndexDetails({index,lists,activeList,onChart,onAdd,onClose}:Prop
           else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
         }
       }}>
-      <header><div><h2>Index details</h2><h3>{index.name}</h3><p>{index.symbol} · {index.exchange} · {index.currency||'Currency unconfirmed'} · Yahoo Finance chart</p></div>
+      <header><div><h2>Index details</h2><h3>{index.name}</h3><p>{index.symbol} · {index.exchange} · {index.currency||'Currency unconfirmed'}</p><p className="index-data-source">Chart source · Yahoo Finance</p></div>
         <button aria-label="Close index details" onClick={onClose}><X size={17}/></button></header>
       <div className="index-inspector-body">
         <div className="index-inspector-actions">

@@ -1,3 +1,4 @@
+import {marketIdentity,providerLabel} from '../providers/label';
 import {legacyCrypto} from '../providers/legacy';
 import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,QuoteRow,RefreshPreferences} from '../refresh/hooks';
@@ -611,8 +612,8 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
  };
  const instrumentDetails = (row: SymbolEntry) => {
     const index = row.kind === 'index' ? indices.find(item=>item.symbol===row.symbol) : undefined;
-    return [row.name, row.exchange, row.provider === 'hyperliquid' ? 'Hyperliquid' : 'Yahoo Finance',
-        row.market_type || row.kind, row.currency, index?.status === 'verified' ? 'Yahoo daily history checked' : index?.error]
+    return [row.name, marketIdentity(row), row.currency, providerLabel(row),
+        index?.status === 'verified' ? 'Daily history checked' : index?.error]
         .filter(Boolean).join(' · ');
  };
   const staleBefore = Date.now()/1000 - Math.max(120,(refreshPreferences?.watchlist_interval||300)*2);
@@ -633,8 +634,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     <button data-testid={`watchlist-symbol-${row.symbol}`} className="watch-select" title={`Click opens chart. ArrowUp / ArrowDown navigates and updates chart immediately. Shift+F10 opens actions.`} onClick={()=>openRow(row)} onKeyDown={e=>handleKeyDown(e,position,n)}>
      <span title={instrumentDetails(row)}>
       <strong>{row.kind==='index'?row.name:symbolLabel(row.symbol)}</strong>
-
-     </span>
+      {row.kind==='crypto'&&row.market_type&&<small>{marketIdentity(row)}</small>}     </span>
      <QuoteCells row={quoteRow} showVolume={workspace.sidebar.volume} migrationRequired={legacyCrypto(row)}
        paused={refreshPaused} expired={!!quoteRow?.value&&quoteRow.value.fetched_at<staleBefore}/>
     </button>

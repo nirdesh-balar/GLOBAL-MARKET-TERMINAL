@@ -100,7 +100,7 @@ export function OrderFlowPanel({ instrument, onClose }: { instrument: SymbolEntr
         <div><h2>Order Flow</h2><span>{symbolLabel(instrument.symbol)}{supported && ` · ${instrument.market_type === 'spot' ? 'Spot' : 'Perpetual'}`}</span></div>
         <button type="button" aria-label="Close Order Flow" title="Close Order Flow" onClick={onClose}><X size={16} /></button>
       </header>
-      {!supported ? <p className="flow-note">Live order book and Time &amp; Sales are available for verified Hyperliquid markets.</p> :
+      {!supported ? <p className="flow-note">Live order book and Time &amp; Sales require a supported crypto market.</p> :
         <>
           <div className="flow-tabs" aria-label="Order Flow view">
             <button type="button" aria-pressed={view === 'book'} onClick={() => setView('book')}>Order book</button>
@@ -146,14 +146,14 @@ export function OrderFlowPanel({ instrument, onClose }: { instrument: SymbolEntr
                 {tape?.cursor_gap && <p className="flow-note">Some prints fell outside the local delivery window.</p>}
                 {tape?.evicted ? <p className="flow-note">Older prints have rotated out of this session.</p> : null}
                 {received.length ? <table aria-label="Public trade prints">
-                  <thead><tr><th>UTC</th><th>Price · {quote}</th><th>Size · {base}</th><th title="Raw Hyperliquid side code">Side</th></tr></thead>
+                  <thead><tr><th>UTC</th><th>Price · {quote}</th><th>Size · {base}</th><th title="Trade side as reported by the data source">Side</th></tr></thead>
                   <tbody>{received.slice(0, tapeRows).map(row => <tr key={`${row.time_ms}:${row.id}`}>
                     <td>{UTC.format(row.time_ms)}</td><td>{row.price}</td><td>{row.size}</td><td>{row.side ?? '—'}</td>
                   </tr>)}</tbody>
                 </table> : <p className="flow-note">No public trades observed in this session yet.</p>}
               </>}
           </div>
-          <footer className="flow-footer">Hyperliquid public stream · observed session</footer>
+          <footer className="flow-footer" title="Source · Hyperliquid public stream">Observed session</footer>
         </>}
     </aside>
   );
