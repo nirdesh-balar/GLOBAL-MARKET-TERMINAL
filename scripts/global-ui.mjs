@@ -48,7 +48,7 @@ try{
  const geometry=await page.getByTestId('watchlist-rows').evaluate(el=>({rows:el.getBoundingClientRect().height,aside:el.closest('aside').getBoundingClientRect().height,scroll:getComputedStyle(el).overflowY}));
  assert.ok(geometry.rows/geometry.aside>.65);assert.equal(geometry.scroll,'auto');
  await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/global-four-markets-fixture.png'});
- await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();const saved=await workspace();
+ await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');const saved=await workspace();
  await app.close();app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:45000});
  assert.deepEqual(await workspace(),saved);assert.equal((await status()).provider_requests,4,'Restart loads only four visible markets');assert.deepEqual(errors,[]);
  console.log('PASS: global search/categories, mixed-market layout, IANA/DST dates, FX precision/no volume, four session-aware markets, indicator reuse, intact watchlist/no details card, and restart persistence.');

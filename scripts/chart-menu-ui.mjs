@@ -68,7 +68,7 @@ try{
   await chartReady('0',nifty);
   await assertNoBrand(page.locator('.terminal-header'));
   await assertNoBrand(pane().locator('.chart-legend'));
-  await assertNoBrand(page.getByLabel('Workspace status'));
+  await expect(page.locator('.statusbar')).toHaveCount(0);
   await expect(button('Charts by TradingView')).toBeVisible();
   await expect(await openDataProvenance(page)).toContainText(/fixture.*Retrieved/i);
   await expect(button('Index constituents')).toBeVisible();

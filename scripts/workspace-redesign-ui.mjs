@@ -62,7 +62,7 @@ try {
     globalThis.originalTradingViewOpenExternal = shell.openExternal;
     shell.openExternal = async url => { globalThis.openedTradingViewUrl = url; };
   });
-  await page.locator('.statusbar').getByRole('button', { name: 'Charts by TradingView', exact: true }).click();
+  await page.getByRole('button', { name: 'Charts by TradingView', exact: true }).click();
   await expect.poll(() => app.evaluate(() => globalThis.openedTradingViewUrl)).toBe('https://www.tradingview.com/');
   await app.evaluate(({ shell }) => { shell.openExternal = globalThis.originalTradingViewOpenExternal; });
 

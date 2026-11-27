@@ -96,17 +96,20 @@ export function useStudyWorkspace(
     const paneObserver = new ResizeObserver(positions);
     layoutHeaders.current = positions;
 
+    const timeAxisHeight = () => c.options().timeScale.visible ? Math.max(30, c.timeScale().height()) : 0;
+
     const fit = () => {
       if (chart.current !== c) return;
       const config = latest.current.pane.study_layout ?? {};
-      setHeight(chartHeight(view.clientHeight, groups.map(header => header.id), config));
+      setHeight(chartHeight(view.clientHeight, groups.map(header => header.id), config, timeAxisHeight()));
       cancelAnimationFrame(fitFrame);
       fitFrame = requestAnimationFrame(() => {
         if (chart.current !== c || !el.clientHeight || drag || saveFrame) return;
         const panes = c.panes();
         const rest = groups.reduce((total, header) => total + studyHeight(header.id, config[header.id]) + 1, 0);
         const main = panes[0];
-        const mainWeight = Math.max(PRICE_MIN, el.clientHeight - c.timeScale().height() - rest);
+        const widgetHeight = el.clientHeight - el.clientHeight % 2;
+        const mainWeight = Math.max(PRICE_MIN, widgetHeight - timeAxisHeight() - rest);
         if (main && Math.abs(main.getStretchFactor() - mainWeight) > 0.01) main.setStretchFactor(mainWeight);
         for (const { id, index } of groups) {
           const study = panes[index];

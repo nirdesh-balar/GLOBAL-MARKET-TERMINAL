@@ -80,7 +80,7 @@ try{
   await page.getByLabel('LOG pane 0',{exact:true}).click();await page.getByLabel('Toggle theme',{exact:true}).click();await expect(page.locator('.theme-light')).toBeVisible();
   await page.screenshot({path:'test-results/watchlist-only-light.png'});
   for(const n of [2,4,6,8]){await layout(n);await absent();await geometry();}
-  await layout(2);await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();
+  await layout(2);await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   const saved=await workspace();assert.equal(saved.active_watchlist,'sidebar-regression');assert.equal(saved.watchlists.at(-1).items.length,100);assert.equal(saved.panes[0].scale.logarithmic,true);
   await app.close();app=await launch();page=await firstWindow();page.on('pageerror',e=>errors.push(e.stack||e.message));await expect(sidebar()).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
   assert.deepEqual(await workspace(),saved,'Watchlists, chart/layout/sidebar/appearance/drawing settings survive restart');await absent();await geometry();

@@ -32,7 +32,7 @@ const button = name => page.getByRole('button', { name, exact: true });
 const request = (path, method = 'GET', body) =>
   page.evaluate(([p, m, b]) => window.terminal.request(p, m, b), [path, method, body]);
 const saved = async () => {
-  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   return (await request('/workspace')).panes[0].study_layout;
 };
 const screenshot = name => page.screenshot({ path: join(output, `study-resize-${name}.png`) });

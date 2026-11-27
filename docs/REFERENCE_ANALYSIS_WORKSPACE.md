@@ -26,7 +26,7 @@ The reference geometry was measured on review frames resized to 1470 × 772 pixe
 | Symbol Search | Centered, about 872 px wide at 00:13 | GMT uses a responsive dialog up to 660 px wide and puts category shortcuts immediately between the input and results. |
 | Indicators | About 872 px wide at 01:17, with an approximately 180 px navigation column | GMT's 850 px dialog uses full-width single-line navigation and splits the catalog from active indicators and presets. |
 
-Symbol Search uses one directory for chart and Watchlist selection. Open Data Window from the right rail to inspect the active pane. The workspace footer keeps the TradingView attribution and local save status.
+Symbol Search uses one directory for chart and Watchlist selection. Open Data Window from the right rail to inspect the active pane. The toolbar provides the TradingView attribution and reports save state on the workspace save control.
 
 ## Stages B and C · Market overlays and chart presentation
 
@@ -36,7 +36,7 @@ Symbol Search uses one directory for chart and Watchlist selection. Open Data Wi
 - Provider OHLC remains the source for crosshair values, indicators, drawings, and alerts. Changing presentation uses the candles already loaded for the pane.
 - The custom chart type menu groups OHLC, line, area, other price, and calculated styles. It opens from the active-chart toolbar or any chart pane. Use arrow keys, Home, End and Enter to choose a style, or Escape to close and return focus to the trigger. It uses the current theme and scrolls within the viewport.
 - The November 27 GMT recording shows the native popup at 00:04–00:18. The supplied reference shows an anchored menu at 00:00–00:02, scrolling at 00:06–00:09, and actual selection of Hollow Candles, Step Line and Line with Markers.
-- Open Data → Data details for source, retrieval time, freshness, and limitations. The toolbar overflow opens Market data diagnostics. The footer retains TradingView attribution and save status.
+- Open Data → Data details for source, retrieval time, freshness, and limitations. The toolbar overflow opens Market data diagnostics. The Watchlist footer displays the last successful quote retrieval and configured refresh interval. The existing toolbar provides TradingView attribution and workspace save state.
 
 ## Stages D and E · Local studies and provider-derived detail
 

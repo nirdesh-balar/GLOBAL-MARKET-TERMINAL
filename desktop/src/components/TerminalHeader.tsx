@@ -14,6 +14,13 @@ export function command(id: string, action: string, value?: unknown) {
   window.dispatchEvent(new CustomEvent('terminal-command', { detail: { id, action, value } }));
 }
 
+export function ChartAttribution(){
+  return <button type="button" className="tradingview-link" aria-label="Charts by TradingView"
+    title="Charts by TradingView" onClick={()=>window.terminal.openExternal('https://www.tradingview.com/')}>
+    TradingView
+  </button>;
+}
+
 interface HeaderProps {
   workspace: Workspace;
   pane: Pane;
@@ -27,7 +34,7 @@ interface HeaderProps {
   onTheme: () => void;
   onSettings: () => void;
   onSave: () => void;
-  saved: boolean;
+  saveStatus: string;
   onData: () => void;
   onChartSettings: () => void;
   onSync: (key: 'sync_time' | 'sync_crosshair') => void;
@@ -41,7 +48,7 @@ interface HeaderProps {
 export function TerminalHeader({
   workspace, pane, layoutMenu, onSearch, onDiagnostics, onChange, onIndicators, onLayoutMenu,
   onLayout, onTheme, onSettings, onChartSettings, onSync, focused,
-  expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
+  expanded, nativeState, onNativeFullscreen, onFocus, onSave, saveStatus, onData,
 }: HeaderProps) {
   const { flags, assignFlag, removeFlag } = useFlags();
   const [headerPicker, setHeaderPicker] = useState<{ x: number; y: number } | null>(null);
@@ -102,6 +109,7 @@ export function TerminalHeader({
       <button aria-label="Undo drawing" title={`Undo drawing · ${UNDO_HINT}`} onClick={() => command(pane.id, 'undo')}><Undo2 size={16} /></button>
       <button aria-label="Redo drawing" title={`Redo drawing · ${REDO_HINT}`} onClick={() => command(pane.id, 'redo')}><Redo2 size={16} /></button>
       <div className="grow" />
+      <ChartAttribution />
       <div className="layout-control" ref={layout} onKeyDown={event => {
         if (event.key !== 'Escape' || !layoutMenu) return;
         event.stopPropagation();
@@ -129,7 +137,7 @@ export function TerminalHeader({
         {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
       </button>
       <button aria-label={focused ? 'Exit focus mode' : 'Enter focus mode'} aria-pressed={focused} title="Focus mode · Escape exits" onClick={onFocus}><Scan size={15} /></button>
-      <button className="workspace-save" aria-label="Save workspace" title={saved ? 'Workspace saved locally' : 'Save workspace locally'} data-saved={saved} onClick={onSave}><Save size={15} /></button>
+      <button className="workspace-save" aria-label="Save workspace" aria-description={saveStatus} title={saveStatus==='Preferences ready'?'Save workspace locally':saveStatus} data-saved={saveStatus==='Saved locally'} onClick={onSave}><Save size={15} /></button>
       <button aria-label="Toggle theme" title="Dark / light appearance" onClick={onTheme}>{workspace.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
       <button aria-label="Export active chart" title="Export chart PNG" onClick={() => command(pane.id, 'screenshot')}><Camera size={17} /></button>
       <details className="tool-more" ref={more} onKeyDown={event => {

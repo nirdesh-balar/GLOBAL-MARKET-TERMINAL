@@ -49,7 +49,7 @@ const ready = async () => {
   await expect(canvas(0)).toHaveAttribute('data-rendered-bars', /^[1-9]/);
 };
 const saveState = async () => {
-  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   return (await workspace()).panes[0];
 };
 const zone = async (search, name) => {
@@ -108,19 +108,26 @@ try {
   }
 
   const outputs = row('ema20').locator('[data-study-output]');
-  const exactPoint = await canvas(0).evaluate(el => {
-    const data = el.__mainSeries.data();
-    const index = data.length - 36;
-    const r = el.getBoundingClientRect();
-    return { closes: data.map(bar => bar.close), index, x: r.left + el.__chart.timeScale().timeToCoordinate(data[index].time),
-      y: r.top + Math.min(el.__chart.paneSize(0).height - 20, 160) };
-  });
-  const expected = ema(exactPoint.closes, 20);
   const numericValue = async () => Number(await outputs.getAttribute('data-value'));
+  const expected = ema(await canvas(0).evaluate(el => el.__mainSeries.data().map(bar => bar.close)), 20);
   await page.mouse.move(6, 9);
   await expect.poll(numericValue).toBeCloseTo(expected.at(-1), 8);
   await snap('expanded');
-  await page.mouse.move(exactPoint.x, exactPoint.y);
+  const exactPoint = await canvas(0).evaluate(el => {
+    const data = el.__mainSeries.data();
+    const index = data.length - 36;
+    const time = data[index].time;
+    const x = el.__chart.timeScale().timeToCoordinate(time);
+    const r = el.getBoundingClientRect();
+    const height = el.__chart.paneSize(0).height;
+    // Larger indicator legends can cover the top of the plot.
+    const y = [0.65, 0.8, 0.5].map(fraction => Math.round(fraction * height))
+      .find(row => document.elementFromPoint(r.left + x, r.top + row)?.closest('.chart-canvas') === el);
+    return { index, time, x, y };
+  });
+  assert.ok(exactPoint.x !== null && exactPoint.y !== undefined);
+  await canvas(0).hover({ position: { x: exactPoint.x, y: exactPoint.y } });
+  await expect(canvas(0)).toHaveAttribute('data-crosshair-time',String(exactPoint.time));
   await expect.poll(numericValue).toBeCloseTo(expected[exactPoint.index], 8);
   await expect(row('stoch').locator('[data-study-output]')).toHaveCount(2);
   const colors = await row('stoch').locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => node.style.color));

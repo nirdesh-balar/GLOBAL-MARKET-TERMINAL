@@ -275,7 +275,7 @@
   padding: 4px;
   color: var(--muted);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: var(--chart-control-font);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -448,11 +448,34 @@
 .terminal-shell .pane-toolbar button,
 .terminal-shell .pane-toolbar select { font-size: 10px; font-weight: 500; }
 .terminal-shell .chart-surface > .chart-legend { top: 6px; left: 8px; }
+.terminal-shell .chart-pane {
+  --chart-header-font: 13px;
+  --chart-value-font: 12px;
+  --chart-control-font: 12px;
+}
 .terminal-shell .legend-title strong,
-.terminal-shell .ohlc b { font-size: 11px; font-weight: 560; }
+.terminal-shell .ohlc b { font-size: var(--chart-header-font); font-weight: 560; }
 .terminal-shell .legend-title,
 .terminal-shell .ohlc,
-.terminal-shell .studies-legend { font-size: 10px; }
+.terminal-shell .study-legend-name,
+.terminal-shell .study-pane-controls > button:first-child { font-size: var(--chart-header-font); }
+.terminal-shell .ohlc-change-metric,
+.terminal-shell .studies-legend,
+.terminal-shell .study-values,
+.terminal-shell .study-pane-controls .study-values,
+.terminal-shell .study-pane-controls > small { font-size: var(--chart-value-font); }
+@container (max-width: 560px) {
+  .terminal-shell .chart-surface {
+    --chart-header-font: 12px;
+    --chart-value-font: 11px;
+  }
+}
+@container (max-width: 360px) {
+  .terminal-shell .chart-surface {
+    --chart-header-font: 11px;
+    --chart-value-font: 10px;
+  }
+}
 .terminal-shell .legend-title .demo-mini { font-size: 9px; }
 .terminal-shell .chart-legend .ohlc { gap: 2px 7px; }
 .terminal-shell .chart-grid:not([data-count="1"]) .legend-timeframe { display: none; }
@@ -460,11 +483,18 @@
   .terminal-shell .chart-grid:not([data-count="1"]) .legend-symbol { display: none; }
 }
 .terminal-shell .range-toolbar button,
-.terminal-shell .price-controls button { font-size: 10px; padding-block: 3px; }
+.terminal-shell .range-toolbar .go-date,
+.terminal-shell .price-controls button,
+.terminal-shell .bottom-chart-toolbar > button:last-child { font-size: var(--chart-control-font); }
+@container (max-width: 750px) {
+  .terminal-shell .bottom-chart-toolbar { --chart-control-font: 11px; }
+}
+@container (max-width: 420px) {
+  .terminal-shell .bottom-chart-toolbar { --chart-control-font: 9px; }
+}
 .terminal-shell .history-controls.open,
 .terminal-shell .custom-range,
 .terminal-shell .range-notice { bottom: 32px; }
-.terminal-shell .statusbar { height: 21px; min-height: 21px; font-size: 9px; }
 .terminal-shell.theme-dark .positive { color: #37bca5; }
 .terminal-shell.theme-dark .negative { color: #f26c76; }
 .terminal-shell .professional-watchlist > header {
@@ -555,7 +585,6 @@
 }
 .chart-type-check { margin-left: auto; }
 .chart-stale { color: var(--workspace-accent); }
-.terminal-shell .statusbar { gap: 8px; padding-inline: 9px; }
 @container (max-width: 380px) {
   .terminal-shell .pane-toolbar .chart-type-anchor { order: 2; min-width: 30px; }
 }
@@ -564,3 +593,15 @@
 .chart-source-detail{position:absolute;right:10px;bottom:calc(100% + 4px);box-sizing:border-box;width:min(350px,calc(100% - 20px));max-height:min(200px,40vh);overflow:auto;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);z-index:5;line-height:1.5;font-size:12px}
 .chart-source-detail p{margin:0}
 .chart-source-detail p+p{margin-top:6px}
+
+.terminal-shell .tradingview-link {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.terminal-shell .tradingview-link:is(:hover, :focus-visible) {
+  color: var(--text);
+  text-decoration: underline;
+}

@@ -19,6 +19,8 @@ Watchlist quote refresh ownership shares the Electron and Python lifecycle on Wi
 
 The reference analysis workspace adds keyboard-managed dialogs, an analysis dock, typed study persistence and completed-candle alerts through shared source. On Windows x64, verify these paths with a disposable profile, including Escape and focus return, different DPI settings, chart and workspace restoration, index CSV selection, constituent chart and watchlist handoffs, and local study revision and alert compatibility. The themed chart type menu also needs native Windows checks for keyboard focus, scrolling, and right/bottom edge collision at each DPI setting. Open index membership from the selected chart’s Data controls. Existing `WIN-CHARTGRID` and `WIN-ELECTRON44` validation remains pending.
 
+Chart readability and footer cleanup share renderer code. At 100%, 125%, 150% and 200% scaling, verify the larger chart labels, the compact Watchlist refresh line at minimum width, attribution in Charts and Chart Grid, and saved study heights after native resize and restart.
+
 ## Native commands
 
 1. Verify the source SHA and use native Node 22.19.0 or a compatible version with npm and Python 3.11 x64. Run `npm ci`, create `backend\.venv`, and install `backend\requirements-lock.txt` with the venv Python. Prepare test directory resources through the documented official-source path.

@@ -134,7 +134,7 @@ try {
   assert.equal(midway.watchlists.find(list => list.id === 'indices').name, 'India Indices');
   assert.deepEqual(midway.watchlists.find(list => list.id === copyId).items, stocks.items);
   assert.equal((await request('/api/flags')).flags[stock.canonical_id].color, 'orange');
-  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   await app.close();
   await launch();
   assert.ok(!(await workspace()).watchlists.some(list => list.id === 'stocks'));
@@ -152,7 +152,7 @@ try {
   await expect(sidebar().getByRole('button', { name: 'Create new list', exact: true })).toBeVisible();
   await shot('empty-list');
   assert.deepEqual((await workspace()).watchlists, []);
-  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   await app.close();
   await launch();
   await expect(sidebar().getByText('No ordinary watchlists yet.')).toBeVisible();

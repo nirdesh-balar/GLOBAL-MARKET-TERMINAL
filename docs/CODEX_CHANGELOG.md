@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-27 · Chart readability and footer cleanup
+
+- Remove the application status bar and the Watchlist symbol summary and directory count. Keep the Watchlist quote timestamp and interval on its compact refresh line. Save feedback remains on the toolbar control and save errors remain visible.
+- Place the TradingView link in the chart toolbar and the application header for other workspaces. Preserve the repository attribution notice.
+- Use 13 px OHLC, symbol, timeframe, and canvas axis labels on the main chart. Indicator values and chart controls use 12 px at normal widths. Keep saved study heights consistent with the chart widget’s even-pixel geometry.
+
 ## 2026-11-27 · Chart menu, index access and data labels
 
 - Share a themed, grouped chart style menu between the main toolbar and chart panes. All 13 existing styles retain their stored identities and render from already loaded candles.

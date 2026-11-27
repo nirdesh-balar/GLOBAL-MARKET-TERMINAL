@@ -132,7 +132,7 @@ try {
   assert.ok(perpetual?.native_mapping, `Verified BTC perpetual missing: ${perpetuals.warning}`);
   assert.ok(spot?.native_mapping, `Verified spot market missing: ${spots.warning}`);
   if (!live) {
-    await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+    await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
     const workspace = await request('/workspace');
     const created = await request('/api/watchlists/mutate', 'POST', {
       action: 'create', name: 'Order Flow test', revision: workspace.watchlist_revision,
@@ -180,7 +180,7 @@ try {
   report.watchlistRestored = true;
   assert.deepEqual(errors, []);
   if (!live) {
-    await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+    await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
     const saved = await request('/workspace');
     await close();
     await launch();
