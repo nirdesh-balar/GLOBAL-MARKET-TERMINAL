@@ -453,7 +453,7 @@
 }
 .terminal-shell .pane-toolbar button,
 .terminal-shell .pane-toolbar select { font-size: 10px; font-weight: 500; }
-.terminal-shell .chart-surface > .chart-legend { top: 6px; left: calc(8px + var(--left-axis-inset, 0px)); }
+.terminal-shell .chart-surface > .chart-legend { top: 6px; left: 8px; }
 .terminal-shell .legend-title strong,
 .terminal-shell .ohlc b { font-size: 11px; font-weight: 560; }
 .terminal-shell .legend-title,

@@ -46,38 +46,17 @@ try{
   assert.equal((await history()).provider_requests,baseline.provider_requests,'Presentation styles reuse existing candles');
   await screenshot('0108-chart-style');
   await type.selectOption('candles');
-  await page.getByLabel('Grouped intervals').selectOption('1w');
+  await page.getByRole('button',{name:'Active timeframe 1w',exact:true}).click();
   await expect(canvas()).toHaveAttribute('data-history-interval','1w',{timeout:30000});
-  await page.getByLabel('Grouped intervals').selectOption('1d');
+  await page.getByRole('button',{name:'Active timeframe 1d',exact:true}).click();
   await expect(canvas()).toHaveAttribute('data-history-interval','1d',{timeout:30000});
 
   const selected=(await request('/workspace')).panes[0].canonical_id;
-  const beforeCompare=await history();
-  await page.getByRole('button',{name:'Compare Symbol',exact:true}).click();
-  let search=page.getByRole('dialog',{name:'Compare Symbol'});
-  await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('TCS');
-  const result=search.getByTestId('search-result-TCS.NS');
-  await expect(result).toBeEnabled({timeout:30000});
-  await screenshot('0029-compare-search');
-  await result.click();
-  await expect(pane().locator('.compare-legend')).toContainText('Returns since',{timeout:30000});
-  await expect.poll(()=>canvas().evaluate(node=>node.__chart.priceScale('left').width())).toBeGreaterThan(0);
-  const scale=await canvas().evaluate(node=>({
-    left:node.__chart.priceScale('left').width(),
-    legend:node.parentElement.querySelector('.chart-legend').getBoundingClientRect().left-node.getBoundingClientRect().left,
-  }));
-  assert.ok(scale.legend>=scale.left);
-  await expect(pane().locator('.compare-legend')).toContainText('Left scale (%)');
-  assert.ok((await history()).provider_requests-beforeCompare.provider_requests<=1);
-  await expect.poll(async()=>(await request('/workspace')).panes[0].comparisons.length).toBe(1);
-  assert.equal((await request('/workspace')).panes[0].canonical_id,selected);
-  await expect(pane().getByRole('button',{name:/Remove comparison TCS/})).toBeVisible();
-  await screenshot('0040-comparison');
-  await pane().getByRole('button',{name:/Remove comparison TCS/}).click();
+  await expect(page.getByRole('button',{name:'Compare Symbol',exact:true})).toHaveCount(0);
   await expect(pane().locator('.compare-legend')).toHaveCount(0);
   await expect.poll(()=>canvas().evaluate(node=>node.__chart.priceScale('left').width())).toBe(0);
   await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
-  search=page.getByRole('dialog',{name:'Search stocks and indices'});
+  let search=page.getByRole('dialog',{name:'Search stocks and indices'});
   await search.getByRole('button',{name:'India equities',exact:true}).click();
   await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('RELIANCE');
   await expect(search.getByTestId('search-result-RELIANCE.NS')).toBeEnabled({timeout:30000});
@@ -190,7 +169,7 @@ try{
     ['.terminal-header','.main-workspace','.analysis-rail','.professional-watchlist','.chart-legend','.indicator-manager']
       .map(key=>[key,document.querySelector(key)?.getBoundingClientRect().toJSON()])));
   await writeFile(join(results,'geometry.json'),JSON.stringify(geometry,null,2));
-  console.log('PASS reference workspace controls, comparison, chart styles, Data Window, index details, study revision/restart and local rule alert');
+  console.log('PASS reference workspace controls, chart styles, Data Window, index details, study revision/restart and local rule alert');
 }finally{
   await app?.close();
 }

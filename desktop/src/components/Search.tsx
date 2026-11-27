@@ -5,13 +5,19 @@ import type { Instrument } from '../types';
 import { useFlags } from '../flags/useFlags';
 import { FlagIcon } from './FlagIcon';
 import { ColorFlagPicker } from './ColorFlagPicker';
-export function Search({ onSelect, onClose, watchlist, onWatch, watchlistName, mode }: {mode?:"compare"|"indices";watchlistName?:string;onSelect:(row: Instrument)=>void; onClose:()=>void; watchlist:string[]; onWatch:(row: Instrument)=>void}) {
+const indexCategories=[['indices','India'],['global_indices','Global']];
+const symbolCategories=[
+  ['','All'],['stocks','India equities'],['us','US equities'],['indices','Indices'],['crypto','Crypto'],['forex','FX'],
+  ['global','Global equities'],['global_indices','Global indices'],['crypto_spot','Crypto Spot'],
+  ['crypto_perpetual','Crypto Perpetual'],['commodities','Commodities'],['funds','ETFs & Funds'],
+];
+export function Search({ onSelect, onClose, watchlist, onWatch, watchlistName, mode }: {mode?:"indices";watchlistName?:string;onSelect:(row: Instrument)=>void; onClose:()=>void; watchlist:string[]; onWatch:(row: Instrument)=>void}) {
   const returnFocus=useRef(document.activeElement);
   const [query,setQuery] = useState(''); const [results,setResults] = useState<Instrument[]>([]); const [error,setError] = useState('');
-  const [category,setCategory]=useState(mode==='indices'?'indices':''),[country,setCountry]=useState(''),[exchange,setExchange]=useState(''),[loading,setLoading]=useState(false);
+  const [category,setCategory]=useState(mode==='indices'?'indices':''),[loading,setLoading]=useState(false);
   const [next,setNext]=useState<number|null>(null);
   const [selected,setSelected] = useState(0); const input = useRef<HTMLInputElement>(null);
-  const filterKey=JSON.stringify([query,category,country,exchange]);
+  const filterKey=JSON.stringify([query,category]);
   const currentFilter=useRef(filterKey);
   currentFilter.current=filterKey;
   const { flags, assignFlag, removeFlag } = useFlags();
@@ -20,11 +26,11 @@ export function Search({ onSelect, onClose, watchlist, onWatch, watchlistName, m
   useEffect(() => {
     let cancelled=false;const id=crypto.randomUUID();setLoading(true);
     const timer=setTimeout(()=>{
-      const params=new URLSearchParams({q:query,category,country,exchange});
+      const params=new URLSearchParams({q:query,category});
       api<{results:Instrument[];warning:string;next_offset?:number|null}>(`/api/instruments/discover?${params}`,'GET',undefined,id).then(value=>{if(!cancelled){setResults(value.results);setNext(value.next_offset??null);setSelected(0);setError(value.warning);setLoading(false);}}).catch(e=>{if(!cancelled){setError(e.message);setLoading(false);}});
     },300);
     return()=>{cancelled=true;clearTimeout(timer);window.terminal.cancel(id);};
-  },[query,category,country,exchange]);
+  },[query,category]);
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === 'Escape') {
       event.stopPropagation();
@@ -52,16 +58,20 @@ export function Search({ onSelect, onClose, watchlist, onWatch, watchlistName, m
     }
   }
   useEffect(()=>{if(input.current?.matches(':focus'))document.getElementById('instrument-search-result-'+selected)?.scrollIntoView({block:'nearest'});},[selected]);
-  const title=watchlistName?'Add to '+watchlistName:mode==='compare'?'Compare Symbol':mode==='indices'?'Search indices':'Search Symbol';
+  const title=watchlistName?'Add to '+watchlistName:mode==='indices'?'Search indices':'Search Symbol';
   const selectResult=(row:Instrument)=>{if(!loading)onSelect(row);};
   return <div className="modal-backdrop" onClick={onClose}><section className={`search-modal${watchlistName?' watchlist-symbol-search':''}`} role="dialog" aria-modal="true" aria-label={watchlistName?'Add symbol to '+watchlistName:mode?title:'Search stocks and indices'} onClick={e=>e.stopPropagation()} onKeyDown={handleKeyDown}>
     <h2 className="symbol-dialog-title">{title}</h2>
     <div className="search-input"><SearchIcon size={20}/><input ref={input} placeholder="Search symbol, company, index or ISIN" value={query} onChange={e=>{setLoading(true);setQuery(e.target.value);}}/><button aria-label="Close search" onClick={onClose}><X size={18}/></button></div>
-    <div className="search-caption"><span>ALL MARKETS · {loading?'Searching…':category.startsWith('crypto')?'Hyperliquid · verified spot / perpetual catalogue':'Yahoo non-crypto + official NSE directory'}</span></div>
-    <div className="global-search-filters"><div className="symbol-category-tabs" aria-label="Market categories">{(mode==='indices'?[['indices','India'],['global_indices','Global']]:[['','All'],['stocks','India equities'],['us','US equities'],['indices','Indices'],['crypto','Crypto'],['forex','FX']]).map(([id,name])=><button type="button" key={id} aria-pressed={category===id} onClick={()=>setCategory(id)}>{name}</button>)}</div><select aria-label="Search market"  value={category} onChange={e=>setCategory(e.target.value)}>{[['','All markets'],['stocks','Indian Stocks'],['us','US Stocks'],['global','Global Stocks'],['indices','Indian Indices'],['global_indices','Global Indices'],['crypto','All Crypto'],['crypto_spot','Crypto Spot'],['crypto_perpetual','Crypto Perpetual'],['forex','Forex'],['commodities','Commodities'],['funds','ETFs & Funds']].filter(([id])=>mode!=='indices'||id==='indices'||id==='global_indices').map(([id,name])=><option key={id} value={id}>{name}</option>)}</select><input aria-label="Search country" placeholder="Country filter" value={country} onChange={e=>setCountry(e.target.value)}/><input aria-label="Search exchange" placeholder="Exchange filter" value={exchange} onChange={e=>setExchange(e.target.value)}/></div>
-    <div className="search-results">{error&&<p className="error">{error}</p>}{!error&&!results.length&&<p className="empty">No matching instruments.</p>}{results.map((row,i)=>{const cid=row.canonical_id||row.id;const flagColor=flags[cid]?.color;return <div className={`search-result ${i===selected?'highlighted':''}`} key={cid}><button data-testid={`search-result-${row.provider==='hyperliquid'?row.canonical_id:row.yahoo_symbol}`} className="result-main" id={'instrument-search-result-'+i} disabled={loading} onClick={()=>selectResult(row)}><span className="symbol-avatar">{symbolLabel(row.symbol).slice(0,2)}</span><span><strong>{row.kind==='index'?row.name:row.symbol}</strong><small>{`${row.name} · ${row.native_id||row.yahoo_symbol} · ${row.provider} · ${row.market_type||row.kind}${row.contract?' · '+row.contract:''} · ${row.category} · ${row.currency||'currency unconfirmed'} · ${row.country} · ${row.status==='listed'?'NSE listed; Yahoo history unverified':row.status}${row.isin?' · '+row.isin:''}`}</small></span><span className="exchange">{row.exchange} <ArrowUpRight size={13}/></span></button>{!mode&&<><button data-testid={`flag-button-${row.symbol}`} aria-label={flagColor?`${flagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${flagColor?'flagged':'unflagged'}`} title={flagColor?`${flagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const rect=e.currentTarget.getBoundingClientRect();setPicker({row,x:rect.left,y:rect.bottom+4});}}><FlagIcon color={flagColor} filled={Boolean(flagColor)} size={14}/></button><button aria-label={watchlistName?`Add ${row.symbol} to watchlist`:`Favourite ${row.symbol}`} className={watchlist.includes(row.token)?'gold':''} onClick={()=>onWatch(row)}>{watchlistName?<Plus size={15}/>:<Star size={16} fill={watchlist.includes(row.token)?'currentColor':'none'}/>}</button></>}</div>;})}{next!==null&&<button aria-label="Load more instruments" disabled={loading} onClick={()=>{
+    <div className="symbol-category-tabs" role="group" aria-label="Market categories">
+      {(mode==='indices'?indexCategories:symbolCategories).map(([id,name])=><button
+        type="button" key={id} data-market-category={id} aria-pressed={category===id} onClick={()=>{
+          if(category!==id){setLoading(true);setCategory(id);}
+        }}>{name}</button>)}
+    </div>
+    <div className="search-results">{error&&<p className="error">{error}</p>}{loading&&!results.length&&<p className="empty" role="status">Searching…</p>}{!loading&&!error&&!results.length&&<p className="empty">No matching instruments.</p>}{results.map((row,i)=>{const cid=row.canonical_id||row.id;const flagColor=flags[cid]?.color;return <div className={`search-result ${i===selected?'highlighted':''}`} key={cid}><button data-testid={`search-result-${row.provider==='hyperliquid'?row.canonical_id:row.yahoo_symbol}`} className="result-main" id={'instrument-search-result-'+i} disabled={loading} onClick={()=>selectResult(row)}><span className="symbol-avatar">{symbolLabel(row.symbol).slice(0,2)}</span><span><strong>{row.kind==='index'?row.name:row.symbol}</strong><small>{`${row.name} · ${row.native_id||row.yahoo_symbol} · ${row.provider} · ${row.market_type||row.kind}${row.contract?' · '+row.contract:''} · ${row.category} · ${row.currency||'currency unconfirmed'} · ${row.country} · ${row.status==='listed'?'NSE listed; Yahoo history unverified':row.status}${row.isin?' · '+row.isin:''}`}</small></span><span className="exchange">{row.exchange} <ArrowUpRight size={13}/></span></button>{!mode&&<><button data-testid={`flag-button-${row.symbol}`} aria-label={flagColor?`${flagColor.toUpperCase()} flag for ${row.symbol}`:`Add color flag for ${row.symbol}`} className={`symbol-flag-btn ${flagColor?'flagged':'unflagged'}`} title={flagColor?`${flagColor.toUpperCase()} flag (Click to change)`:'Add color flag'} onClick={e=>{e.stopPropagation();e.preventDefault();const rect=e.currentTarget.getBoundingClientRect();setPicker({row,x:rect.left,y:rect.bottom+4});}}><FlagIcon color={flagColor} filled={Boolean(flagColor)} size={14}/></button><button aria-label={watchlistName?`Add ${row.symbol} to watchlist`:`Favourite ${row.symbol}`} className={watchlist.includes(row.token)?'gold':''} onClick={()=>onWatch(row)}>{watchlistName?<Plus size={15}/>:<Star size={16} fill={watchlist.includes(row.token)?'currentColor':'none'}/>}</button></>}</div>;})}{next!==null&&<button aria-label="Load more instruments" disabled={loading} onClick={()=>{
       setLoading(true);
-      const params=new URLSearchParams({q:query,category,country,exchange,offset:String(next)});
+      const params=new URLSearchParams({q:query,category,offset:String(next)});
       void api<{results:Instrument[];next_offset:number|null}>(`/api/instruments/discover?${params}`).then(v=>{
         if(currentFilter.current!==filterKey)return;
         setResults(r=>[...r,...v.results]);setNext(v.next_offset);

@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 const {outputFiles}=await build({stdin:{contents:`
   export * from './desktop/src/charts/chartStyles';
-  export * from './desktop/src/charts/compare';
+
   export * from './desktop/src/charts/dividends';
   export * from './desktop/src/studies/recipes';
 `,resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',write:false});
-const {chartStyleGroups,styleRows,lineBreakPoints,compareReturns,chartDividends,recipeValues,validRecipe,defaultRecipe}=await import(
+const {chartStyleGroups,styleRows,lineBreakPoints,chartDividends,recipeValues,validRecipe,defaultRecipe}=await import(
   'data:text/javascript;base64,'+Buffer.from(outputFiles[0].text).toString('base64'));
 const bar=(time,close,open=close)=>({time,open,high:Math.max(open,close)+2,low:Math.min(open,close)-2,close,volume:7});
 const early=[bar(1,14,10),bar(2,22,18)];
@@ -18,14 +18,6 @@ assert.deepEqual(breaks.map(x=>x.close??null),[null,11,12,13,null,null,9,null,14
 assert.equal(new Set(breaks.map(x=>x.time)).size,breaks.length);
 const keys=chartStyleGroups.flatMap(group=>group[1].map(entry=>entry[0]));
 assert.equal(new Set(keys).size,13);
-
-const returns=compareReturns([bar(1,10),bar(2,20),bar(3,30),bar(4,44)],
-  [[bar(1,0),bar(2,200),bar(4,100)], [bar(2,20),bar(3,10),bar(4,40)]]);
-assert.equal(returns.base,2);
-assert.deepEqual(returns.comparisons[0],[{time:2,value:0},{time:3},{time:4,value:-50}]);
-assert.deepEqual(returns.comparisons[1].map(p=>p.value),[0,-50,100]);
-assert.equal(returns.primary[1].value,50);
-assert.equal(compareReturns([bar(1,11)],[[bar(2,30)]]),null);
 
 const day=Date.UTC(2026,0,12)/1000;
 const action={date:'2026-01-12',dividend:1.33,split:0,time:day+50};
@@ -40,4 +32,4 @@ assert.equal(values.ema[3],75);
 assert.ok(Math.abs(values.wma[3]-200/3)<1e-10);
 assert.ok(validRecipe(defaultRecipe));
 assert.equal(validRecipe({...defaultRecipe,ema:201}),false);
-console.log('PASS 13 chart styles, Heikin Ashi/three-line break, comparison alignment, verified dividend dates and typed RSI/EMA/WMA arithmetic');
+console.log('PASS 13 chart styles, Heikin Ashi/three-line break, verified dividend dates and typed RSI/EMA/WMA arithmetic');

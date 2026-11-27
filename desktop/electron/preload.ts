@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('terminal',{
   drawingFile:(action:'import'|'export',data?:string)=>ipcRenderer.invoke('drawing-file',action,data),
   cancel:(requestId:string)=>ipcRenderer.send('cancel',requestId),
   selectFiles:(kind:string,symbol?:string)=>ipcRenderer.invoke('select-files',kind,symbol),
+  importIndexMembership:(index:string,asOf:string|null)=>ipcRenderer.invoke('index-membership-file',index,asOf),
   exportScreenerCSV:(data:unknown)=>ipcRenderer.invoke('screener-csv',data),
   exportScreenshot:(data:string,name:string)=>ipcRenderer.invoke('save-chart-image',data,name),
   openExternal:(url:string)=>ipcRenderer.invoke('external',url),

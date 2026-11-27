@@ -41,7 +41,7 @@ export function useDrawings({container,chart,primitive,pane,rows,interactionScop
  useEffect(()=>{primitive.current?.update(drawings,selected,pane.drawings_hidden);},[drawings,selected,pane.drawings_hidden,primitive]);
  useEffect(()=>{
   const el=container.current;if(!el)return;
-  const coords=(e:MouseEvent)=>{const r=el.getBoundingClientRect(),leftAxis=chart.current?.priceScale('left').width()??0;return {x:e.clientX-r.left-leftAxis,y:e.clientY-r.top};};
+  const coords=(e:MouseEvent)=>{const r=el.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
   const anchor=(event:PointerEvent):DrawingAnchor|null=>{const c=chart.current,p=primitive.current,v=latest.current;if(!c||!p?.series)return null;const {x,y}=coords(event),size=c.paneSize(0);if(x<0||y<0||x>size.width||y>size.height)return null;
    let time=c.timeScale().coordinateToTime(x);const futureTool=v.tool==='position_forecast'||v.tool==='bars_pattern'||drag.current?.drawing.kind==='position_forecast'||drag.current?.drawing.kind==='bars_pattern';if(time===null&&futureTool&&v.rows.length>1){const n=c.timeScale().coordinateToLogical(x);if(n!==null&&Number(n)>v.rows.length-1)time=Math.round(v.rows.at(-1)!.time+(Number(n)-(v.rows.length-1))*(v.rows.at(-1)!.time-v.rows.at(-2)!.time)) as import('lightweight-charts').UTCTimestamp;}let price=p.series.coordinateToPrice(y);if(typeof time!=='number'||price===null||!Number.isFinite(price))return null;
    if(v.magnet){const row=v.rows.find(r=>r.time===time);if(row)price=[row.open,row.high,row.low,row.close].reduce((a,b)=>Math.abs(a-price!)<Math.abs(b-price!)?a:b) as typeof price;}

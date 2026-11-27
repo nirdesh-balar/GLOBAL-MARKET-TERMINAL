@@ -17,7 +17,7 @@ The local Phase 3 Order Flow branch uses the same public stream and process life
 
 Watchlist quote refresh ownership shares the Electron and Python lifecycle on Windows. At the accepted shared SHA, verify rapid list and timeframe changes, cached prices, manual and automatic refresh overlap, sidebar close/reopen, renderer reload, suspend/resume, and clean shutdown in a disposable x64 profile. Windows native testing remains pending.
 
-The reference analysis workspace adds native selectors, keyboard-managed dialogs, an analysis dock, typed study persistence and completed-candle alerts through shared source. On Windows x64, verify these paths with a disposable profile, including Escape and focus return, different DPI settings, chart style and comparison restore, watchlist writes, and local study revision and alert compatibility. Existing `WIN-CHARTGRID` and `WIN-ELECTRON44` validation remains pending.
+The reference analysis workspace adds native selectors, keyboard-managed dialogs, an analysis dock, typed study persistence and completed-candle alerts through shared source. On Windows x64, verify these paths with a disposable profile, including Escape and focus return, different DPI settings, chart and workspace restoration, index CSV selection, constituent chart and watchlist handoffs, and local study revision and alert compatibility. Existing `WIN-CHARTGRID` and `WIN-ELECTRON44` validation remains pending.
 
 ## Native commands
 

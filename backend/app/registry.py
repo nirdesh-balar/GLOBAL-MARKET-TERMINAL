@@ -63,8 +63,20 @@ class InstrumentRegistry:
             if exchange and exchange.casefold() not in r['exchange'].casefold() or country and country.casefold() not in r['country'].casefold():continue
             text=' '.join(str(r.get(k,'')) for k in ('name','symbol','yahoo_symbol','isin','country','exchange','kind','category','board','series','native_id','base_asset','quote_asset','market_type','provider')).casefold()
             if all(term in text for term in terms):result.append(r);seen.add(r['canonical_id'])
-        # Exact tickers rank first, then names; full directory never limited to an index.
-        result.sort(key=lambda r:(r['symbol'].casefold()!=q.casefold() and r['yahoo_symbol'].casefold()!=q.casefold(),0 if r['kind']=='index' else 1))
+        # A ticker or asset match must outrank venue/provider text. Otherwise a
+        # query such as HYPE can fill the first page with unrelated Hyperliquid pairs.
+        needle=q.strip().casefold()
+        def rank(row):
+            tickers=tuple(str(row.get(key,'')).casefold() for key in ('symbol','yahoo_symbol','native_id'))
+            names=tuple(str(row.get(key,'')).casefold() for key in ('base_symbol','base_asset','name','company_name','isin'))
+            index_rank=row['kind']!='index'
+            if needle and needle in tickers:
+                return 0, index_rank
+            if needle and needle in names:
+                return 1, index_rank
+            identity=' '.join(tickers+names)
+            return (2 if all(term in identity for term in terms) else 3), index_rank
+        result.sort(key=rank)
         return result[:limit]
     def discover(self,quotes):
         stored=self.db.get('global_instruments',{});result=[]

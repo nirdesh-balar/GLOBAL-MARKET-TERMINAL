@@ -2,7 +2,6 @@ import {recipeSeries} from '../studies/recipes';
 import {StudyValues} from './StudyLegend';
 import {chartDividends} from './dividends';
 import type {CandleInspection} from '../components/ChartDataWindow';
-import {useComparisons} from './useComparisons';
 import {chartPoint,chartPoints,createMainSeries,styleColors} from './chartStyles';
 import {chartFailure,failureTitle,type ChartFailure}from '../services/errors';
 import {providerLabel} from '../providers/label';
@@ -96,7 +95,6 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const [appearanceOpen,setAppearanceOpen]=useState(false),[editIndicator,setEditIndicator]=useState<Indicator|null>(null),[dataOpen,setDataOpen]=useState(false),[timeZoneOpen,setTimeZoneOpen]=useState(false);
   const priceAlertButton=useRef<HTMLButtonElement>(null),cursorPrice=useRef<number|null>(null);
   const [replay,setReplay]=useState<number|null>(null),[playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[goDate,setGoDate]=useState('');
-  const compareEnabled=refreshVisible&&!hidden&&replay===null&&!legacyCrypto(pane)&&!!pane.comparisons?.some(item=>item.canonical_id!==instrumentKey);
   const primitive=useRef<DrawingsPrimitive|null>(null),mainSeries=useRef<ISeriesApi<SeriesType>|null>(null),volumeSeries=useRef<ISeriesApi<'Histogram'>|null>(null);
   const syncedCrosshair=useRef<number|null|undefined>(undefined);
   const syncRef=useRef({active,syncTime,syncCrosshair});syncRef.current={active,syncTime,syncCrosshair};
@@ -486,8 +484,6 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const applyCustom=()=>{if(!dates.start||!dates.end||dates.start>dates.end){setRangeNotice('Choose a start date on or before the end date.');return;}setRequested(dates);setRange('CUSTOM');setCustom(false);};
   const importNSE=async()=>{setLoading(true);setError('');try{const result=await window.terminal.selectFiles('history',pane.symbol);if(result){setSource('nse');setAdjusted(false);setRefresh(r=>r+1);}}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
   const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),showVolume]),onChange);
-  const comparisonNotice=useComparisons(chart,container,chartEpoch,pane.comparisons,compareEnabled,
-    instrumentKey,pane.timeframe,requested.start,requested.end,adjusted,rows);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
@@ -546,12 +542,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         volumeInfo={volumeInfo} referenceLabels={referenceLabels} globallyHidden={!!pane.indicators_hidden}
         onVisibility={id=>onChange({indicators:pane.indicators.map(i=>i.id===id?{...i,visible:!i.visible}:i)})}
         onSettings={setEditIndicator} onRemove={id=>onChange({indicators:pane.indicators.filter(i=>i.id!==id)})}/>
-      {!!pane.comparisons?.length&&<div className="compare-legend" title={comparisonNotice}>
-        {pane.comparisons.map(item=><button key={item.canonical_id} aria-label={`Remove comparison ${item.symbol}`}
-          onClick={()=>onChange({comparisons:pane.comparisons?.filter(other=>other.canonical_id!==item.canonical_id)})}>{symbolLabel(item.symbol)} <X size={11}/></button>)}
-        <small>{replay!==null?'Comparison paused in replay':comparisonNotice}</small>
-      </div>}
-            {!pane.indicators_hidden&&pane.local_studies?.map(item=><div key={item.id} className="compare-legend local-study-legend">
+      {!pane.indicators_hidden&&pane.local_studies?.map(item=><div key={item.id} className="local-study-legend">
         <button onClick={()=>onChange({local_studies:pane.local_studies?.map(value=>value.id===item.id?{...value,visible:!value.visible}:value)})}
           aria-label={(item.visible?'Hide ':'Show ')+item.name}>{item.name}</button>
         {item.visible&&<StudyValues values={legendValues.get(item.id)}/>}

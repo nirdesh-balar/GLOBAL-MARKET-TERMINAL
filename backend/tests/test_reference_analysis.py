@@ -67,7 +67,7 @@ def test_workspace_round_trip_preserves_study_and_style_and_legacy_defaults():
     panes=[dict(id=str(i),symbol='AAPL',token='0') for i in range(8)]
     legacy=Workspace.model_validate({'panes':panes})
     assert legacy.panes[0].chart_type=='candles' and legacy.local_studies==[]
-    assert legacy.study_library.favorites==[] and legacy.panes[0].comparisons==[]
+    assert legacy.study_library.favorites==[] and 'comparisons' not in legacy.panes[0].model_dump()
     data=legacy.model_dump()
     study_id='72e935aa-32ae-4ff1-9233-d84686db857e'
     data['study_library']={'favorites':['EMA'],'recent':['EMA','RSI']}

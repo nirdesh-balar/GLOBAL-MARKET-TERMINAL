@@ -210,6 +210,20 @@ class WatchlistRefresh:
             client = max(matching, key=lambda c: c.revision, default=self.legacy)
         return self._status(selection, client)
 
+    def cached_quote(self, item, timeframe):
+        saved = self.values.get((identity(item), timeframe)) or {}
+        value = saved.get('value')
+        if value is None or value.get('source') != 'YAHOO FINANCE':
+            return None
+        return dict(value=value, stale=self._quote_stale(item, value, saved.get('error'),
+                                                        self.preferences()['watchlist_interval'] or 300))
+
+    def _quote_stale(self, item, value, error, interval):
+        age_limit = (2 if item.get('kind') == 'crypto' else 7)*86400
+        now = self.clock()
+        return bool(value and (error or now-value['fetched_at'] > max(120, interval*2)
+                               or now-value['latest_bar_time'] > age_limit))
+
     def _status(self, selection, client):
         watchlist, timeframe = selection.watchlist, selection.timeframe
         items = self.items(watchlist)
@@ -225,7 +239,7 @@ class WatchlistRefresh:
                 state = 'ready' if value is not None else saved.get('failure_state', 'idle')
             elif state == 'ready' and value is None:
                 state = 'missing'
-            stale = bool(value and (error or self.clock()-value['fetched_at'] > max(120, interval*2) or self.clock()-value['latest_bar_time'] > (2 if item.get('kind') == 'crypto' else 7)*86400))
+            stale = self._quote_stale(item, value, error, interval)
             rows[key] = dict(identity=key, state=state, value=value, stale=stale,
                              error=error, retry_at=saved.get('retry_at'), attempted_at=saved.get('attempted_at'))
         return dict(accepted=True, job=job['id'] if job else None, watchlist=watchlist, timeframe=timeframe,

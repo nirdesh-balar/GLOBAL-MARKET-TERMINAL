@@ -402,15 +402,6 @@ class Pane(SymbolEntry):
             raise ValueError('Applied study IDs must be unique')
         return value
 
-    comparisons:list[SymbolEntry]=Field(default_factory=list,max_length=3)
-
-    @field_validator('comparisons')
-    @classmethod
-    def valid_comparisons(cls,value):
-        keys = [row.canonical_id for row in value]
-        if any(not key for key in keys) or len(keys) != len(set(keys)):
-            raise ValueError('Comparison instruments require distinct canonical identities')
-        return value
     indicators:list[IndicatorConfig]=Field(default_factory=lambda:[IndicatorConfig(id='default-ema',kind='EMA')],max_length=20)
     volume:bool=True
     scale:ScaleSettings=Field(default_factory=ScaleSettings)

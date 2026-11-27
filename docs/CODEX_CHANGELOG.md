@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-27 · Reference UI corrections and index membership
+
+- Compact Symbol Search and Index Search into single-row category strips. Give Indicators full-width single-line navigation while retaining the existing categories, presets and typed study editor.
+- Remove Chart Compare and the duplicate main-toolbar timeframe selector. Preserve the independent percentage-price scale, chart settings and layout state when opening older profiles.
+- Open NIFTY 50 by its canonical Yahoo Finance index identity. Add a searchable, locally imported constituent table with separate membership and cached quote provenance. [Reference workflow](REFERENCE_ANALYSIS_WORKSPACE.md)
+
 ## 2026-11-26 · Reference analysis workspace
 
 - Reuse canonical symbol search for index lookup and bounded percent comparisons. Add grouped intervals, 13 genuine chart presentations, a crosshair Data Window and verified daily Yahoo dividend badges.

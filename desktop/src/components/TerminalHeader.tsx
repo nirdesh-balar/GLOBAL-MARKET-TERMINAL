@@ -1,7 +1,7 @@
 import {ChartStyleOptions} from '../charts/ChartStyleOptions';
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
-  Minimize2, Scan, Save, Ellipsis, Database, GitCompareArrows, ChartNoAxesCombined } from 'lucide-react';
+  Minimize2, Scan, Save, Ellipsis, Database, ChartNoAxesCombined, List } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
 import { providerLabel } from '../providers/label';
@@ -9,7 +9,7 @@ import type { Pane, Workspace } from '../types';
 import { useFlags } from '../flags/useFlags';
 import { FlagIcon } from './FlagIcon';
 import { ColorFlagPicker } from './ColorFlagPicker';
-import { frames, timeframeLabel, TimeframeOptions } from '../charts/TimeframeSelector';
+import { frames, timeframeLabel } from '../charts/TimeframeSelector';
 
 export function command(id: string, action: string, value?: unknown) {
   window.dispatchEvent(new CustomEvent('terminal-command', { detail: { id, action, value } }));
@@ -20,8 +20,8 @@ interface HeaderProps {
   pane: Pane;
   layoutMenu: boolean;
   onSearch: () => void;
-  onCompare: () => void;
   onIndices: () => void;
+  onIndexDetails: () => void;
   onChange: (value: Partial<Pane>) => void;
   onIndicators: () => void;
   onLayoutMenu: () => void;
@@ -41,7 +41,7 @@ interface HeaderProps {
 }
 
 export function TerminalHeader({
-  workspace, pane, layoutMenu, onSearch, onCompare, onIndices, onChange, onIndicators, onLayoutMenu,
+  workspace, pane, layoutMenu, onSearch, onIndices, onIndexDetails, onChange, onIndicators, onLayoutMenu,
   onLayout, onTheme, onSettings, onChartSettings, onSync, focused,
   expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
 }: HeaderProps) {
@@ -76,7 +76,6 @@ export function TerminalHeader({
       <button className="header-symbol" aria-label="Search stocks and indices" title={`Find an instrument · ${PRIMARY_KEY}K`} onClick={onSearch}>
         <Search size={15} /><strong>{pane.kind === 'index' ? pane.name : pane.symbol.replace(/-EQ$/, '')}</strong><ChevronDown size={12} />
       </button>
-      <button type="button" aria-label="Compare Symbol" title="Compare Symbol" onClick={onCompare}><GitCompareArrows size={15}/></button>
       <button
         data-testid="header-symbol-flag" aria-label={flagColor ? `${flagColor.toUpperCase()} flag for ${pane.symbol}` : `Add color flag for ${pane.symbol}`}
         className={`symbol-flag-btn ${flagColor ? 'flagged' : 'unflagged'}`} title={flagColor ? 'Change color flag' : 'Add color flag'}
@@ -95,9 +94,6 @@ export function TerminalHeader({
           aria-pressed={pane.timeframe === interval} className={pane.timeframe === interval ? 'selected' : ''}
           onClick={() => onChange({ timeframe: interval })}>{timeframeLabel(interval)}</button>)}
       </div>
-      <select className="grouped-timeframe" aria-label="Grouped intervals" value={pane.timeframe} onChange={e=>onChange({timeframe:e.target.value as Pane['timeframe']})}>
-        <TimeframeOptions/>
-      </select>
       <select aria-label="Active chart type"  value={pane.chart_type} onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
         <ChartStyleOptions/>
       </select>
@@ -106,6 +102,7 @@ export function TerminalHeader({
       </button>
       <div className="toolbar-divider" />
       <button aria-label="Search indices" title="Search indices" onClick={onIndices}><ChartNoAxesCombined size={16}/></button>
+      {pane.kind==='index'&&<button aria-label="Index constituents" title="Index constituents" onClick={onIndexDetails}><List size={16}/></button>}
       <button aria-label="Historical replay" title="Historical candle replay" onClick={() => command(pane.id, 'replay')}>
         <Play size={15} /><span className="replay-word">Replay</span>
       </button>

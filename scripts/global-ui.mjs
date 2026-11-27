@@ -41,7 +41,7 @@ try{
  assert.equal((await status()).provider_requests,count,'Indicators and scale reuse data');
  await chooseWatchlist(page, 'crypto');await expect(page.locator('.watch-row')).toHaveCount(4);
  await expect(page.getByTestId('watchlist-symbol-BTC-USD')).toContainText('BTC-USD');
- await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.getByLabel('Search market').selectOption('crypto');
+ await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.locator('[data-market-category="' + ('crypto') + '"]').click();
  await expect(page.locator('.search-result')).toHaveCount(0);await expect(page.locator('.watch-row')).toHaveCount(4);await page.getByLabel('Close search',{exact:true}).click();
  assert.equal(await page.locator('[data-testid="stock-details"],.symbol-details').count(),0);
  await page.setViewportSize({width:1440,height:900});
