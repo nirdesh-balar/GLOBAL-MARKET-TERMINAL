@@ -1,5 +1,5 @@
 import {VolumeSettingsDialog} from '../components/VolumeSettingsDialog';
-import {defaultVolumeSettings,volumeColors,volumePoint,volumeValue} from './volumeIndicator';
+import {VOLUME_OVERLAY_MARGINS,VOLUME_SCALE_ID,volumeColors,volumePanePosition,volumePoint,volumeSettings,volumeValue} from './volumeIndicator';
 import {recipeSeries} from '../studies/recipes';
 import {pineSeries,type PineScript} from '../studies/pineScripts';
 import {StudyValues} from './StudyLegend';
@@ -74,7 +74,7 @@ function streamLabel(state:string){
     connecting:'Connecting',pending:'Waiting for live data',disabled:'Live data unavailable',unavailable:'Live data unavailable'} as Record<string,string>)[state]??'Live data unavailable';
 }
 
-export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,pineScripts,onScriptEdit,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onIndexDetails,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{inspect?:boolean;singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;pineScripts?:readonly PineScript[];onScriptEdit?:(id:string)=>void;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onIndexDetails:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
+export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,pineScripts,onScriptEdit,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onIndexDetails,onMigration,onExpand,onData,onVolume,onStudyPaneCount,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{inspect?:boolean;singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;pineScripts?:readonly PineScript[];onScriptEdit?:(id:string)=>void;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onIndexDetails:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;onStudyPaneCount:(id:string,count:number)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
   const instrumentZone=pane.timezone||'Asia/Kolkata';
   const precision=pane.precision??2;
   const instrumentKey=pane.canonical_id||pane.instrument_id||pane.symbol;
@@ -138,12 +138,12 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const rowsRef=useRef(rows);rowsRef.current=rows;const indexed=useMemo(()=>new Map(rows.map(r=>[r.time,r])),[rows]);const indexedRef=useRef(indexed);indexedRef.current=indexed;
   const candleIndexMap=useMemo(()=>new Map(rows.map((r,i)=>[r.time,i])),[rows]);
   const drawing=useDrawings({container,chart,primitive,pane,rows,interactionScope:liveIdentity+'/'+replay,tool:active?tool:'cursor',magnet,onChange,onActive,onTool});
-  const renderedVolumeStyle=useRef<{available:boolean;colors:ReturnType<typeof volumeColors>}|null>(null);
-  const showVolume=pane.volume;
-  const volumeAvailable=useMemo(()=>data?.volume_available??data?.candles.some(row=>row.volume!==null&&Number.isFinite(row.volume)&&row.volume>0)??false,[data]);
-  const volumeStyle=useMemo(()=>volumeColors(theme,pane.volume_settings),[theme,pane.volume_settings]);
-  const volumePosition=pane.volume_settings?.position??'first';
+  const volumeConfig=volumeSettings(pane);
+  const {placement:volumePlacement,position:volumePosition,up_color:volumeUpColor,down_color:volumeDownColor}=volumeConfig;
+  const volumeStyle=useMemo(()=>volumeColors(theme,{up_color:volumeUpColor,down_color:volumeDownColor}),[theme,volumeUpColor,volumeDownColor]);
   const volumeInfo=useMemo(()=>volumeContext(pane),[pane.provider,pane.base_asset,pane.kind]);
+  const volumeZeroIsMissing=!!volumeInfo.zero_volume_is_missing;
+  const renderedVolume=useRef<{rows:Candle[];colors:typeof volumeStyle;zeroIsMissing:boolean}|null>(null);
   const referenceContext=useReferences(pane,pane.indicators_hidden?[]:pane.indicators,adjusted,`${refresh}/${data?.fetched_at??0}`,replay===null,replay===null&&refreshVisible&&!refreshPaused&&pane.auto_refresh);
   const studies=useRef(new LiveIndicators());
   const studyTiming=useRef(0);
@@ -391,10 +391,10 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
       if(container.current)container.current.dataset.crosshairTime=String(selected?.time??rowsRef.current.at(-1)?.time??'');
       if(syncRef.current.active&&syncRef.current.syncCrosshair)window.dispatchEvent(new CustomEvent('terminal-sync',{detail:{id:pane.id,time:p.time||null}}));
     });
-    return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);for(const [id,index] of indicatorRender.current.slots)paneHeights.current.set(id,c.panes()[index].getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
+    return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);for(const [id,nativePane] of indicatorRender.current.slots)paneHeights.current.set(id,nativePane.getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
       detachIndicatorPrimitives(indicatorRender.current);main.detachPrimitive(drawingsPrimitive);
       if(container.current){delete (container.current as any).__chart;delete (container.current as any).__mainSeries;}
-      c.remove();chart.current=null;primitive.current=null;mainSeries.current=null;volumeSeries.current=null;};
+      c.remove();chart.current=null;primitive.current=null;mainSeries.current=null;volumeSeries.current=null;renderedVolume.current=null;indicatorRender.current={slots:new Map(),handles:[],primitives:[],owners:[]};};
   },[!!data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
   useEffect(()=>{
     const c=chart.current;
@@ -444,25 +444,13 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     if(data&&rows.length){const last=rows.at(-1)!,prev=rows.at(-2);onDataRef.current(instrumentKey,{candle:last,change:pane.timeframe==='1d'&&prev&&prev.close>0?(last.close/prev.close-1)*100:null,source:data.source,first:data.first_available,last:new Date(last.time*1000).toLocaleDateString('en-CA',{timeZone:calendarZone}),interval:pane.timeframe,fetched_at:data.fetched_at});}
     let second=0;const frame=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>{pendingStudyView.current=null;});});return()=>{cancelAnimationFrame(frame);cancelAnimationFrame(second);};
   },[rows,data,pane.symbol,pane.timeframe,pane.chart_type,theme,pane.appearance.session_separators]);
-  useEffect(()=>{
-    const volume=volumeSeries.current;
-    const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
-    if(!volume||dataFor.current!==identity)return;
-    const tail=rows.at(-1);
-    if(tail&&incrementalStudies.current&&renderedVolumeStyle.current?.available===volumeAvailable&&renderedVolumeStyle.current.colors===volumeStyle){
-      volume.update(volumePoint(tail,volumeAvailable,volumeStyle));
-    }else{
-      volume.setData(rows.map(row=>volumePoint(row,volumeAvailable,volumeStyle)));
-    }
-    renderedVolumeStyle.current={available:volumeAvailable,colors:volumeStyle};
-  },[rows,volumeAvailable,volumeStyle,instrumentKey,pane.timeframe,requested.start,requested.end,source,adjusted]);
   // Replace only study series. Main candles, horizontal zoom and a manual
   // logarithmic/linear price range remain on the same chart instance.
   useEffect(()=>{
     const c=chart.current;if(!c)return;
     const previous=pendingStudyView.current??c.timeScale().getVisibleLogicalRange(),manualPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
-    for(const [id,index] of indicatorRender.current.slots)if(c.panes()[index])paneHeights.current.set(id,c.panes()[index].getStretchFactor());
-    const layout=JSON.stringify([pane.indicators,pane.local_studies,pineScripts?.filter(script=>pane.local_studies?.some(item=>'script_id' in item&&item.script_id===script.id)).map(script=>script.revisions.at(-1)?.number),pane.indicators_hidden,showVolume,volumePosition,pane.chart_type,theme]);
+    for(const [id,nativePane] of indicatorRender.current.slots)paneHeights.current.set(id,nativePane.getStretchFactor());
+    const layout=JSON.stringify([pane.indicators,pane.local_studies,pineScripts?.filter(script=>pane.local_studies?.some(item=>'script_id' in item&&item.script_id===script.id)).map(script=>script.revisions.at(-1)?.number),pane.indicators_hidden,pane.chart_type,theme]);
     if(incrementalStudies.current&&studyLayout.current===layout&&data?.stream_update_only&&replay===null&&indicatorRender.current.handles.length===computed.series.length&&computed.series.length&&renderedRows.current[0]?.time===rows[0]?.time){
       updateIndicatorPanes(indicatorRender.current,computed.series);if(pendingStudyView.current)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
       return;
@@ -473,26 +461,72 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
     const matchesHistory=dataFor.current===identity;
     const studies=matchesHistory?computed.series:[];
-    // Add panes in display order. Native pane widgets are created on the next
-    // frame, so moving a freshly created pane can reference an unmounted widget.
-    const volumeLast=volumePosition==='last'&&studies.some(study=>study.pane!=='main');
-    if(volumeSeries.current&&(!showVolume||volumeLast)){
-      c.removeSeries(volumeSeries.current);
-      volumeSeries.current=null;
-    }
-    const addVolume=()=>{
-      if(!showVolume||volumeSeries.current)return;
-      const volume=c.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},c.panes().length);
-      if(matchesHistory)volume.setData(rows.map(row=>volumePoint(row,volumeAvailable,volumeStyle)));
-      volumeSeries.current=volume;
-      renderedVolumeStyle.current={available:volumeAvailable,colors:volumeStyle};
-    };
-    if(!volumeLast)addVolume();
     indicatorRender.current=renderIndicatorPanes(c,studies,paneHeights.current,mainSeries.current??undefined);
-    if(volumeLast)addVolume();
+    onStudyPaneCount(pane.id,indicatorRender.current.slots.size);
     setStudyEpoch(v=>v+1);
     if(previous)c.timeScale().setVisibleLogicalRange(previous);if(manualPrice)setPriceScaleRange(c.priceScale('right'),manualPrice.from,manualPrice.to);
-  },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,showVolume,volumePosition,theme]);
+  },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
+
+  // Volume owns one series. Moving or removing it never rebuilds other studies.
+  useEffect(()=>{
+    const c=chart.current;
+    if(!c)return;
+    const overlay=volumePlacement==='chart';
+    let histogram=volumeSeries.current;
+    const range=c.timeScale().getVisibleLogicalRange();
+    let topologyChanged=false;
+    if(histogram&&(!pane.volume||(histogram.getPane().paneIndex()===0)!==overlay)){
+      c.removeSeries(histogram);
+      histogram=null;
+      renderedVolume.current=null;
+      topologyChanged=true;
+    }
+    if(pane.volume&&!histogram){
+      histogram=c.addSeries(HistogramSeries,{
+        priceScaleId:overlay?VOLUME_SCALE_ID:'right',
+        priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false,
+      },overlay?0:c.panes().length);
+      if(overlay){
+        histogram.priceScale().applyOptions({scaleMargins:VOLUME_OVERLAY_MARGINS,autoScale:true});
+        histogram.setSeriesOrder(0);
+      }
+      topologyChanged=true;
+    }
+    volumeSeries.current=histogram;
+    if(histogram&&!overlay){
+      const current=histogram.getPane().paneIndex();
+      const target=1+volumePanePosition(volumePosition,c.panes().length-2);
+      // Swapping adjacent native panes works before the next widget paint and
+      // preserves the order, height and series identity of the other panes.
+      for(let index=current;index!==target;){
+        const next=index+Math.sign(target-index);
+        c.swapPanes(index,next);
+        index=next;
+        topologyChanged=true;
+      }
+    }
+    if(histogram&&dataFor.current!==liveIdentity){
+      if(renderedVolume.current)histogram.setData([]);
+      renderedVolume.current=null;
+    }else if(histogram){
+      const rendered=renderedVolume.current;
+      const sameStyle=rendered?.colors===volumeStyle&&rendered.zeroIsMissing===volumeZeroIsMissing;
+      if(rendered?.rows!==rows||!sameStyle){
+        const tail=rows.at(-1);
+        if(tail&&sameStyle&&incrementalStudies.current&&rendered.rows[0]?.time===rows[0]?.time
+          &&(rendered.rows.at(-1)?.time===tail.time||rendered.rows.at(-1)?.time===rows.at(-2)?.time)){
+          histogram.update(volumePoint(tail,volumeZeroIsMissing,volumeStyle));
+        }else{
+          histogram.setData(rows.map(row=>volumePoint(row,volumeZeroIsMissing,volumeStyle)));
+        }
+        renderedVolume.current={rows,colors:volumeStyle,zeroIsMissing:volumeZeroIsMissing};
+      }
+    }
+    if(topologyChanged){
+      if(range)c.timeScale().setVisibleLogicalRange(range);
+      setStudyEpoch(v=>v+1);
+    }
+  },[chartEpoch,computed,rows,liveIdentity,pane.volume,volumePlacement,volumePosition,volumeStyle,volumeZeroIsMissing]);
   useLayoutEffect(()=>{
     const c=chart.current;if(!c)return;const range=c.timeScale().getVisibleLogicalRange(),price=c.priceScale('right').getVisibleRange(),wasHidden=previousHidden.current;previousHidden.current=hidden;layoutResizing.current=true;
     if(hidden){layoutSnapshot.current={range,price};return;}
@@ -531,9 +565,9 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const selectRange=(value:string)=>{setRange(value);setRangeNotice('');if(value==='MAX'||value==='ALL'){setRequested({});return;}const end=new Date(),start=value==='YTD'?new Date(marketMidnight(marketDay(end.getTime()/1000,chartZone).slice(0,4)+'-01-01',chartZone)*1000):new Date(end.getTime()-rangeDays[value]*86400000);setRequested({start:start.toLocaleDateString('en-CA',{timeZone:chartZone}),end:end.toLocaleDateString('en-CA',{timeZone:chartZone})});};
   const applyCustom=()=>{if(!dates.start||!dates.end||dates.start>dates.end){setRangeNotice('Choose a start date on or before the end date.');return;}setRequested(dates);setRange('CUSTOM');setCustom(false);};
   const importNSE=async()=>{setLoading(true);setError('');try{const result=await window.terminal.selectFiles('history',pane.symbol);if(result){setSource('nse');setAdjusted(false);setRefresh(r=>r+1);}}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
-  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,volumeSeries,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),showVolume,volumePosition]),onChange);
+  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,volumeSeries,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),pane.volume,volumePlacement,volumePosition]),onChange);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
-  const displayedVolume=volumeValue(displayed,volumeAvailable);
+  const displayedVolume=volumeValue(dataFor.current===liveIdentity?displayed:null,volumeZeroIsMissing);
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
   const lastCandle=rows.at(-1);
@@ -600,7 +634,6 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
       <div className="study-legend-meta">
         {pane.indicators.some(i=>i.visible&&isVolume(i.kind))&&!pane.indicators_hidden&&
           <small data-testid={`volume-source-units-${pane.id}`}>Volume input · {volumeInfo.volume_unit}</small>}
-        {showVolume&&<span data-testid={`volume-legend-${pane.id}`}>{displayedVolume===null?'Volume unavailable':<>Volume <StudyValues values={[{name:'Volume',color:'var(--muted)',value:displayedVolume}]}/></>}</span>}
       </div>
     </div></div>
     <div className="chart-canvas" data-history-symbol={data?.canonical_id} data-history-interval={data?.interval} data-history-stale={!!data?.stale||!!refreshError} ref={container} data-chart-instance={chartIdentity.current} data-study-ms={studyTiming.current.toFixed(3)} data-study-count={computed.series.length} data-study-series={JSON.stringify(computed.series.map(s=>({id:s.id,name:s.name,pane:s.pane,...(s.units?{units:s.units}:{}),offset:s.offset??0,cloud:!!s.cloud,...(s.scripted?{scripted:true,fill_colors:[...new Set(s.scriptedFills?.flatMap(fill=>fill.colors.filter(Boolean))??[])]}:{}),provisional:!!s.provisional,valid:s.points.filter(p=>p.value!==null).length,last:s.points.at(-1)?.value??null})))}/>
@@ -611,7 +644,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         }}><BellPlus size={14}/></button>}
     {countdown&&lastCandle&&<CandleCountdown id={pane.id} chart={chart} series={mainSeries}
       generation={chartEpoch} price={lastCandle.close} bounds={countdown}/>}
-    <StudyPaneControls values={legendValues} volume={displayedVolume} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
+    <StudyPaneControls values={legendValues} volume={displayedVolume} volumeStale={!!data?.stale||!!refreshError} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
       if(id==='volume'){setEditVolume(true);return;}
       const script=pane.local_studies?.find(item=>item.id===id);
       if(script&&'script_id' in script)onScriptEdit?.(script.script_id);
@@ -632,7 +665,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         setTimeZoneOpen(false);
       }}/>}
     {appearanceOpen&&<ChartSettings pane={pane} theme={theme} onChange={onChange} onClose={()=>setAppearanceOpen(false)}/>}
-    {editVolume&&<VolumeSettingsDialog value={pane.volume_settings??defaultVolumeSettings} theme={theme}
+    {editVolume&&<VolumeSettingsDialog value={volumeConfig} theme={theme} adjacentPanes={indicatorRender.current.slots.size}
       onClose={()=>setEditVolume(false)} onSave={volume_settings=>onChange({volume_settings})}/>}
     {editIndicator&&<IndicatorSettingsDialog value={editIndicator} onClose={()=>setEditIndicator(null)} onSave={i=>onChange({indicators:pane.indicators.map(old=>old.id===i.id?i:old)})}/>}
     {custom&&<div className="custom-range"><input type="date" aria-label="Range start" value={dates.start} onChange={e=>setDates({...dates,start:e.target.value})}/><span>to</span><input type="date" aria-label="Range end" value={dates.end} onChange={e=>setDates({...dates,end:e.target.value})}/><button onClick={applyCustom}>Apply</button><button onClick={()=>setCustom(false)}><X size={13}/></button></div>}

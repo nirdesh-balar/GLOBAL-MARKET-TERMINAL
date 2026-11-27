@@ -29,7 +29,10 @@ try{
  }
  const ready=await workspace();assert.deepEqual(ready.panes.slice(0,4).map(p=>p.currency),['USD','USD','USD','']);
  await expect(page.getByTestId('pane-2').locator('.legend-title')).toContainText('CONTINUOUS · NOT AN EXPIRY');
- await expect(page.getByTestId('pane-3').locator('.studies-legend')).toContainText('Volume unavailable');
+ await page.getByLabel('Indicators pane 3',{exact:true}).click();
+ await page.getByLabel('Add Volume',{exact:true}).click();
+ await page.getByLabel('Close indicators',{exact:true}).click();
+ await expect(page.getByTestId('volume-legend-3')).toHaveText('Volume unavailable');
  await expect(page.getByTestId('pane-3').locator('.ohlc')).toContainText(/\d+\.\d{5}/);
  for(let pane=0;pane<4;pane++){
   await page.getByLabel(`Timeframe pane ${pane}`,{exact:true}).selectOption('4h');

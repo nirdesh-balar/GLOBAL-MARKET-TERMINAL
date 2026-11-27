@@ -391,9 +391,26 @@ class AppliedPineScript(BaseModel):
 
 class VolumeSettings(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
+    @model_validator(mode='before')
+    @classmethod
+    def migrate_placement(cls, value):
+        if isinstance(value, dict) and 'version' not in value:
+            return {'version': 2, 'placement': 'pane', **value}
+        return value
+
+    version: Literal[2] = 2
+    placement: Literal['chart', 'pane'] = 'chart'
     up_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
     down_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
-    position: Literal['first', 'last'] = 'first'
+    position: Literal['first', 'last'] | int = 'first'
+
+    @field_validator('position', mode='before')
+    @classmethod
+    def valid_position(cls, value):
+        if value not in ('first', 'last') and (type(value) is not int or not 0 <= value <= 23):
+            raise ValueError('Volume pane position must be first, last, or a valid pane index')
+        return value
 
 
 class Pane(SymbolEntry):
@@ -417,7 +434,7 @@ class Pane(SymbolEntry):
         return value
 
     indicators:list[IndicatorConfig]=Field(default_factory=lambda:[IndicatorConfig(id='default-ema',kind='EMA')],max_length=20)
-    volume:bool=True
+    volume:bool=False
     volume_settings:VolumeSettings|None=None
     scale:ScaleSettings=Field(default_factory=ScaleSettings)
     appearance:ChartAppearance=Field(default_factory=ChartAppearance)
@@ -447,6 +464,8 @@ class Pane(SymbolEntry):
     def migration(cls,value):return [migrate_indicator(v,i) for i,v in enumerate(value)]
     @model_validator(mode='after')
     def unique_indicators(self):
+        if self.volume and self.volume_settings is None:
+            self.volume_settings = VolumeSettings(placement='pane')
         if len({r.id for r in self.indicators})!=len(self.indicators):raise ValueError('Indicator IDs must be unique within a pane')
         local_ids = {study.id for study in self.local_studies}
         if len(self.study_layout.keys() - local_ids) > 21:
@@ -547,7 +566,7 @@ class Workspace(BaseModel):
             if not has_all_8_ids:
                 defaults = [
                     dict(id=str(i), symbol=s, token='0', timeframe='1d', chart_type='candles',
-                         indicators=[dict(kind='EMA', period=20, visible=True, id=f'legacy-{i}-EMA20')], volume=True)
+                         indicators=[dict(kind='EMA', period=20, visible=True, id=f'legacy-{i}-EMA20')], volume=False)
                     for i, s in enumerate(DEFAULT_SYMBOLS)
                 ]
                 existing = {}

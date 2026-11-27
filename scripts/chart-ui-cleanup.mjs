@@ -68,6 +68,12 @@ try{
   await launch();
   await button('Chart layout').click();
   await button('Layout 1').click();
+  await button('Indicators').click();
+  await button('Add Volume').click();
+  await button('Close indicators').click();
+  await button('Pane settings volume').click();
+  await button('Move to Separate Pane Below').click();
+  await button('Apply settings').click();
   await page.getByTestId('watchlist-symbol-ICICIBANK-EQ').click();
   await expect(canvas()).toHaveAttribute('data-history-symbol','yahoo:ICICIBANK.NS:NSE:equity',{timeout:30000});
   await expect(canvas()).toHaveAttribute('data-rendered-bars',/^[1-9]/);

@@ -1,6 +1,5 @@
-import {volumeVisibilityPatch} from './volumeIndicator';
 import {ChartTypeMenu} from './ChartTypeMenu';
-import { ChevronDown, SlidersHorizontal, RefreshCw, Volume2, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import type { Pane } from '../types';
 import { TimeframeSelector } from './TimeframeSelector';
 import { symbolLabel } from '../services/api';
@@ -44,9 +43,6 @@ export function ChartToolbar({
         onClick={() => onChange({ auto_refresh: !pane.auto_refresh })}>A</button>
       <button aria-label={`Refresh pane ${pane.id}`} title="Refresh historical candles now" disabled={loading || replay} onClick={onRefresh}>
         <RefreshCw size={15} className={loading ? 'spin' : ''} />
-      </button>
-      <button aria-label={`Volume pane ${pane.id}`} aria-pressed={pane.volume} className={pane.volume ? 'selected' : ''} onClick={() => onChange(volumeVisibilityPatch(pane, !pane.volume))}>
-        <Volume2 size={15} />
       </button>
       <button data-testid={`pane-maximize-${pane.id}`} aria-label={`${expanded ? 'Restore' : 'Maximize'} chart ${pane.id}`}
         title={expanded ? 'Restore all chart panes' : 'Maximize chart pane'} aria-pressed={expanded} onClick={onExpand}>

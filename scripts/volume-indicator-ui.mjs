@@ -122,7 +122,7 @@ try {
   const query = manager().getByRole('textbox', { name: 'Search indicators' });
   await query.fill('Volume');
   await expect(button('Add Volume', manager())).toBeDisabled();
-  await button('Oscillators', manager()).click();
+  await button('Overlays', manager()).click();
   await expect(button('Add Volume', manager())).toBeDisabled();
   await button('Favorite Volume', manager()).click();
   await button('Favorites', manager()).click();
@@ -132,7 +132,7 @@ try {
   await expect(volumeRow()).toHaveCount(1);
   await button('Settings volume', volumeRow()).click();
   const settings = page.getByRole('dialog', { name: 'Volume settings' });
-  await settings.getByLabel('Pane position').selectOption('last');
+  await button('Move to Separate Pane Below', settings).click();
   await settings.getByLabel('Up bar color').fill('#12ab34');
   await button('Apply settings', settings).click();
   await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(2);
@@ -144,7 +144,7 @@ try {
   await expect(header('1')).toBeVisible();
   await saved();
   const hidden = (await state()).panes[0];
-  assert.deepEqual(hidden.volume_settings, { position: 'last', up_color: '#12ab34', down_color: null });
+  assert.deepEqual(hidden.volume_settings, { version: 2, placement: 'pane', position: 'last', up_color: '#12ab34', down_color: null });
   assert.equal(hidden.volume, false);
   assert.deepEqual(hidden.study_layout.volume, fixture.panes[0].study_layout.volume);
   await button('Visibility volume', volumeRow()).click();
@@ -188,6 +188,10 @@ try {
   await expect(button('Add Volume', manager())).toBeDisabled();
   await button('Close indicators').click();
   await expect(header('0')).toBeVisible();
+  await expect.poll(async () => (await volumes('0'))[0]?.index).toBe(0);
+  await button('Pane settings volume',header('0')).click();
+  await button('Move to Separate Pane Below').click();
+  await button('Apply settings').click();
   await expect.poll(async () => (await volumes('0'))[0]?.height).toBeGreaterThanOrEqual(120);
   assert.deepEqual((await volumes('0'))[0].data.map(({time,value})=>({time,value})), expected);
   await saved();

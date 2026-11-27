@@ -47,6 +47,9 @@ class UIFixture(FixtureProvider):
     for minute in range(0,length,minutes):
      value=100+minute*.01;rows.append(dict(time=int((opening+timedelta(minutes=minute)).timestamp()),open=value,high=value+2,low=value-1,close=value+1,volume=100.,adj_close=value+1))
   if security.get('kind') in ('index','forex'):rows=[dict(r,volume=None) for r in rows]
+  if os.environ.get('IMT_VOLUME_REDESIGN_UI')=='1' and security['base_symbol']=='ICICIBANK' and interval in ('15m','30m'):
+   rows=[dict(row,close=row['open']-.5 if i%2 else row['close'],
+              volume=None if i==1 else 0 if i==2 else 1000+50*i) for i,row in enumerate(rows)]
   periods={'regular':[periods]} if periods else None
   return History(rows,self.name,notice='Synthetic fixture for offline UI tests only.',interval=interval,metadata=dict(timezone=security.get('timezone','Asia/Kolkata'),currency=security.get('currency','INR'),precision=security.get('precision',2)),trading_periods=periods)
 

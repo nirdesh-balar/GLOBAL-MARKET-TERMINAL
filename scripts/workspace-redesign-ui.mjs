@@ -50,9 +50,10 @@ try {
   await expect(indicatorsButton.locator('svg')).toBeVisible();
   await expect(indicatorsButton).toHaveText('');
   const inline = pane.locator('.pane-toolbar');
-  await expect(inline.getByRole('button')).toHaveCount(4);
+  await expect(inline.getByRole('button')).toHaveCount(3);
+  await expect(inline.getByLabel('Volume pane 0',{exact:true})).toHaveCount(0);
   await expect(inline.locator('.pane-symbol, select')).toHaveCount(0);
-  for (const name of ['Auto Refresh pane 0', 'Refresh pane 0', 'Volume pane 0', 'Maximize chart 0']) {
+  for (const name of ['Auto Refresh pane 0', 'Refresh pane 0', 'Maximize chart 0']) {
     await expect(inline.getByRole('button', { name, exact: true })).toBeVisible();
   }
   await expect(pane.locator('#tv-attr-logo')).toHaveCount(0);

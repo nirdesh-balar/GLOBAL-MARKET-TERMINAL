@@ -2,14 +2,27 @@ import type { HistogramData, UTCTimestamp, WhitespaceData } from 'lightweight-ch
 import type { Candle, Pane, VolumeSettings } from '../types';
 import { getVolumeColors } from './appearance';
 
-export const defaultVolumeSettings: VolumeSettings = { position: 'first' };
+export const VOLUME_SCALE_ID = 'gmt-volume';
+export const VOLUME_OVERLAY_MARGINS = { top: .9, bottom: .012 };
+export const defaultVolumeSettings: VolumeSettings = { version: 2, placement: 'chart', position: 'last' };
+const legacyVolumeSettings: VolumeSettings = { ...defaultVolumeSettings, placement: 'pane', position: 'first' };
+
+export function volumeSettings(pane: Pane): VolumeSettings {
+  return pane.volume_settings ?? legacyVolumeSettings;
+}
+
+export function volumePanePosition(position: VolumeSettings['position'], otherPanes: number) {
+  if (position === 'first') return 0;
+  if (position === 'last') return otherPanes;
+  return Math.min(position, otherPanes);
+}
 export type VolumeInstance = VolumeSettings & { visible: boolean };
 
 export function volumeInstance(pane: Pane): VolumeInstance | null {
   // The legacy flag remains the visibility source. Settings on a hidden pane
   // mark an instance that can be shown again through Active indicators.
   return pane.volume || pane.volume_settings
-    ? { ...(pane.volume_settings ?? defaultVolumeSettings), visible: pane.volume } : null;
+    ? { ...volumeSettings(pane), visible: pane.volume } : null;
 }
 
 export function volumeInstancePatch(instance: VolumeInstance | null): Partial<Pane> {
@@ -18,16 +31,12 @@ export function volumeInstancePatch(instance: VolumeInstance | null): Partial<Pa
   return { volume: visible, volume_settings };
 }
 
-export function volumeVisibilityPatch(pane: Pane, visible: boolean): Partial<Pane> {
-  return { volume: visible, volume_settings: pane.volume_settings ?? defaultVolumeSettings };
-}
-
-export function volumeValue(candle: Candle | null | undefined, available: boolean) {
+export function volumeValue(candle: Candle | null | undefined, zeroIsMissing: boolean) {
   const value = candle?.volume;
-  return available && typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+  return typeof value === 'number' && Number.isFinite(value) && (zeroIsMissing ? value > 0 : value >= 0) ? value : null;
 }
 
-export function volumeColors(theme: 'dark' | 'light', settings?: VolumeSettings | null) {
+export function volumeColors(theme: 'dark' | 'light', settings: Pick<VolumeSettings, 'up_color' | 'down_color'>) {
   const defaults = getVolumeColors(theme);
   return {
     bullish: settings?.up_color ? settings.up_color + defaults.bullish.slice(7) : defaults.bullish,
@@ -36,9 +45,9 @@ export function volumeColors(theme: 'dark' | 'light', settings?: VolumeSettings 
 }
 
 export function volumePoint(
-  candle: Candle, available: boolean, colors: ReturnType<typeof volumeColors>,
+  candle: Candle, zeroIsMissing: boolean, colors: ReturnType<typeof volumeColors>,
 ): HistogramData<UTCTimestamp> | WhitespaceData<UTCTimestamp> {
   const time = candle.time as UTCTimestamp;
-  const value = volumeValue(candle, available);
+  const value = volumeValue(candle, zeroIsMissing);
   return value === null ? { time } : { time, value, color: candle.close >= candle.open ? colors.bullish : colors.bearish };
 }

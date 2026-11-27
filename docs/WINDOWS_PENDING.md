@@ -34,3 +34,5 @@ For future changes, record the ID, source SHA and files, shared-source status, e
 Pine-compatible Editor native Windows validation remains pending. Run the shared numerical and UI scripts with a temporary profile, then verify keyboard editing, source scrolling, side-dock resizing, script revisions, fill rendering, pane resizing and fullscreen/Escape at normal and scaled DPI.
 
 Chart toolbar and Volume indicator native Windows validation remains pending. Run `node scripts/volume-indicator-ui.mjs` with the native launcher adapted to Windows, then verify Technicals search, hide/show, above/below pane order, resize, profile restart and keyboard access to About and licenses.
+
+For the Volume placement redesign, include the single bottom-overlay legend, keyboard placement controls, middle-pane order after restart, and independent price scaling at each native DPI. WIN-CHARTGRID and WIN-ELECTRON44 remain pending.

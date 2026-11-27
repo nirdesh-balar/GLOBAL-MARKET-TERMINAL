@@ -40,7 +40,9 @@ Symbol Search uses one directory for chart and Watchlist selection. Open Data Wi
 
 ## Chart Volume
 
-Use Indicators → Technicals or search for Volume. Active indicators has visibility, settings, pane position, and removal for each chart's single Volume instance. The same controls are available in the Volume pane header. Drag its native separator to resize it. Earlier layouts retain their saved pane dimensions and default presence policy. Removing Volume persists across launches. Add Volume uses the currently loaded candles. The compact legend reports the corresponding candle's volume when available, and the crosshair time scale and Data Window still show bar timestamps.
+Add Volume from Indicators → Technicals. New charts begin without it. Main Chart — Bottom draws on an independent scale in the lower part of the existing price pane, with one compact legend beside it. Settings also offers a separate pane. In a separate pane, use the adjacent up/down controls to move it one position at a time and drag the native separator to resize it. Hide preserves the instance, style and placement. Active indicators lets you show it again. Removing it persists across launches.
+
+The version 2 settings format records overlay or separate placement and pane order. Existing explicit visible flags and saved settings preserve the separate position and saved height. Old profiles did not record the source of a serialized true flag, so explicit old true values retain their rendering. Missing preferences and new or padded panes start without Volume. Legacy presets and unrelated chart data follow their existing restore paths. The crosshair time scale and Data Window still show candle timestamps.
 
 ## Stages D and E · Local studies and provider-derived detail
 

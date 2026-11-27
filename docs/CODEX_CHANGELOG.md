@@ -1,5 +1,13 @@
 # Codex development log
 
+## 2026-11-27 · Volume placement and single legend
+
+- Add Volume from the indicator library only. Use a dedicated overlay scale at the bottom of the price pane by default, or move the instance to a resizable study pane. Native pane swaps preserve unrelated series and saved heights.
+- Remove the chart toolbar Volume toggle and the duplicate upper Volume readout. Keep one Volume label and its controls with the rendered series. Keep Watchlist refresh feedback.
+- Migrate saved Volume settings to version 2 with backward-compatible dedicated placement. New charts begin without Volume. Hidden and removed instances retain their distinct behavior after restart.
+- On the same macOS arm64 application source, 2,507 Python tests passed with one optional database-copy skip, and 22 numerical scripts passed. The full native run and focused follow-ups verified all 46 UI scripts and the supplemental workspace check. Normal eight-chart warm restore took 350 ms. Six Grid warm restorations took 67.4–191.2 ms with zero provider requests, up to eight charts and two concurrent new histories.
+- The first fullscreen assertion saw focus loss and no native enter event. The lifecycle follow-up passed fullscreen and Escape with the original 15-second assertion. The intermittent Electron/macOS focus issue remains open.
+
 ## 2026-11-27 · Volume indicator and chart toolbar
 
 - Move workspace saving to the chart overflow and TradingView attribution to Application settings → About and licenses. The existing NOTICE, automatic local saving, and Watchlist quote timestamp remain in use.

@@ -34,7 +34,7 @@ DEFAULTS=['RELIANCE-EQ','TCS-EQ','INFY-EQ','HDFCBANK-EQ','ICICIBANK-EQ','SBIN-EQ
 def default_workspace(db):
     fallback=db.search('',8)
     rows=[db.resolve(s) or (fallback[i%len(fallback)] if fallback else {'symbol':s,'token':'0'}) for i,s in enumerate(DEFAULTS)]
-    return dict(layout=2,panes=[dict(id=str(i),symbol=r['symbol'],token=r['token'],timeframe='1d',chart_type='candles',indicators=['EMA20'],volume=True) for i,r in enumerate(rows)],watchlist=[dict(symbol=r['symbol'],token=r['token']) for r in rows])
+    return dict(layout=2,panes=[dict(id=str(i),symbol=r['symbol'],token=r['token'],timeframe='1d',chart_type='candles',indicators=['EMA20'],volume=False) for i,r in enumerate(rows)],watchlist=[dict(symbol=r['symbol'],token=r['token']) for r in rows])
 
 def restore_workspace(db,registry=None,*,hydrate_grid=False):
     return normalize_workspace(db, registry, db.get('workspace'), hydrate_grid=hydrate_grid)

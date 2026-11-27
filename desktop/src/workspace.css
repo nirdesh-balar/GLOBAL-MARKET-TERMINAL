@@ -591,3 +591,8 @@
 .chart-source-detail{position:absolute;right:10px;bottom:calc(100% + 4px);box-sizing:border-box;width:min(350px,calc(100% - 20px));max-height:min(200px,40vh);overflow:auto;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);z-index:5;line-height:1.5;font-size:12px}
 .chart-source-detail p{margin:0}
 .chart-source-detail p+p{margin-top:6px}
+
+.terminal-shell .volume-pane-controls { gap: 4px; }
+.terminal-shell .volume-pane-label { padding-inline: 4px; white-space: nowrap; }
+.terminal-shell .volume-overlay-controls { border-radius: 5px; }
+.terminal-shell .volume-order-controls { display: inline-flex; gap: 2px; }

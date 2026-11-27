@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { VolumeSettings } from '../types';
+import { volumePanePosition } from '../charts/volumeIndicator';
 import { getVolumeColors } from '../charts/appearance';
 
-export function VolumeSettingsDialog({ value, theme, onSave, onClose }: {
+export function VolumeSettingsDialog({ value, theme, adjacentPanes, onSave, onClose }: {
   value: VolumeSettings;
   theme: 'dark' | 'light';
+  adjacentPanes: number;
   onSave: (value: VolumeSettings) => void;
   onClose: () => void;
 }) {
@@ -27,7 +29,7 @@ export function VolumeSettingsDialog({ value, theme, onSave, onClose }: {
           onClose();
         }
         if (event.key === 'Tab') {
-          const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button, input, select')];
+          const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input, select')];
           const target = event.shiftKey ? controls.at(-1) : controls[0];
           const boundary = event.shiftKey ? controls[0] : controls.at(-1);
           if (document.activeElement === boundary) {
@@ -42,11 +44,15 @@ export function VolumeSettingsDialog({ value, theme, onSave, onClose }: {
           onChange={event=>setDraft({ ...draft, up_color: event.target.value })}/></label>
         <label>Down bar color<input type="color" value={draft.down_color ?? defaults.bearish.slice(0, 7)}
           onChange={event=>setDraft({ ...draft, down_color: event.target.value })}/></label>
-        <label>Pane position<select value={draft.position}
-          onChange={event=>setDraft({ ...draft, position: event.target.value === 'last' ? 'last' : 'first' })}>
-          <option value="first">Above other indicator panes</option>
-          <option value="last">Below other indicator panes</option>
+        <label>Volume placement<select value={draft.placement}
+          onChange={event=>setDraft({ ...draft, placement: event.target.value === 'pane' ? 'pane' : 'chart' })}>
+          <option value="chart">Main Chart — Bottom</option>
+          <option value="pane">Separate Indicator Pane</option>
         </select></label>
+        <button className="text-link" disabled={draft.placement==='chart'}
+          onClick={()=>setDraft({ ...draft, placement:'chart' })}>Move to Main Chart</button>
+        <button className="text-link" disabled={draft.placement==='pane'&&volumePanePosition(draft.position,adjacentPanes)===adjacentPanes}
+          onClick={()=>setDraft({ ...draft, placement:'pane', position:'last' })}>Move to Separate Pane Below</button>
         <button className="text-link" onClick={()=>setDraft({ ...draft, up_color: null, down_color: null })}>Use theme colors</button>
       </div>
       <footer><button onClick={onClose}>Cancel</button>
