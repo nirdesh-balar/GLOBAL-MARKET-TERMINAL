@@ -409,8 +409,6 @@
 .terminal-shell .terminal-header .toolbar-divider { margin-inline: 1px; opacity: .75; }
 .terminal-shell .terminal-header .header-symbol,
 .terminal-shell .terminal-header .header-indicators { min-height: 30px; }
-.terminal-shell .terminal-header .workspace-save { color: var(--muted); }
-.terminal-shell .terminal-header .workspace-save[data-saved="true"] svg { color: var(--workspace-accent); }
 .terminal-shell .terminal-header .tool-more { position: relative; flex-shrink: 0; }
 .terminal-shell .terminal-header .tool-more summary {
   display: grid;
@@ -593,15 +591,3 @@
 .chart-source-detail{position:absolute;right:10px;bottom:calc(100% + 4px);box-sizing:border-box;width:min(350px,calc(100% - 20px));max-height:min(200px,40vh);overflow:auto;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);z-index:5;line-height:1.5;font-size:12px}
 .chart-source-detail p{margin:0}
 .chart-source-detail p+p{margin-top:6px}
-
-.terminal-shell .tradingview-link {
-  flex: 0 0 auto;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.terminal-shell .tradingview-link:is(:hover, :focus-visible) {
-  color: var(--text);
-  text-decoration: underline;
-}

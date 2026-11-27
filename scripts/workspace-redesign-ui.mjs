@@ -20,7 +20,7 @@ try {
   const page = await app.firstWindow();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByRole('button', { name: 'Charts by TradingView', exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', { name: 'Chart layout', exact: true })).toBeVisible({ timeout: 45000 });
   const display = await page.context().newCDPSession(page);
   await display.send('Emulation.setDeviceMetricsOverride', {
     width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
@@ -62,8 +62,11 @@ try {
     globalThis.originalTradingViewOpenExternal = shell.openExternal;
     shell.openExternal = async url => { globalThis.openedTradingViewUrl = url; };
   });
-  await page.getByRole('button', { name: 'Charts by TradingView', exact: true }).click();
+  await page.getByLabel('More chart options').click();
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('region',{name:'About and licenses'}).getByRole('link',{name:'TradingView'}).click();
   await expect.poll(() => app.evaluate(() => globalThis.openedTradingViewUrl)).toBe('https://www.tradingview.com/');
+  await page.getByRole('button',{name:'Close settings',exact:true}).click();
   await app.evaluate(({ shell }) => { shell.openExternal = globalThis.originalTradingViewOpenExternal; });
 
   await display.send('Emulation.setDeviceMetricsOverride', {
@@ -78,8 +81,9 @@ try {
     width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
   });
 
+  await page.getByLabel('More chart options').click();
   await page.getByRole('button',{name:'Save workspace',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Save workspace',exact:true})).toHaveAttribute('data-saved','true');
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   const more = page.getByLabel('More chart options',{exact:true});
   await more.click();
   await expect(page.getByRole('button',{name:'Chart data and source'})).toBeVisible();

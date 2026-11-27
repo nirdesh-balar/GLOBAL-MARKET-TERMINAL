@@ -38,7 +38,7 @@ const ready = async count => {
 const waitForApp = async () => {
   page = await app.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({ timeout: 45000 });
   await expect(page.locator('.chart-overlay')).toHaveCount(0, { timeout: 45000 });
 };
 async function measure(control, eventName, action, kind, count, label) {
@@ -130,7 +130,10 @@ try {
   await measure(openWatchlist, 'click', () => openWatchlist.click(), 'cold', 8, 'daily source first page');
   await expect(shell().getByText('Page 1 / 2')).toBeVisible();
   await expect(shell().locator('#tv-attr-logo')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Charts by TradingView', exact: true })).toBeVisible();
+  await button('Application settings').click();
+  await expect(page.getByRole('region',{name:'About and licenses'}).getByRole('link',{name:'TradingView'}))
+    .toHaveAttribute('href','https://www.tradingview.com/');
+  await button('Close settings').click();
   await expect(shell().getByText('11 symbols')).toBeVisible();
   assert.deepEqual(await tiles().evaluateAll(nodes => nodes.map(node => node.dataset.gridId)), list.slice(0, 8).map(row => row.canonical_id));
   const global = page.getByLabel('Global Chart Grid timeframe');

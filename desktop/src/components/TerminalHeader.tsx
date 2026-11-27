@@ -1,7 +1,7 @@
 import {ChartTypeMenu} from '../charts/ChartTypeMenu';
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
-  Minimize2, Scan, Save, Ellipsis, Database } from 'lucide-react';
+  Minimize2, Scan, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
 import type { Pane, Workspace } from '../types';
@@ -12,13 +12,6 @@ import { frames, timeframeLabel } from '../charts/TimeframeSelector';
 
 export function command(id: string, action: string, value?: unknown) {
   window.dispatchEvent(new CustomEvent('terminal-command', { detail: { id, action, value } }));
-}
-
-export function ChartAttribution(){
-  return <button type="button" className="tradingview-link" aria-label="Charts by TradingView"
-    title="Charts by TradingView" onClick={()=>window.terminal.openExternal('https://www.tradingview.com/')}>
-    TradingView
-  </button>;
 }
 
 interface HeaderProps {
@@ -109,7 +102,6 @@ export function TerminalHeader({
       <button aria-label="Undo drawing" title={`Undo drawing · ${UNDO_HINT}`} onClick={() => command(pane.id, 'undo')}><Undo2 size={16} /></button>
       <button aria-label="Redo drawing" title={`Redo drawing · ${REDO_HINT}`} onClick={() => command(pane.id, 'redo')}><Redo2 size={16} /></button>
       <div className="grow" />
-      <ChartAttribution />
       <div className="layout-control" ref={layout} onKeyDown={event => {
         if (event.key !== 'Escape' || !layoutMenu) return;
         event.stopPropagation();
@@ -137,7 +129,6 @@ export function TerminalHeader({
         {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
       </button>
       <button aria-label={focused ? 'Exit focus mode' : 'Enter focus mode'} aria-pressed={focused} title="Focus mode · Escape exits" onClick={onFocus}><Scan size={15} /></button>
-      <button className="workspace-save" aria-label="Save workspace" aria-description={saveStatus} title={saveStatus==='Preferences ready'?'Save workspace locally':saveStatus} data-saved={saveStatus==='Saved locally'} onClick={onSave}><Save size={15} /></button>
       <button aria-label="Toggle theme" title="Dark / light appearance" onClick={onTheme}>{workspace.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
       <button aria-label="Export active chart" title="Export chart PNG" onClick={() => command(pane.id, 'screenshot')}><Camera size={17} /></button>
       <details className="tool-more" ref={more} onKeyDown={event => {
@@ -149,7 +140,14 @@ export function TerminalHeader({
       }}>
         <summary aria-label="More chart options" title="More chart options"><Ellipsis size={17} /></summary>
         <div className="tool-more-panel">
-          <button aria-label="Settings" onClick={() => { if (more.current) more.current.open = false; onSettings(); }}><Settings2 size={14} /> Application settings</button>
+          <button aria-description={saveStatus} onClick={() => {
+            if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); }
+            onSave();
+          }}>Save workspace</button>
+          <button aria-label="Settings" onClick={() => {
+            if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); }
+            onSettings();
+          }}><Settings2 size={14} /> Application settings</button>
           <button onClick={() => { if (more.current) more.current.open = false; onData(); }}><Database size={14} /> Chart data and source</button>
           <button data-testid="provider-status" onClick={() => { if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); } onDiagnostics(); }}><Database size={14} /> Market data diagnostics</button>
         </div>

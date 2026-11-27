@@ -6,7 +6,7 @@ const request=(p,m='GET',b)=>page.evaluate(([p,m,b])=>window.terminal.request(p,
 try{
  await mkdir('test-results',{recursive:true});app=await launch();await ready();let w=await request('/workspace');w.layout=1;w.panes[0].indicators=[];await request('/workspace','PUT',w);await page.reload();await ready();
  await page.getByRole('button',{name:'Indicators',exact:true}).click();
- for(const kind of kinds){const study=indicatorCatalog.find(c=>c.kind===kind);await page.getByLabel('Search indicators',{exact:true}).fill(kind);await expect(page.getByLabel('Add '+study.name,{exact:true})).toBeEnabled();await page.getByLabel('Add '+study.name,{exact:true}).click();await expect(page.locator('.indicator-row')).toHaveCount(kinds.indexOf(kind)+1);}
+ for(const kind of kinds){const study=indicatorCatalog.find(c=>c.kind===kind);await page.getByLabel('Search indicators',{exact:true}).fill(kind);await expect(page.getByLabel('Add '+study.name,{exact:true})).toBeEnabled();await page.getByLabel('Add '+study.name,{exact:true}).click();await expect(page.getByTestId('indicator-volume')).toHaveCount(1);await expect(page.locator('.indicator-row:not([data-testid="indicator-volume"])')).toHaveCount(kinds.indexOf(kind)+1);}
  await page.getByRole('button',{name:'Oscillators',exact:true}).click();await page.getByLabel('Search indicators',{exact:true}).fill('CMO');await expect(page.getByLabel('Add Chande Momentum Oscillator (CMO)',{exact:true})).toBeVisible();await page.getByLabel('Close indicators',{exact:true}).click();await expect.poll(async()=>(await data()).length).toBe(26);
  const savedIndicators=async ()=>(await request('/workspace')).panes[0].indicators;
  // Chart rendering can finish before the debounced workspace write reaches the backend.

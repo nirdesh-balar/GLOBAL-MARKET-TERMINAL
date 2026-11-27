@@ -1,6 +1,7 @@
+import {volumeInstancePatch,volumeVisibilityPatch} from './volumeIndicator';
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { ChevronDown, ChevronRight, Eye, Settings2, X } from 'lucide-react';
-import type { IChartApi } from 'lightweight-charts';
+import type { ISeriesApi, IChartApi } from 'lightweight-charts';
 import type { Pane, StudyLayout } from '../types';
 import type { Study } from './indicators';
 import type { renderIndicatorPanes } from './IndicatorPane';
@@ -24,6 +25,7 @@ export function useStudyWorkspace(
   container: RefObject<HTMLDivElement | null>,
   viewport: RefObject<HTMLDivElement | null>,
   render: RefObject<ReturnType<typeof renderIndicatorPanes>>,
+  volumeSeries: RefObject<ISeriesApi<'Histogram'> | null>,
   pane: Pane,
   series: Study[],
   revision: string,
@@ -42,14 +44,15 @@ export function useStudyWorkspace(
     let fitFrame = 0, measureFrame = 0, saveFrame = 0;
     let drag: { pointer: number; width: number; height: number; stretch: Map<number, number> } | null = null;
     const { pane, series } = latest.current;
+    const volumeIndex=volumeSeries.current?.getPane().paneIndex();
     const groups: StudyHeader[] = [
-      ...(pane.volume ? [{ id: 'volume', group: 'volume', index: 1, name: 'Volume' }] : []),
+      ...(volumeIndex!==undefined ? [{ id: 'volume', group: 'volume', index: volumeIndex, name: 'Volume' }] : []),
       ...[...render.current.slots].map(([group, index]) => {
         const study = series.find(item => item.pane === group);
         const config = pane.indicators.find(item => item.id === study?.id);
         return { id: study?.id ?? group, group, index, name: config?.kind ?? group };
       }),
-    ];
+    ].sort((a,b)=>a.index-b.index);
     setHeaders(previous => previous.length === groups.length && previous.every((header, i) =>
       header.id === groups[i].id && header.group === groups[i].group &&
       header.index === groups[i].index && header.name === groups[i].name) ? previous : groups);
@@ -227,20 +230,21 @@ export function StudyPaneControls({ rows, layer, pane, values, volume, onChange,
         </button>
         {!collapsed && <StudyValues values={id === 'volume'
           ? [{ name: 'Volume', color: 'var(--muted)', value: volume }] : values.get(id)} />}
-        {(indicator||(local&&'script_id' in local)) && <button title="Study settings" aria-label={`Pane settings ${id}`} onClick={() => onSettings(id)}>
+        {(id==='volume'||indicator||(local&&'script_id' in local)) && <button title="Study settings" aria-label={`Pane settings ${id}`} onClick={() => onSettings(id)}>
           <Settings2 size={12} />
         </button>}
         <button title="Hide this study" aria-label={`Hide study ${id}`} onClick={() => id === 'volume'
-          ? onChange({ volume: false })
+          ? onChange(volumeVisibilityPatch(pane,false))
           : local ? onChange({local_studies:pane.local_studies?.map(item=>item.id===id?{...item,visible:false}:item)})
             : onChange({ indicators: pane.indicators.map(item => item.id === id ? { ...item, visible: false } : item) })}>
           <Eye size={12} />
         </button>
-        {id !== 'volume' && <button title="Remove this indicator" aria-label={`Remove study ${id}`}
-          onClick={() => local?onChange({local_studies:pane.local_studies?.filter(item=>item.id!==id)}):
+        <button title="Remove this indicator" aria-label={`Remove study ${id}`}
+          onClick={() => id==='volume'?onChange(volumeInstancePatch(null)):
+            local?onChange({local_studies:pane.local_studies?.filter(item=>item.id!==id)}):
             onChange({ indicators: pane.indicators.filter(item => item.id !== id) })}>
           <X size={12} />
-        </button>}
+        </button>
       </div>;
     })}
   </div>;

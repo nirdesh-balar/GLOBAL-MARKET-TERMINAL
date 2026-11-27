@@ -389,6 +389,13 @@ class AppliedPineScript(BaseModel):
     script_id: str = Field(pattern=r'^[0-9a-f-]{36}$')
     visible: bool = True
 
+class VolumeSettings(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    up_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
+    down_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
+    position: Literal['first', 'last'] = 'first'
+
+
 class Pane(SymbolEntry):
     local_studies:list[AppliedStudy | AppliedPineScript]=Field(default_factory=list,max_length=3)
     study_layout:dict[str,StudyLayout]=Field(default_factory=dict,max_length=24)
@@ -411,6 +418,7 @@ class Pane(SymbolEntry):
 
     indicators:list[IndicatorConfig]=Field(default_factory=lambda:[IndicatorConfig(id='default-ema',kind='EMA')],max_length=20)
     volume:bool=True
+    volume_settings:VolumeSettings|None=None
     scale:ScaleSettings=Field(default_factory=ScaleSettings)
     appearance:ChartAppearance=Field(default_factory=ChartAppearance)
     display_timezone:str|None=Field(default=None,max_length=80)
@@ -497,8 +505,8 @@ class GridPreferences(BaseModel):
 
 
 class StudyLibrary(BaseModel):
-    favorites:list[IndicatorKind]=Field(default_factory=list,max_length=69)
-    recent:list[IndicatorKind]=Field(default_factory=list,max_length=20)
+    favorites:list[IndicatorKind | Literal['VOLUME']]=Field(default_factory=list,max_length=70)
+    recent:list[IndicatorKind | Literal['VOLUME']]=Field(default_factory=list,max_length=20)
 
 class Workspace(BaseModel):
     local_studies:list[LocalStudy]=Field(default_factory=list,max_length=20)

@@ -81,7 +81,7 @@ try{
   await expect(manager().getByRole('navigation',{name:'Indicator library views'})).toBeVisible();
   await expect(manager().getByRole('group',{name:'Indicator categories'})).toHaveCount(0);
   await expect(manager().getByText(/Premium|Invite Only|Script Alerts|Option Chain/)).toHaveCount(0);
-  await expect(manager().getByRole('status')).toHaveText('69 matching studies');
+  await expect(manager().getByRole('status')).toHaveText('70 matching studies');
   const indicatorSearch=manager().getByRole('textbox',{name:'Search indicators'});
   assert.ok((await indicatorSearch.boundingBox()).width>700);
   await shot('technicals');

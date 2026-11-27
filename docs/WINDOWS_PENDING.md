@@ -32,3 +32,5 @@ Chart readability and footer cleanup share renderer code. At 100%, 125%, 150% an
 For future changes, record the ID, source SHA and files, shared-source status, expected Windows impact, implementation and test commands, and blockers. Use **Windows review pending**, **Windows implementation pending**, **Windows native testing pending**, and **Windows verified** as applicable. Record the native machine class, exact candidate, date and results before marking a row verified.
 
 Pine-compatible Editor native Windows validation remains pending. Run the shared numerical and UI scripts with a temporary profile, then verify keyboard editing, source scrolling, side-dock resizing, script revisions, fill rendering, pane resizing and fullscreen/Escape at normal and scaled DPI.
+
+Chart toolbar and Volume indicator native Windows validation remains pending. Run `node scripts/volume-indicator-ui.mjs` with the native launcher adapted to Windows, then verify Technicals search, hide/show, above/below pane order, resize, profile restart and keyboard access to About and licenses.

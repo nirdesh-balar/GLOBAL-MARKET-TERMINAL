@@ -1,3 +1,5 @@
+import {VolumeSettingsDialog} from '../components/VolumeSettingsDialog';
+import {defaultVolumeSettings,volumeColors,volumePoint,volumeValue} from './volumeIndicator';
 import {recipeSeries} from '../studies/recipes';
 import {pineSeries,type PineScript} from '../studies/pineScripts';
 import {StudyValues} from './StudyLegend';
@@ -17,7 +19,7 @@ import {useRefreshTask} from '../refresh/hooks';
 import {updatedView,mergeCandles} from '../refresh/scheduler';
 import { memo,useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createChart, createSeriesMarkers, HistogramSeries, createTextWatermark, ColorType, CrosshairMode, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
-import { getCandleColors, getVolumeColors, LIGHT_THEME, DARK_THEME } from './appearance';
+import { getCandleColors, LIGHT_THEME, DARK_THEME } from './appearance';
 import { BellPlus, CandlestickChart, RefreshCw, X, Upload } from 'lucide-react';
 import type { Candle, Pane, Indicator, Timeframe, HistoryResult, ChartQuote } from '../types';
 import {marketDay,marketMidnight} from '../services/marketTime';
@@ -98,6 +100,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const [failure,setFailure]=useState<ChartFailure|null>(null),[waiting,setWaiting]=useState(false),[retryUntil,setRetryUntil]=useState(0),[retryClock,setRetryClock]=useState(Date.now());const loadBusy=useRef(false);
   useEffect(()=>{if(!failure?.retry_after){setRetryUntil(0);return;}setRetryUntil(Date.now()+failure.retry_after*1000);const timer=setInterval(()=>setRetryClock(Date.now()),1000);return()=>clearInterval(timer);},[failure]);
   const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [refresh,setRefresh]=useState(0);const force=useRef(false);
+  const [editVolume,setEditVolume]=useState(false);
   const [appearanceOpen,setAppearanceOpen]=useState(false),[editIndicator,setEditIndicator]=useState<Indicator|null>(null),[dataOpen,setDataOpen]=useState(false),[timeZoneOpen,setTimeZoneOpen]=useState(false);
   const priceAlertButton=useRef<HTMLButtonElement>(null),cursorPrice=useRef<number|null>(null);
   const [replay,setReplay]=useState<number|null>(null),[playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[goDate,setGoDate]=useState('');
@@ -135,7 +138,11 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const rowsRef=useRef(rows);rowsRef.current=rows;const indexed=useMemo(()=>new Map(rows.map(r=>[r.time,r])),[rows]);const indexedRef=useRef(indexed);indexedRef.current=indexed;
   const candleIndexMap=useMemo(()=>new Map(rows.map((r,i)=>[r.time,i])),[rows]);
   const drawing=useDrawings({container,chart,primitive,pane,rows,interactionScope:liveIdentity+'/'+replay,tool:active?tool:'cursor',magnet,onChange,onActive,onTool});
+  const renderedVolumeStyle=useRef<{available:boolean;colors:ReturnType<typeof volumeColors>}|null>(null);
   const showVolume=pane.volume;
+  const volumeAvailable=useMemo(()=>data?.volume_available??data?.candles.some(row=>row.volume!==null&&Number.isFinite(row.volume)&&row.volume>0)??false,[data]);
+  const volumeStyle=useMemo(()=>volumeColors(theme,pane.volume_settings),[theme,pane.volume_settings]);
+  const volumePosition=pane.volume_settings?.position??'first';
   const volumeInfo=useMemo(()=>volumeContext(pane),[pane.provider,pane.base_asset,pane.kind]);
   const referenceContext=useReferences(pane,pane.indicators_hidden?[]:pane.indicators,adjusted,`${refresh}/${data?.fetched_at??0}`,replay===null,replay===null&&refreshVisible&&!refreshPaused&&pane.auto_refresh);
   const studies=useRef(new LiveIndicators());
@@ -384,7 +391,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
       if(container.current)container.current.dataset.crosshairTime=String(selected?.time??rowsRef.current.at(-1)?.time??'');
       if(syncRef.current.active&&syncRef.current.syncCrosshair)window.dispatchEvent(new CustomEvent('terminal-sync',{detail:{id:pane.id,time:p.time||null}}));
     });
-    return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);if(showVolume&&c.panes()[1])paneHeights.current.set('volume',c.panes()[1].getStretchFactor());for(const [id,index] of indicatorRender.current.slots)paneHeights.current.set(id,c.panes()[index].getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
+    return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);for(const [id,index] of indicatorRender.current.slots)paneHeights.current.set(id,c.panes()[index].getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
       detachIndicatorPrimitives(indicatorRender.current);main.detachPrimitive(drawingsPrimitive);
       if(container.current){delete (container.current as any).__chart;delete (container.current as any).__mainSeries;}
       c.remove();chart.current=null;primitive.current=null;mainSeries.current=null;volumeSeries.current=null;};
@@ -423,12 +430,10 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     const tail=rows.at(-1),oldTail=renderedRows.current.at(-1),incremental=!!data?.stream_update_only&&replay===null&&!!tail&&!!oldTail&&renderedRows.current[0]?.time===rows[0]?.time&&(tail.time===oldTail.time||rows.at(-2)?.time===oldTail.time);
     // Clear obsolete hover before the chart re-hit-tests a shorter replay prefix.
     if(rows.length<renderedRows.current.length)c.clearCrosshairPosition();
-    const volColors=getVolumeColors(theme), candleColors=getCandleColors(pane.appearance,theme);
+    const candleColors=getCandleColors(pane.appearance,theme);
     if(pane.chart_type==='baseline'&&rows.length)m.applyOptions({baseValue:{type:'price',price:rows[0].close}});
     if(incremental&&pane.chart_type!=='heikin-ashi'&&pane.chart_type!=='line-break')m.update(chartPoint(tail,pane.chart_type,candleColors));
     else m.setData(chartPoints(rows,pane.chart_type,candleColors));
-    if(incremental)volumeSeries.current?.update(tail.volume===null?{time:tail.time as UTCTimestamp}:{time:tail.time as UTCTimestamp,value:tail.volume,color:tail.close>=tail.open?volColors.bullish:volColors.bearish});
-    else volumeSeries.current?.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));
     incrementalStudies.current=incremental;renderedRows.current=rows;
     if(container.current)container.current.dataset.streamUpdate=incremental?'incremental':'reset';
     if(pendingStudyView.current&&replay===null)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
@@ -439,13 +444,25 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     if(data&&rows.length){const last=rows.at(-1)!,prev=rows.at(-2);onDataRef.current(instrumentKey,{candle:last,change:pane.timeframe==='1d'&&prev&&prev.close>0?(last.close/prev.close-1)*100:null,source:data.source,first:data.first_available,last:new Date(last.time*1000).toLocaleDateString('en-CA',{timeZone:calendarZone}),interval:pane.timeframe,fetched_at:data.fetched_at});}
     let second=0;const frame=requestAnimationFrame(()=>{second=requestAnimationFrame(()=>{pendingStudyView.current=null;});});return()=>{cancelAnimationFrame(frame);cancelAnimationFrame(second);};
   },[rows,data,pane.symbol,pane.timeframe,pane.chart_type,theme,pane.appearance.session_separators]);
+  useEffect(()=>{
+    const volume=volumeSeries.current;
+    const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
+    if(!volume||dataFor.current!==identity)return;
+    const tail=rows.at(-1);
+    if(tail&&incrementalStudies.current&&renderedVolumeStyle.current?.available===volumeAvailable&&renderedVolumeStyle.current.colors===volumeStyle){
+      volume.update(volumePoint(tail,volumeAvailable,volumeStyle));
+    }else{
+      volume.setData(rows.map(row=>volumePoint(row,volumeAvailable,volumeStyle)));
+    }
+    renderedVolumeStyle.current={available:volumeAvailable,colors:volumeStyle};
+  },[rows,volumeAvailable,volumeStyle,instrumentKey,pane.timeframe,requested.start,requested.end,source,adjusted]);
   // Replace only study series. Main candles, horizontal zoom and a manual
   // logarithmic/linear price range remain on the same chart instance.
   useEffect(()=>{
     const c=chart.current;if(!c)return;
     const previous=pendingStudyView.current??c.timeScale().getVisibleLogicalRange(),manualPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
     for(const [id,index] of indicatorRender.current.slots)if(c.panes()[index])paneHeights.current.set(id,c.panes()[index].getStretchFactor());
-    const layout=JSON.stringify([pane.indicators,pane.local_studies,pineScripts?.filter(script=>pane.local_studies?.some(item=>'script_id' in item&&item.script_id===script.id)).map(script=>script.revisions.at(-1)?.number),pane.indicators_hidden,showVolume,pane.chart_type,theme]);
+    const layout=JSON.stringify([pane.indicators,pane.local_studies,pineScripts?.filter(script=>pane.local_studies?.some(item=>'script_id' in item&&item.script_id===script.id)).map(script=>script.revisions.at(-1)?.number),pane.indicators_hidden,showVolume,volumePosition,pane.chart_type,theme]);
     if(incrementalStudies.current&&studyLayout.current===layout&&data?.stream_update_only&&replay===null&&indicatorRender.current.handles.length===computed.series.length&&computed.series.length&&renderedRows.current[0]?.time===rows[0]?.time){
       updateIndicatorPanes(indicatorRender.current,computed.series);if(pendingStudyView.current)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
       return;
@@ -453,13 +470,29 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     studyLayout.current=layout;
     detachIndicatorPrimitives(indicatorRender.current);
     for(const series of [...indicatorRender.current.handles].reverse())c.removeSeries(series);
-    const volColors=getVolumeColors(theme);
-    if(showVolume&&!volumeSeries.current){volumeSeries.current=c.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},1);volumeSeries.current.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));}
-    else if(!showVolume&&volumeSeries.current){c.removeSeries(volumeSeries.current);volumeSeries.current=null;}
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
-    indicatorRender.current=renderIndicatorPanes(c,dataFor.current===identity?computed.series:[],showVolume,paneHeights.current,mainSeries.current??undefined);setStudyEpoch(v=>v+1);
+    const matchesHistory=dataFor.current===identity;
+    const studies=matchesHistory?computed.series:[];
+    // Add panes in display order. Native pane widgets are created on the next
+    // frame, so moving a freshly created pane can reference an unmounted widget.
+    const volumeLast=volumePosition==='last'&&studies.some(study=>study.pane!=='main');
+    if(volumeSeries.current&&(!showVolume||volumeLast)){
+      c.removeSeries(volumeSeries.current);
+      volumeSeries.current=null;
+    }
+    const addVolume=()=>{
+      if(!showVolume||volumeSeries.current)return;
+      const volume=c.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},c.panes().length);
+      if(matchesHistory)volume.setData(rows.map(row=>volumePoint(row,volumeAvailable,volumeStyle)));
+      volumeSeries.current=volume;
+      renderedVolumeStyle.current={available:volumeAvailable,colors:volumeStyle};
+    };
+    if(!volumeLast)addVolume();
+    indicatorRender.current=renderIndicatorPanes(c,studies,paneHeights.current,mainSeries.current??undefined);
+    if(volumeLast)addVolume();
+    setStudyEpoch(v=>v+1);
     if(previous)c.timeScale().setVisibleLogicalRange(previous);if(manualPrice)setPriceScaleRange(c.priceScale('right'),manualPrice.from,manualPrice.to);
-  },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,pane.volume,pane.indicators_hidden,theme]);
+  },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,showVolume,volumePosition,theme]);
   useLayoutEffect(()=>{
     const c=chart.current;if(!c)return;const range=c.timeScale().getVisibleLogicalRange(),price=c.priceScale('right').getVisibleRange(),wasHidden=previousHidden.current;previousHidden.current=hidden;layoutResizing.current=true;
     if(hidden){layoutSnapshot.current={range,price};return;}
@@ -498,8 +531,9 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
   const selectRange=(value:string)=>{setRange(value);setRangeNotice('');if(value==='MAX'||value==='ALL'){setRequested({});return;}const end=new Date(),start=value==='YTD'?new Date(marketMidnight(marketDay(end.getTime()/1000,chartZone).slice(0,4)+'-01-01',chartZone)*1000):new Date(end.getTime()-rangeDays[value]*86400000);setRequested({start:start.toLocaleDateString('en-CA',{timeZone:chartZone}),end:end.toLocaleDateString('en-CA',{timeZone:chartZone})});};
   const applyCustom=()=>{if(!dates.start||!dates.end||dates.start>dates.end){setRangeNotice('Choose a start date on or before the end date.');return;}setRequested(dates);setRange('CUSTOM');setCustom(false);};
   const importNSE=async()=>{setLoading(true);setError('');try{const result=await window.terminal.selectFiles('history',pane.symbol);if(result){setSource('nse');setAdjusted(false);setRefresh(r=>r+1);}}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
-  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),showVolume]),onChange);
+  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,volumeSeries,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),showVolume,volumePosition]),onChange);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
+  const displayedVolume=volumeValue(displayed,volumeAvailable);
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
   const lastCandle=rows.at(-1);
@@ -566,8 +600,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
       <div className="study-legend-meta">
         {pane.indicators.some(i=>i.visible&&isVolume(i.kind))&&!pane.indicators_hidden&&
           <small data-testid={`volume-source-units-${pane.id}`}>Volume input · {volumeInfo.volume_unit}</small>}
-        {showVolume&&<span>{data?.volume_available===false?'Volume unavailable':'Volume · historical'}</span>}
-        {displayed&&<span>{timeFormatter.format(new Date(displayed.time*1000))}</span>}
+        {showVolume&&<span data-testid={`volume-legend-${pane.id}`}>{displayedVolume===null?'Volume unavailable':<>Volume <StudyValues values={[{name:'Volume',color:'var(--muted)',value:displayedVolume}]}/></>}</span>}
       </div>
     </div></div>
     <div className="chart-canvas" data-history-symbol={data?.canonical_id} data-history-interval={data?.interval} data-history-stale={!!data?.stale||!!refreshError} ref={container} data-chart-instance={chartIdentity.current} data-study-ms={studyTiming.current.toFixed(3)} data-study-count={computed.series.length} data-study-series={JSON.stringify(computed.series.map(s=>({id:s.id,name:s.name,pane:s.pane,...(s.units?{units:s.units}:{}),offset:s.offset??0,cloud:!!s.cloud,...(s.scripted?{scripted:true,fill_colors:[...new Set(s.scriptedFills?.flatMap(fill=>fill.colors.filter(Boolean))??[])]}:{}),provisional:!!s.provisional,valid:s.points.filter(p=>p.value!==null).length,last:s.points.at(-1)?.value??null})))}/>
@@ -578,7 +611,8 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         }}><BellPlus size={14}/></button>}
     {countdown&&lastCandle&&<CandleCountdown id={pane.id} chart={chart} series={mainSeries}
       generation={chartEpoch} price={lastCandle.close} bounds={countdown}/>}
-    <StudyPaneControls values={legendValues} volume={displayed?.volume ?? null} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
+    <StudyPaneControls values={legendValues} volume={displayedVolume} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
+      if(id==='volume'){setEditVolume(true);return;}
       const script=pane.local_studies?.find(item=>item.id===id);
       if(script&&'script_id' in script)onScriptEdit?.(script.script_id);
       else setEditIndicator(pane.indicators.find(i=>i.id===id)??null);
@@ -598,6 +632,8 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
         setTimeZoneOpen(false);
       }}/>}
     {appearanceOpen&&<ChartSettings pane={pane} theme={theme} onChange={onChange} onClose={()=>setAppearanceOpen(false)}/>}
+    {editVolume&&<VolumeSettingsDialog value={pane.volume_settings??defaultVolumeSettings} theme={theme}
+      onClose={()=>setEditVolume(false)} onSave={volume_settings=>onChange({volume_settings})}/>}
     {editIndicator&&<IndicatorSettingsDialog value={editIndicator} onClose={()=>setEditIndicator(null)} onSave={i=>onChange({indicators:pane.indicators.map(old=>old.id===i.id?i:old)})}/>}
     {custom&&<div className="custom-range"><input type="date" aria-label="Range start" value={dates.start} onChange={e=>setDates({...dates,start:e.target.value})}/><span>to</span><input type="date" aria-label="Range end" value={dates.end} onChange={e=>setDates({...dates,end:e.target.value})}/><button onClick={applyCustom}>Apply</button><button onClick={()=>setCustom(false)}><X size={13}/></button></div>}
     {rangeNotice&&<div className="range-notice">{rangeNotice}<button aria-label="Dismiss range notice" onClick={()=>setRangeNotice('')}><X size={12}/></button></div>}

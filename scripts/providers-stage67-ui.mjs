@@ -8,7 +8,7 @@ import {join,resolve} from 'node:path';
 const profile=await mkdtemp(join(tmpdir(),'imt-stage67a-ui-'));let app,page;const errors=[];
 const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/dist/Electron.app/Contents/MacOS/Electron'),args:['.'],env:{...process.env,IMT_UI_FIXTURE:'1',IMT_OFFLINE:'1',IMT_FAST_SCREENER_UI:'1',IMT_TEST_DATA_DIR:profile},timeout:60000});
 const request=(p,m='GET',b)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[p,m,b]);
-const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({timeout:45000});};
+const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({timeout:45000});};
 try{
  await mkdir('test-results',{recursive:true});app=await launch();await load();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});await expect.poll(async()=>(await request('/api/quotes/status?watchlist=stocks')).pending,{timeout:30000}).toBe(0);
  const w=await request('/workspace'),crypto=w.watchlists.find(r=>r.id==='crypto').items.find(r=>r.symbol==='BTC-USD');

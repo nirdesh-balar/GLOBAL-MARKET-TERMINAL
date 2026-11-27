@@ -1,5 +1,13 @@
 # Codex development log
 
+## 2026-11-27 · Volume indicator and chart toolbar
+
+- Move workspace saving to the chart overflow and TradingView attribution to Application settings → About and licenses. The existing NOTICE, automatic local saving, and Watchlist quote timestamp remain in use.
+- Manage the existing native Volume histogram through Technicals and Active indicators. Store visibility, colors and pane position per chart. Preserve the legacy volume flag and pane dimensions, and retain an explicit removal across restarts.
+- Show the active Volume value without the timestamp in the ordinary legend. The Data Window and crosshair retain the timestamp, and Volume changes reuse loaded candles.
+- Local macOS arm64 verification passed 2,502 Python tests with one optional database-copy skip, 22 numerical scripts, 45 UI scripts across the complete run and focused checks, and the supplemental workspace test. Normal eight-chart warm restore took 400 ms. Six Chart Grid warm restores took 47.3–158.0 ms with zero provider requests, at most eight charts and two concurrent new histories.
+- The initial fullscreen check recorded a show/hide cycle and focus loss during the existing 15-second assertion. A focused follow-up passed fullscreen and Escape with the original assertions. The documented intermittent Electron/macOS focus issue remains open.
+
 ## 2026-11-27 · Chart readability and footer cleanup
 
 - Remove the application status bar and the Watchlist symbol summary and directory count. Keep the Watchlist quote timestamp and interval on its compact refresh line. Save feedback remains on the toolbar control and save errors remain visible.

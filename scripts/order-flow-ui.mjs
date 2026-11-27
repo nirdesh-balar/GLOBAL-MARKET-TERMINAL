@@ -24,7 +24,7 @@ const launch = async () => {
   });
   page = await app.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByRole('button', {name:'Charts by TradingView',exact:true})).toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({ timeout: 60000 });
 };
 const request = (path, method = 'GET', body) =>
   page.evaluate(([p, m, b]) => window.terminal.request(p, m, b), [path, method, body]);

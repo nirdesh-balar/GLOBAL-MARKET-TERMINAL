@@ -134,10 +134,15 @@ try{
   assert.equal(noNeed.provider_requests,refreshed.provider_requests);
 
   await app.evaluate(({shell})=>{shell.openExternal=async url=>{globalThis.__chartAttributionURL=url;};});
-  const credit=page.locator('.terminal-header').getByRole('button',{name:'Charts by TradingView'});
+  await expect(page.locator('.terminal-header').getByText('TradingView',{exact:true})).toHaveCount(0);
+  await page.getByLabel('More chart options').click();
+  await button('Settings').click();
+  const credit=page.getByRole('region',{name:'About and licenses'}).getByRole('link',{name:'TradingView'});
   await expect(credit).toBeVisible();
+  await expect(credit).toHaveAttribute('href','https://www.tradingview.com/');
   await credit.click();
   await expect.poll(()=>app.evaluate(()=>globalThis.__chartAttributionURL)).toBe('https://www.tradingview.com/');
+  await button('Close settings').click();
   await expect(button('Enter macOS Fullscreen')).toBeEnabled();
   await button('Time zone pane 0').click();
   await expect(page.getByRole('dialog',{name:'Chart display time zone'})).toBeVisible();
@@ -176,6 +181,7 @@ try{
   await expect(refresh()).toContainText('Auto 900s');
   await refresh().click();
   await expect.poll(async()=>(await request('/api/refresh/preferences')).watchlist_interval).toBe(900);
+  await page.getByLabel('More chart options').click();
   await button('Save workspace').click();
   await saved();
   await app.close();

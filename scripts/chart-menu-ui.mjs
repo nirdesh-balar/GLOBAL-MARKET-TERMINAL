@@ -28,7 +28,7 @@ async function launch(){
   page=await app.firstWindow();
   page.on('pageerror',error=>errors.push(error.message));
   await page.setViewportSize({width:1440,height:834});
-  await expect(button('Charts by TradingView')).toBeVisible({timeout:45000});
+  await expect(button('Chart layout')).toBeVisible({timeout:45000});
   await expect(pane().locator('.chart-overlay')).toHaveCount(0,{timeout:45000});
 }
 async function checkStyle(id,style,series){
@@ -69,7 +69,11 @@ try{
   await assertNoBrand(page.locator('.terminal-header'));
   await assertNoBrand(pane().locator('.chart-legend'));
   await expect(page.locator('.statusbar')).toHaveCount(0);
-  await expect(button('Charts by TradingView')).toBeVisible();
+  await expect(page.locator('.terminal-header').getByText('TradingView',{exact:true})).toHaveCount(0);
+  await page.getByLabel('More chart options').click();
+  await button('Settings').click();
+  await expect(page.getByRole('region',{name:'About and licenses'}).getByRole('link',{name:'TradingView'})).toBeVisible();
+  await button('Close settings').click();
   await expect(await openDataProvenance(page)).toContainText(/fixture.*Retrieved/i);
   await expect(button('Index constituents')).toBeVisible();
   await shot('data');
