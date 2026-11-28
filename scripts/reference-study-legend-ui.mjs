@@ -3,10 +3,11 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { _electron as electron, expect, sourceElectron } from './isolated-electron.mjs';
+import { moveCrosshairToCandle } from './chart-crosshair.mjs';
 
-const output = 'test-results/reference-legend';
+const output = 'test-results/crosshair-stability';
 const profile = await mkdtemp(join(tmpdir(), 'gmt-reference-legend-fixture-'));
-const env = { ...process.env, IMT_TEST_DATA_DIR: profile, IMT_UI_FIXTURE: '1', IMT_OFFLINE: '1' };
+const env = { ...process.env, IMT_TEST_DATA_DIR: profile, IMT_UI_FIXTURE: '1', IMT_VOLUME_REDESIGN_UI: '1', IMT_OFFLINE: '1' };
 const errors = [];
 let app, page;
 const button = (name, scope = page) => scope.getByRole('button', { name, exact: true });
@@ -40,13 +41,15 @@ async function setColor(row, names, colors) {
   await button('Apply settings', settings()).click();
 }
 
-async function comparePlots(row, index, time, overlays = false) {
-  const readings = await row.locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => ({
+async function comparePlots(row, index, time, kind = 'all') {
+  const readLegend = () => row.locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => ({
     value: Number(node.dataset.value), name: node.dataset.studyOutput, color: getComputedStyle(node).color,
   })));
-  const plots = await canvas().evaluate((node, { index, time, overlays }) => {
+  const plots = await canvas().evaluate((node, { index, time, kind }) => {
     const series = node.__chart.panes()[index].getSeries()
-      .filter(item => !overlays || item.seriesType() === 'Line');
+      .filter(item => kind === 'all' ||
+        (kind === 'overlays' && item.seriesType() === 'Line') ||
+        (kind === 'volume' && item.options().priceScaleId === 'gmt-volume'));
     const sample = series.map(item => {
       const point = item.data().find(point => point.time === time);
       const color = point?.color ?? item.options().color;
@@ -55,7 +58,13 @@ async function comparePlots(row, index, time, overlays = false) {
       return { value: point?.value, color: swatch.style.color };
     });
     return sample;
-  }, { index, time, overlays });
+  }, { index, time, kind });
+  let readings;
+  await expect.poll(async () => {
+    readings = await readLegend();
+    return readings.map(({ value, color }) => ({ value, color }));
+  }, { message: `Legend values and plot colors must match the rendered series at ${time}` }).toEqual(plots);
+  assert.ok(readings.length);
   assert.equal(readings.length, plots.length);
   for (const [i, reading] of readings.entries()) {
     assert.ok(Number.isFinite(reading.value), reading.name);
@@ -126,34 +135,57 @@ try {
   await setColor(macdRow,['Line color','Signal color','Positive histogram color','Negative histogram color'],
     ['#f39241','#58a4ff','#28b5a3','#df6379']);
 
-  await page.mouse.move(1300,600);
-  const latest = await canvas().evaluate(node => node.__mainSeries.data().at(-1).time);
   const overlayReadings = () => top().locator('.study-legend-row:not(.volume-legend-row)');
-  const latestColors = await comparePlots(overlayReadings(),0,latest,true);
-  const rsiLatest = await comparePlots(rsiRow,1,latest);
-  const macdLatest = await comparePlots(macdRow,2,latest);
-  assert.equal(macdLatest[0].color,'rgb(243, 146, 65)');
-  assert.equal(macdLatest[1].color,'rgb(88, 164, 255)');
-
-  const crosshair = await canvas().evaluate((node, latest) => {
-    const histogram = node.__chart.panes()[2].getSeries().find(series => series.seriesType() === 'Histogram');
-    const latestPoint = histogram.data().at(-1);
-    const historic = histogram.data().findLast(point => point.time !== latest && point.value !== undefined
-      && (point.value < 0) !== (latestPoint.value < 0) && node.__chart.timeScale().timeToCoordinate(point.time) > 310);
-    return historic?.time;
-  }, latest);
-  assert.ok(crosshair, 'Fixture contains an on-screen histogram point with the opposite sign');
-  const bounds = await canvas().boundingBox();
-  const x = await canvas().evaluate((node,time)=>node.__chart.timeScale().timeToCoordinate(time),crosshair);
-  assert.ok(x > 0);
-  await page.mouse.move(bounds.x+x,bounds.y+200);
-  await expect(canvas()).toHaveAttribute('data-crosshair-time',String(crosshair));
-  await comparePlots(overlayReadings(),0,crosshair,true);
-  await comparePlots(rsiRow,1,crosshair);
-  const historicMacd = await comparePlots(macdRow,2,crosshair);
-  assert.notEqual(historicMacd[2].color,macdLatest[2].color);
-  await shot('crosshair');
-  await page.mouse.move(1300,600);
+  const readStudies = async time => {
+    const overlays = await comparePlots(overlayReadings(),0,time,'overlays');
+    return {
+      EMA: overlays[0], VWMA: overlays[1], VWAP: overlays[2],
+      RSI: (await comparePlots(paneRow(rsi.id),1,time))[0],
+      MACD: await comparePlots(paneRow(macd.id),2,time),
+      Volume: (await comparePlots(topRow('volume'),0,time,'volume'))[0],
+    };
+  };
+  const measurements = {};
+  async function verifyHistorical(label, { opposite = false, constantVolume = false, screenshots = false } = {}) {
+    await page.mouse.move(6,8);
+    const selection = await canvas().evaluate((node, { opposite, constantVolume }) => {
+      const chart = node.__chart, scale = chart.timeScale();
+      const latest = node.__mainSeries.data().at(-1).time;
+      const series = [
+        ...chart.panes()[0].getSeries().filter(s=>s.seriesType()==='Line'),
+        ...chart.panes()[1].getSeries(),
+        ...chart.panes()[2].getSeries(),
+        ...chart.panes()[0].getSeries().filter(s=>s.options().priceScaleId==='gmt-volume'),
+      ];
+      const maps = series.map(s => new Map(s.data().map(point => [point.time, point.value])));
+      const histogram = series.findIndex(s => s.seriesType()==='Histogram' && s.options().priceScaleId!=='gmt-volume');
+      const historical = node.__mainSeries.data().findLast(bar => {
+        if (bar.time === latest) return false;
+        const x = scale.timeToCoordinate(bar.time);
+        return x > scale.width()*.27 && x < scale.width()*.91 &&
+          maps.every((values,i) => Number.isFinite(values.get(bar.time)) &&
+            (constantVolume && i === maps.length-1 || Math.abs(values.get(bar.time)-values.get(latest)) > 1e-8)) &&
+          (!opposite || (maps[histogram].get(bar.time)<0) !== (maps[histogram].get(latest)<0));
+      })?.time;
+      return { latest, historical, identity:node.dataset.historySymbol, interval:node.dataset.historyInterval };
+    }, { opposite, constantVolume });
+    assert.ok(selection.historical && selection.historical < selection.latest,
+      `${label} has an on-screen historical candle with independently varying readings`);
+    const latestValues = await readStudies(selection.latest);
+    if (screenshots) await shot('crosshair-latest');
+    const target = await moveCrosshairToCandle(page,canvas(),selection.historical);
+    const historicalValues = await readStudies(selection.historical);
+    if (opposite) assert.notEqual(historicalValues.MACD[2].color,latestValues.MACD[2].color);
+    if (screenshots) await shot('crosshair-selected');
+    await page.mouse.move(6,8);
+    const fallback = await readStudies(selection.latest);
+    assert.deepEqual(fallback,latestValues);
+    measurements[label] = { ...selection, target, latestValues, historicalValues, fallback };
+    return latestValues;
+  }
+  const initial = await verifyHistorical('initial',{opposite:true,screenshots:true});
+  assert.equal(initial.MACD[0].color,'rgb(243, 146, 65)');
+  assert.equal(initial.MACD[1].color,'rgb(88, 164, 255)');
 
   const native = await canvas().getAttribute('data-study-series');
   const toggle = button('Indicator legend pane 0',pane());
@@ -196,21 +228,39 @@ try {
   await expect(canvas()).toHaveAttribute('data-history-interval','15m',{timeout:30000});
   await expect(paneRow(macd.id).locator('[data-study-output]')).toHaveCount(3);
   assert.deepEqual((await workspace()).panes[0], snapshot.panes[0]);
-  await page.mouse.move(1300,600);
-  assert.deepEqual(await comparePlots(overlayReadings(),0,latest,true),latestColors);
-  assert.deepEqual(await comparePlots(paneRow(rsi.id),1,latest),rsiLatest);
-  assert.deepEqual(await comparePlots(paneRow(macd.id),2,latest),macdLatest);
+  assert.deepEqual(await verifyHistorical('restart'),initial);
+  await page.setViewportSize({width:1210,height:730});
+  await verifyHistorical('resized');
+  await page.setViewportSize({width:1440,height:834});
+  await button('Active timeframe 30m').click();
+  await expect(canvas()).toHaveAttribute('data-history-interval','30m',{timeout:30000});
+  await expect(paneRow(macd.id).locator('[data-study-output][data-value]')).toHaveCount(3);
+  await verifyHistorical('newTimeframe');
+  await page.getByTestId('watchlist-symbol-SBIN-EQ').click();
+  await expect(canvas()).toHaveAttribute('data-history-symbol','yahoo:SBIN.NS:NSE:equity',{timeout:30000});
+  await expect(paneRow(macd.id).locator('[data-study-output][data-value]')).toHaveCount(3);
+  await verifyHistorical('newSymbol',{constantVolume:true});
+  await page.getByTestId('watchlist-symbol-ICICIBANK-EQ').click();
+  await expect(canvas()).toHaveAttribute('data-history-symbol',identity,{timeout:30000});
+  await expect(paneRow(macd.id).locator('[data-study-output][data-value]')).toHaveCount(3);
+  await button('Active timeframe 15m').click();
+  await expect(canvas()).toHaveAttribute('data-history-interval','15m',{timeout:30000});
+  await expect(paneRow(macd.id).locator('[data-study-output][data-value]')).toHaveCount(3);
   await button('Chart layout').click();
   await button('Layout 2').click();
   const otherEma = await pane(1).locator('.study-legend-name').first().innerText();
   assert.equal(otherEma,'EMA 20');
   assert.equal((await workspace()).panes[1].indicators[0].color,'#f4bd61');
+  await pane(1).locator('.chart-canvas').click({position:{x:160,y:175}});
+  await expect(pane(1)).toHaveClass(/\bactive\b/);
+  await canvas().click({position:{x:160,y:175}});
+  await expect(pane()).toHaveClass(/\bactive\b/);
+  assert.deepEqual(await verifyHistorical('switchedCharts'),initial);
   assert.deepEqual(errors,[]);
-  await writeFile(join(output,'reference-native.json'),JSON.stringify({names,latestColors,rsiLatest,macdLatest,historicMacd,
-    barsTime:latest,matchedHistoricTime:crosshair,oppositeHistogramColor:true,
+  await writeFile(join(output,'reference-native.json'),JSON.stringify({names,measurements,oppositeHistogramColor:true,
     extraProviderRequests:after.provider_requests-before.provider_requests,extraHistoryRequests:after.history_requests-before.history_requests,
     rendererErrors:errors},null,2));
-  console.log('PASS neutral transparent legends, exact plot values and colors, hover/focus, direct Volume removal, pane order, theme and restart.');
+  console.log('PASS neutral transparent legends, exact plot values and colors, hover/focus, direct Volume removal, pane order, theme, restart, resize, timeframe and chart switching.');
 } catch (error) {
   await shot('failure').catch(()=>{});
   throw error;

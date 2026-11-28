@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-28 · Historical indicator readings after viewport changes
+
+- Native crosshair checks now target a named historical candle using the settled price canvas and time scale. The previous percentage-based coordinate can hit blank chart space after panning and legitimately leave the legend at its latest-values fallback. Restore the original viewport and pixel ratio explicitly in the same emulation session. The regression checks the exact timestamp in the restored viewport and with a large right margin.
+- Confirm native plot values and colors for EMA, VWMA, VWAP, RSI, each MACD output and Volume. Cover the latest reading, a historical candle and fallback across restart, resize, timeframe, symbol and active chart changes.
+
 ## 2026-11-27 · Transparent study legends and Volume controls
 
 - Use neutral study names, muted input parameters, and plot-colored candle readings in transparent chart legends and study headers. Hover or keyboard focus exposes direct visibility, settings, and removal actions.

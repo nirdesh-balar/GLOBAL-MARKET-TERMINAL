@@ -4,6 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {_electron as electron,expect,sourceElectron} from './isolated-electron.mjs';
 import {clickWatchlistAction} from './watchlist-controls.mjs';
+import {moveCrosshairToCandle} from './chart-crosshair.mjs';
 
 const output='test-results/chart-ui-cleanup';
 const profile=await mkdtemp(join(tmpdir(),'gmt-chart-ui-cleanup-'));
@@ -121,18 +122,41 @@ try{
   await checkLayout([2047,1285,2]);
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:1050,height:650,deviceScaleFactor:2,mobile:false});
   await checkLayout([1050,650,2]);
-  await cdp.send('Emulation.clearDeviceMetricsOverride');
-  await page.setViewportSize({width:1440,height:834});
+  // Restore the original metrics through the same CDP session. Clearing the
+  // override can restore the monitor's native DPR instead of the test DPR.
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:834,deviceScaleFactor:dpr,mobile:false});
+  await expect.poll(()=>page.evaluate(()=>[innerWidth,innerHeight,devicePixelRatio])).toEqual([1440,834,dpr]);
   await expect(canvas()).toHaveAttribute('data-chart-creations',chartCreation);
-  const resizedRange=await canvas().evaluate(node=>node.__chart.timeScale().getVisibleLogicalRange());
-  assert.ok(Math.abs(initialRange.to-resizedRange.to)<1&&Math.abs(initialRange.from-resizedRange.from)<1,
-    JSON.stringify({initialRange,resizedRange}));
-  const plot=await canvas().boundingBox();
+  let resizedRange;
+  await expect.poll(async()=>{
+    resizedRange=await canvas().evaluate(node=>node.__chart.timeScale().getVisibleLogicalRange());
+    return Math.abs(initialRange.to-resizedRange.to)<1&&Math.abs(initialRange.from-resizedRange.from)<1;
+  },{message:'Restoring the viewport must preserve the logical range'}).toBe(true);
   const latestTime=Number(await canvas().getAttribute('data-last-rendered-time'));
-  await page.mouse.move(plot.x+plot.width*.6,plot.y+plot.height*.35);
+  const historicalTime=await canvas().evaluate(node=>node.__mainSeries.data().at(-36).time);
+  assert.ok(historicalTime>0&&historicalTime<latestTime);
+  await page.mouse.move(6,8);
+  const crosshair=await moveCrosshairToCandle(page,canvas(),historicalTime);
   await expect.poll(async()=>Number(await canvas().getAttribute('data-crosshair-time'))).toBeLessThan(latestTime);
   assert.ok(Number(await canvas().getAttribute('data-crosshair-time'))>0);
   await expect(pane().locator('[data-study-output][data-value]').first()).toBeVisible();
+
+  // Panning can leave a large blank region to the right of the last candle.
+  // The same historical timestamp must still be reachable after that movement.
+  await page.mouse.move(6,8);
+  const pannedRange=await canvas().evaluate(node=>{
+    const last=node.__mainSeries.data().length-1;
+    const range={from:last-55,to:last+100};
+    node.__chart.timeScale().setVisibleLogicalRange(range);
+    return range;
+  });
+  await expect.poll(()=>canvas().evaluate(node=>node.__chart.timeScale().getVisibleLogicalRange())).toEqual(pannedRange);
+  const pannedCrosshair=await moveCrosshairToCandle(page,canvas(),historicalTime);
+  assert.notEqual(pannedCrosshair.x,crosshair.x);
+  await expect(pane().locator('[data-study-output][data-value]').first()).toBeVisible();
+  await page.screenshot({path:join(output,'crosshair-right-margin.png')});
+  await page.mouse.move(6,8);
+  await canvas().evaluate((node,range)=>node.__chart.timeScale().setVisibleLogicalRange(range),resizedRange);
   const noNeed=await history();
   assert.equal(noNeed.history_requests,refreshed.history_requests);
   assert.equal(noNeed.provider_requests,refreshed.provider_requests);
@@ -195,7 +219,7 @@ try{
   assert.deepEqual(errors,[]);
   await writeFile(join(output,'native-regression.json'),JSON.stringify({viewports,compact,oldStamp,latest,
     newQuoteProviderRequests:refreshed.quote_provider_requests-oldHistory.quote_provider_requests,
-    extraChartRequests:noNeed.history_requests-refreshed.history_requests, chartCreation, initialRange,resizedRange},null,2));
+    extraChartRequests:noNeed.history_requests-refreshed.history_requests, chartCreation, initialRange,resizedRange,crosshair,pannedCrosshair},null,2));
   console.log('PASS footer sizing, real refresh timestamps, persistence, 13 px axes, Retina, crosshair, study alignment, chart controls, attribution and zero extra history requests.');
 }finally{
   await app?.close();
