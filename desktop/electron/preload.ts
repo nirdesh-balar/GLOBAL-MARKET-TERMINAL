@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('terminal',{
   onAlertNavigation:(callback:(id:string)=>void)=>{const listener=(_event:Electron.IpcRendererEvent,id:string)=>{if(typeof id==='string'&&/^[a-f0-9]{32}$/.test(id))callback(id);};ipcRenderer.on('alert-navigation',listener);return()=>ipcRenderer.removeListener('alert-navigation',listener);},
   request:async(path:string,method='GET',body?:unknown,requestId?:string,structured=false)=>{const result=await ipcRenderer.invoke('api',path,method,body,requestId);if(result?.__terminal_error&&!structured){const {message,...details}=result.__terminal_error;throw Object.assign(new Error(message),details);}return result;},
   selectDrawingImage:()=>ipcRenderer.invoke('select-drawing-image'),
+  performanceDiagnostics:()=>ipcRenderer.invoke('performance-diagnostics'),
   windowControl:(action:unknown)=>ipcRenderer.invoke('window-control',action),
   onWindowState:(callback:(state:{fullscreen:boolean;transitioning:boolean})=>void)=>{const handler=(_event:unknown,state:{fullscreen:boolean;transitioning:boolean})=>{if(state&&typeof state.fullscreen==='boolean'&&typeof state.transitioning==='boolean')callback(state);};ipcRenderer.on('window-state',handler);return()=>ipcRenderer.removeListener('window-state',handler);},
   watchlistFile:(action:'import'|'export'|'export-excel',id?:string,extra?:unknown)=>ipcRenderer.invoke('watchlist-file',action,id,extra),
