@@ -1,0 +1,11 @@
+.performance-diagnostics details { flex: 1; min-width: 0; }
+.performance-diagnostics summary { cursor: pointer; font-weight: 550; }
+.performance-diagnostics h3 { margin-top: 16px; }
+.performance-diagnostics dl { margin: 0; font-size: 12px; }
+.performance-diagnostics dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 5px 0;
+}
+.performance-diagnostics dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }

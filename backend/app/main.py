@@ -3,6 +3,7 @@ from .profile_paths import default_profile
 import asyncio
 import base64
 import hmac
+import math
 import os
 import sys
 import time
@@ -294,6 +295,31 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
     @app.get('/api/provider/status')
     @app.get('/api/history/status')
     def status(): return service.status()
+    @app.get('/api/performance')
+    async def performance_status():
+        # Sample counters directly. The regular history status also trims the cache.
+        rest = service.hyperliquid.client.status() if hasattr(service, 'hyperliquid') else {}
+        stream = streams.status()
+        return dict(
+            historyRequests=service.metrics['history_requests'],
+            activeHistory=len(service.active_keys),
+            queuedHistory=max(0, len(service.inflight)-len(service.active_keys)),
+            historyConcurrency=service.config['concurrency'],
+            historyCacheBytes=service.cache.bytes,
+            yahooHistoryAttempts=service.metrics['provider_requests'],
+            yahooCooldownSeconds=max(0, math.ceil(service.cooldown-time.monotonic())),
+            hyperliquidRestRequests=rest.get('requests'),
+            hyperliquidCandleRequests=rest.get('candle_requests'),
+            hyperliquidCooldownSeconds=rest.get('cooldown_seconds'),
+            hyperliquidWeightLimit=rest.get('weight_limit_per_minute'),
+            streamState=stream['state'],
+            streamConnections=stream['connection_count'],
+            streamSubscriptions=stream['subscriptions'],
+            streamConsumers=stream['consumers'],
+            streamReconnects=stream['metrics']['reconnections'],
+            historyError=bool(service.last_error),
+            streamError=bool(stream['error']),
+        )
     @app.get('/api/history')
     async def history(request:Request,symbol:str,interval:Timeframe='1d',period:Literal['max']='max',start:str|None=None,end:str|None=None,
                       source:Literal['yahoo','nse','hyperliquid']='yahoo',refresh:bool=False,adjusted:bool=False,native_mapping:str='',priority:int=0):

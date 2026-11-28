@@ -18,8 +18,13 @@ type Job = {
 export class GridHistoryQueue {
   private readonly jobs = new Map<string, Job>();
   private active = 0;
+  private peak = 0;
 
   constructor(private readonly acquire = acquireHistory) {}
+
+  status() {
+    return { active: this.active, peak: this.peak };
+  }
 
   request(path: string): Lease {
     const key = historyRequestKey(path);
@@ -57,6 +62,7 @@ export class GridHistoryQueue {
       if (this.active >= GRID_HISTORY_LIMIT) break;
       if (job.lease) continue;
       this.active++;
+      this.peak = Math.max(this.peak, this.active);
       const lease = job.lease = this.acquire(job.path);
       void lease.promise.then(job.resolve, job.reject).finally(() => {
         this.remove(job);

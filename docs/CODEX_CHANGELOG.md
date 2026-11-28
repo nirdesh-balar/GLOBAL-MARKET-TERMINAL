@@ -1,5 +1,11 @@
 # Codex development log
 
+## 2026-11-28 · Stage 2A CI stability correction
+
+- The exact-head run for Draft PR #14 timed out at the AAPL Symbol Search assertion. Its snapshot showed the Stocks query loading over disabled index results. A disposable fixture reproduced this sequence with a populated Yahoo request queue. With synthetic pacing disabled, the same controlled requests completed inside the original five-second assertion. Hosted logs did not record queue timing, so the runner's exact cause remains unconfirmed.
+- Pine Workspace uses the existing unpaced synthetic fixture and requires an enabled AAPL result from a completed search. Production request budgets and search timing are unchanged. Favorite and Watchlist actions are disabled for displayed rows while results are loading.
+- The native search suite captures sanitized debounce, IPC, cancellation and rendered-result events. The default macOS runner includes the performance diagnostics sampler and native fixture, for 23 calculation/unit and 49 native UI scripts. The existing hosted workflow runs both lists on the checked-out source. The local 2,137 ms warm-restore outlier remains open and the strict 2,000 ms assertion remains in force.
+
 ## 2026-11-28 · Step 0 index scope correction
 
 - Remove Index Details, constituent CSV import, and the associated renderer, IPC and backend storage paths. Older profiles can retain their unused membership records without a cleanup migration.

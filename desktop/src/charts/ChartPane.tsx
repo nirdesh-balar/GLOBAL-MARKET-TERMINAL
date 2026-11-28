@@ -163,6 +163,13 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
     studyTiming.current=performance.now()-start;
     return result;
   },[rows,pane.indicators,pane.local_studies,pineScripts,pane.indicators_hidden,pane.timeframe,chartZone,volumeInfo,referenceContext]);
+  const studySeriesSummary=useMemo(()=>JSON.stringify(computed.series.map(s=>{
+    let valid=0;
+    for(const point of s.points)if(point.value!==null)valid++;
+    return {id:s.id,name:s.name,pane:s.pane,...(s.units?{units:s.units}:{}),offset:s.offset??0,cloud:!!s.cloud,
+      ...(s.scripted?{scripted:true,fill_colors:[...new Set(s.scriptedFills?.flatMap(fill=>fill.colors.filter(Boolean))??[])]}:{}),
+      provisional:!!s.provisional,valid,last:s.points.at(-1)?.value??null};
+  })),[computed]);
   const referenceLabels=useMemo(()=>new Map(pane.indicators.filter(c=>['RELATIVE_STRENGTH','INDIA_VIX'].includes(c.kind)).map(c=>[c.id,referenceFreshness(c,referenceContext,rows.at(-1)?.time??0)])),[pane.indicators,referenceContext,rows]);
   useEffect(()=>{setReplay(null);setPlaying(false);},[instrumentKey,pane.timeframe,source,adjusted,requested.start,requested.end]);
   useEffect(()=>{if(!playing||replay===null)return;const timer=setInterval(()=>setReplay(v=>{if(v===null)return v;if((replayRows.current?.length||0)<=v+1){setPlaying(false);return v;}return Math.min((replayRows.current?.length||1)-1,v+1);}),1000/speed);return()=>clearInterval(timer);},[playing,speed,data]);
@@ -630,7 +637,7 @@ export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refres
           <small data-testid={`volume-source-units-${pane.id}`}>Volume input · {volumeInfo.volume_unit}</small>}
       </div>
     </div></div>
-    <div className="chart-canvas" data-history-symbol={data?.canonical_id} data-history-interval={data?.interval} data-history-stale={!!data?.stale||!!refreshError} ref={container} data-chart-instance={chartIdentity.current} data-study-ms={studyTiming.current.toFixed(3)} data-study-count={computed.series.length} data-study-series={JSON.stringify(computed.series.map(s=>({id:s.id,name:s.name,pane:s.pane,...(s.units?{units:s.units}:{}),offset:s.offset??0,cloud:!!s.cloud,...(s.scripted?{scripted:true,fill_colors:[...new Set(s.scriptedFills?.flatMap(fill=>fill.colors.filter(Boolean))??[])]}:{}),provisional:!!s.provisional,valid:s.points.filter(p=>p.value!==null).length,last:s.points.at(-1)?.value??null})))}/>
+    <div className="chart-canvas" data-history-symbol={data?.canonical_id} data-history-interval={data?.interval} data-history-stale={!!data?.stale||!!refreshError} ref={container} data-chart-instance={chartIdentity.current} data-study-ms={studyTiming.current.toFixed(3)} data-study-count={computed.series.length} data-study-series={studySeriesSummary}/>
     {active&&tool==='cursor'&&pane.appearance.crosshair&&replay===null&&
       <button ref={priceAlertButton} hidden className="crosshair-alert" aria-label={`Create alert at cursor price pane ${pane.id}`}
         title="Create a local alert at the chart cursor price" onClick={()=>{

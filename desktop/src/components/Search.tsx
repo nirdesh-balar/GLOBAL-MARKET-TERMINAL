@@ -107,7 +107,7 @@ export function Search({onSelect,onClose,watchlist,onWatch,watchlistName}:{
               <span className="result-description"><strong>{ticker}</strong><small>{description} · {label}</small></span>
             </button>
             <button aria-label={watchlistName?`Add ${row.symbol} to watchlist`:`Favourite ${row.symbol}`}
-              title={watchlistName?'Add to watchlist':'Toggle favourite'} aria-pressed={watchlistName?undefined:favorite} className={favorite?'gold':''} onClick={()=>onWatch(row)}>
+              title={watchlistName?'Add to watchlist':'Toggle favourite'} disabled={loading} aria-pressed={watchlistName?undefined:favorite} className={favorite?'gold':''} onClick={()=>onWatch(row)}>
               {watchlistName?<Plus size={15}/>:<Star size={16} fill={favorite?'currentColor':'none'}/>}
             </button>
           </div>;

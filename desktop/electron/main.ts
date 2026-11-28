@@ -1,3 +1,5 @@
+import {backendProcess,electronProcess,performanceSampler} from './performanceDiagnostics';
+import type {MarketPerformance} from '../src/services/performanceTypes';
 import {startUpdates} from './updateRuntime';
 import type {ApplicationUpdates} from './updates';
 import {backendExecutable,fullscreenAccelerator,isSupportedPlatform} from './platform';
@@ -202,6 +204,29 @@ ipcMain.handle('api',async(event,path:string,method='GET',body?:unknown,requestI
 });
 const nativeWindow=windowControls(()=>window);
 ipcMain.handle('window-control',(event,action:unknown)=>{trusted(event);return nativeWindow.control(action);});
+declare const GMT_BUILD_REVISION: string | null;
+const performanceRevision: unknown = app.isPackaged ? metadata.sourceRevision : GMT_BUILD_REVISION;
+const samplePerformance = performanceSampler({
+  version: app.getVersion(),
+  sourceRevision: typeof performanceRevision === 'string' && /^[a-f0-9]{40}$/.test(performanceRevision) ? performanceRevision : null,
+  electron: process.versions.electron,
+  platform: `${process.platform} ${process.arch}`,
+}, async renderer => {
+  const metrics = app.getAppMetrics();
+  return {
+    main: electronProcess(metrics.find(metric => metric.pid === process.pid)),
+    renderer: electronProcess(metrics.find(metric => metric.pid === renderer)),
+    backend: await backendProcess(backend?.pid),
+  };
+}, async (): Promise<MarketPerformance | null> => {
+  if (!port || quitting) return null;
+  try { return await localFetch('/api/performance','GET',undefined,AbortSignal.timeout(1250)); }
+  catch { return null; }
+});
+ipcMain.handle('performance-diagnostics',event=>{
+  trusted(event);
+  return samplePerformance(event.sender.getOSProcessId());
+});
 ipcMain.handle('application-updates',async(event,action:unknown,value?:unknown)=>{
  trusted(event);if(!updates)throw Error('Update service is starting');
  if(action==='status')return updates.snapshot();
