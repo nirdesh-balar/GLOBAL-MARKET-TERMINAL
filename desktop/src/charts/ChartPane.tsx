@@ -1,5 +1,13 @@
+import {VolumeSettingsDialog} from '../components/VolumeSettingsDialog';
+import {VOLUME_OVERLAY_MARGINS,VOLUME_SCALE_ID,volumeColors,volumeInstance,volumeInstancePatch,volumePoint,volumeSettings,volumeValue} from './volumeIndicator';
+import {recipeSeries, type AppliedStudy} from '../studies/recipes';
+import {RecipeSettingsDialog} from '../studies/RecipeSettingsDialog';
+import {pineSeries,type PineScript} from '../studies/pineScripts';
+import {chartDividends} from './dividends';
+import type {CandleInspection} from '../components/ChartDataWindow';
+import {chartPoint,chartPoints,createMainSeries,styleColors} from './chartStyles';
 import {chartFailure,failureTitle,type ChartFailure}from '../services/errors';
-import {providerLabel} from '../providers/label';
+import {marketIdentity} from '../providers/label';
 import {StudyPaneControls,useStudyWorkspace} from './StudyWorkspace';
 import {referenceFreshness} from './custom';
 import {useReferences} from './useReferences';
@@ -10,8 +18,8 @@ import {useStreamStatus,useStreamFeed,mergeLive,streamView,type StreamFeed} from
 import {useRefreshTask} from '../refresh/hooks';
 import {updatedView,mergeCandles} from '../refresh/scheduler';
 import { memo,useCallback,useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createChart, CandlestickSeries, LineSeries, AreaSeries, HistogramSeries, createTextWatermark, ColorType, CrosshairMode, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
-import { getCandleColors, getVolumeColors, LIGHT_THEME, DARK_THEME } from './appearance';
+import { createChart, createSeriesMarkers, HistogramSeries, createTextWatermark, ColorType, CrosshairMode, TickMarkType, PriceScaleMode, type IChartApi, type IPriceScaleApi, type ISeriesApi, type SeriesType, type UTCTimestamp, type Time } from 'lightweight-charts';
+import { getCandleColors, LIGHT_THEME, DARK_THEME } from './appearance';
 import { BellPlus, CandlestickChart, RefreshCw, X, Upload } from 'lucide-react';
 import type { Candle, Pane, Indicator, Timeframe, HistoryResult, ChartQuote } from '../types';
 import {marketDay,marketMidnight} from '../services/marketTime';
@@ -61,7 +69,12 @@ export function setPriceScaleRange(scale:IPriceScaleApi,from:number,to:number){
   }
 }
 
-export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
+function streamLabel(state:string){
+  return ({live:'Live',stale:'Live data stale',reconnecting:'Reconnecting',offline:'Offline',disconnected:'Disconnected',
+    connecting:'Connecting',pending:'Waiting for live data',disabled:'Live data unavailable',unavailable:'Live data unavailable'} as Record<string,string>)[state]??'Live data unavailable';
+}
+
+export const ChartPane=memo(function ChartPane({inspect=false,singleChart,refreshPaused=false,refreshSeconds=300,refreshVisible=true,hidden=false,pane,pineScripts,onScriptEdit,theme,onIndicators,active,expanded,onActive,onChange,onSearch,onMigration,onExpand,onData,onVolume,tool,onTool,magnet,syncTime,syncCrosshair,onAlert}:{inspect?:boolean;singleChart:boolean;refreshPaused?:boolean;refreshSeconds?:number;refreshVisible?:boolean;hidden?:boolean;pane:Pane;pineScripts?:readonly PineScript[];onScriptEdit?:(id:string)=>void;theme:'dark'|'light';onIndicators:()=>void;active:boolean;expanded:boolean;onActive:()=>void;onChange:(value:Partial<Pane>)=>void;onSearch:()=>void;onMigration:(choose:boolean)=>void;onExpand:()=>void;onData:(symbol:string,row:ChartQuote)=>void;onVolume:(id:string,key:string,available:boolean)=>void;tool:DrawingTool;onTool?:(tool:DrawingTool)=>void;magnet:boolean;syncTime:boolean;syncCrosshair:boolean;onAlert:(price?:number)=>void}){
   const instrumentZone=pane.timezone||'Asia/Kolkata';
   const precision=pane.precision??2;
   const instrumentKey=pane.canonical_id||pane.instrument_id||pane.symbol;
@@ -87,6 +100,7 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const [failure,setFailure]=useState<ChartFailure|null>(null),[waiting,setWaiting]=useState(false),[retryUntil,setRetryUntil]=useState(0),[retryClock,setRetryClock]=useState(Date.now());const loadBusy=useRef(false);
   useEffect(()=>{if(!failure?.retry_after){setRetryUntil(0);return;}setRetryUntil(Date.now()+failure.retry_after*1000);const timer=setInterval(()=>setRetryClock(Date.now()),1000);return()=>clearInterval(timer);},[failure]);
   const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [refresh,setRefresh]=useState(0);const force=useRef(false);
+  const [editVolume,setEditVolume]=useState(false);
   const [appearanceOpen,setAppearanceOpen]=useState(false),[editIndicator,setEditIndicator]=useState<Indicator|null>(null),[dataOpen,setDataOpen]=useState(false),[timeZoneOpen,setTimeZoneOpen]=useState(false);
   const priceAlertButton=useRef<HTMLButtonElement>(null),cursorPrice=useRef<number|null>(null);
   const [replay,setReplay]=useState<number|null>(null),[playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[goDate,setGoDate]=useState('');
@@ -103,7 +117,9 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const sourceKey=useRef(instrumentKey);const onDataRef=useRef(onData);onDataRef.current=onData;
   // LWC applies target ranges on its next draw. Study rebuilds must retain
   // that intent rather than snapshot the previous base-index range.
-  const view=useRef<{from:number;to:number}|null>(null);const pendingStudyView=useRef<{from:number;to:number}|null>(null),replayRestore=useRef<{from:number;to:number}|null>(null);
+  const view=useRef<{from:number;to:number}|null>(null);
+  const rebuiltRange=useRef<{from:number;to:number}|null>(null);
+  const pendingStudyView=useRef<{from:number;to:number}|null>(null),replayRestore=useRef<{from:number;to:number}|null>(null);
   const dataFor=useRef('');const chartIdentity=useRef('');const paneHeights=useRef(new Map<string,number>());const indicatorRender=useRef<ReturnType<typeof renderIndicatorPanes>>({slots:new Map(),handles:[],primitives:[],owners:[]});
   const replayActive=useRef(false);replayActive.current=replay!==null;
   const liveIdentity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;const latestIdentity=useRef(liveIdentity);latestIdentity.current=liveIdentity;
@@ -122,12 +138,31 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const rowsRef=useRef(rows);rowsRef.current=rows;const indexed=useMemo(()=>new Map(rows.map(r=>[r.time,r])),[rows]);const indexedRef=useRef(indexed);indexedRef.current=indexed;
   const candleIndexMap=useMemo(()=>new Map(rows.map((r,i)=>[r.time,i])),[rows]);
   const drawing=useDrawings({container,chart,primitive,pane,rows,interactionScope:liveIdentity+'/'+replay,tool:active?tool:'cursor',magnet,onChange,onActive,onTool});
-  const showVolume=pane.volume;
+  const [recipeId,setRecipeId]=useState<string|null>(null);
+  const pendingRecipe=pane.local_studies?.find(item=>item.id===recipeId);
+  const openLocalStudy=(item:AppliedStudy)=>{
+    if('script_id' in item)onScriptEdit?.(item.script_id);
+    else setRecipeId(item.id);
+  };
+  const volumeConfig=volumeSettings(pane);
+  const {up_color:volumeUpColor,down_color:volumeDownColor}=volumeConfig;
+  const volumeStyle=useMemo(()=>volumeColors(theme,{up_color:volumeUpColor,down_color:volumeDownColor}),[theme,volumeUpColor,volumeDownColor]);
   const volumeInfo=useMemo(()=>volumeContext(pane),[pane.provider,pane.base_asset,pane.kind]);
+  const volumeZeroIsMissing=!!volumeInfo.zero_volume_is_missing;
+  const renderedVolume=useRef<{rows:Candle[];colors:typeof volumeStyle;zeroIsMissing:boolean}|null>(null);
   const referenceContext=useReferences(pane,pane.indicators_hidden?[]:pane.indicators,adjusted,`${refresh}/${data?.fetched_at??0}`,replay===null,replay===null&&refreshVisible&&!refreshPaused&&pane.auto_refresh);
   const studies=useRef(new LiveIndicators());
   const studyTiming=useRef(0);
-  const computed=useMemo(()=>{const start=performance.now();const value=studies.current.evaluate(rows,pane.indicators_hidden?[]:pane.indicators,pane.timeframe,chartZone,!!data?.stream_update_only&&replay===null,volumeInfo,referenceContext);studyTiming.current=performance.now()-start;return value;},[rows,pane.indicators,pane.indicators_hidden,pane.timeframe,chartZone,volumeInfo,referenceContext]);
+  const computed=useMemo(()=>{
+    const start=performance.now();
+    const value=studies.current.evaluate(rows,pane.indicators_hidden?[]:pane.indicators,pane.timeframe,chartZone,
+      !!data?.stream_update_only&&replay===null,volumeInfo,referenceContext);
+    const result=!pane.indicators_hidden&&pane.local_studies?.length
+      ? {...value,series:[...value.series,...recipeSeries(rows,pane.local_studies),...pineSeries(rows,pane.local_studies,pineScripts??[])]}
+      : value;
+    studyTiming.current=performance.now()-start;
+    return result;
+  },[rows,pane.indicators,pane.local_studies,pineScripts,pane.indicators_hidden,pane.timeframe,chartZone,volumeInfo,referenceContext]);
   const referenceLabels=useMemo(()=>new Map(pane.indicators.filter(c=>['RELATIVE_STRENGTH','INDIA_VIX'].includes(c.kind)).map(c=>[c.id,referenceFreshness(c,referenceContext,rows.at(-1)?.time??0)])),[pane.indicators,referenceContext,rows]);
   useEffect(()=>{setReplay(null);setPlaying(false);},[instrumentKey,pane.timeframe,source,adjusted,requested.start,requested.end]);
   useEffect(()=>{if(!playing||replay===null)return;const timer=setInterval(()=>setReplay(v=>{if(v===null)return v;if((replayRows.current?.length||0)<=v+1){setPlaying(false);return v;}return Math.min((replayRows.current?.length||1)-1,v+1);}),1000/speed);return()=>clearInterval(timer);},[playing,speed,data]);
@@ -301,7 +336,7 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     if(changed){sourceKey.current=instrumentKey;setSource(pane.provider==='hyperliquid'?'hyperliquid':'yahoo');setAdjusted(false);setRequested({});setRange('MAX');setData(null);if(source!==(pane.provider==='hyperliquid'?'hyperliquid':'yahoo')||adjusted||requested.start||requested.end)return;}
     setLoading(true);loadBusy.current=true;setWaiting(false);setError('');setFailure(null);setRefreshError('');if(dataFor.current!==liveIdentity){setData(null);setCrosshairTime(null);renderedLength.current=0;}
     if(legacyCrypto(pane)){setLoading(false);setError(legacyMessage);return;}
-    if(pane.token==='0'){setLoading(false);setError(pane.kind==='crypto'?'Legacy crypto migration required. Hyperliquid provider pending; Yahoo crypto fetching is disabled.':'This symbol is unavailable in the current NSE directory. Search and select a currently listed equity.');return;}
+    if(pane.token==='0'){setLoading(false);setError(pane.kind==='crypto'?'Select a supported market to recover this legacy crypto instrument.':'This symbol is unavailable in the current NSE directory. Search and select a currently listed equity.');return;}
     const params=new URLSearchParams({symbol:instrumentKey,interval:pane.timeframe,period:'max',source,adjusted:String(adjusted),priority:active?'0':'1'});
     if(pane.provider==='hyperliquid'&&pane.native_mapping)params.set('native_mapping',pane.native_mapping);
     if(requested.start)params.set('start',requested.start);if(requested.end)params.set('end',requested.end);
@@ -324,18 +359,18 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     const crosshairColor=isLight?LIGHT_THEME.crosshair:DARK_THEME.crosshair;
     const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
     const candleColors=getCandleColors(pane.appearance,theme);
-    const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'system-ui, sans-serif',fontSize:11,attributionLogo:false,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:60,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>timeFormatter.format(date(time))},crosshair:{mode:CrosshairMode.Normal,vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
+    const c=createChart(container.current,{autoSize:true,layout:{background:{type:ColorType.Solid,color:bg},textColor,fontFamily:'system-ui, sans-serif',fontSize:13,attributionLogo:false,panes:{enableResize:true,separatorColor:borderColor,separatorHoverColor:'#527baa'}},grid:{vertLines:{color:gridColor},horzLines:{color:gridColor}},rightPriceScale:{borderColor,minimumWidth:60,mode:scaleMode,autoScale:true},timeScale:{shiftVisibleRangeOnNewBar:false,lockVisibleTimeRangeOnResize:true,borderColor,timeVisible:!['1d','1w','1M','1Y'].includes(pane.timeframe),rightOffset:7,barSpacing:7,minBarSpacing:0.001,tickMarkFormatter:(t:Time,k:TickMarkType)=>tickLabel(t,k,displayZone)},localization:{locale:'en-IN',priceFormatter:formatActualPrice,timeFormatter:(time:Time)=>timeFormatter.format(date(time))},crosshair:{mode:CrosshairMode.Normal,vertLine:{color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{color:crosshairColor,labelBackgroundColor:crosshairBg}},handleScroll:true,handleScale:true});
     chart.current=c;chartDisplayZone.current=displayZone;(container.current as any).__chart=c;setChartEpoch(v=>v+1);container.current.dataset.chartCreations=String(Number(container.current.dataset.chartCreations??0)+1);if(container.current){container.current.dataset.priceMode=String(c.priceScale('right').options().mode);container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);}
-    let main:ISeriesApi<SeriesType>;
-    if(pane.chart_type==='candles')main=c.addSeries(CandlestickSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders});
-    else if(pane.chart_type==='area')main=c.addSeries(AreaSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00',lineWidth:2});
-    else main=c.addSeries(LineSeries,{priceFormat:{type:'price',precision:data?.precision??precision,minMove:10**-(data?.precision??precision)},color:candleColors.upColor,lineWidth:2});
+    const main=createMainSeries(c,pane.chart_type,candleColors,data?.precision??precision);
     const ready=dataFor.current===identity;
     const initialRows=ready?rowsRef.current:[];
-    main.setData(initialRows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));
+    main.setData(chartPoints(initialRows,pane.chart_type,candleColors));
     mainSeries.current=main;if(container.current)(container.current as any).__mainSeries=main;const drawingsPrimitive=new DrawingsPrimitive();primitive.current=drawingsPrimitive;main.attachPrimitive(drawingsPrimitive);drawingsPrimitive.volumeSupported=pane.kind!=='index'&&pane.kind!=='forex';drawingsPrimitive.rows=initialRows;drawingsPrimitive.currency=data?.currency||pane.currency||"";drawingsPrimitive.precision=data?.precision??precision;drawingsPrimitive.update(pane.drawing_sets[drawingStorageKey(pane)]||[],drawing.selected,pane.drawings_hidden);
     indicatorRender.current={slots:new Map(),handles:[],primitives:[],owners:[]};
-    if(initialRows.length){if(preserve&&view.current)c.timeScale().setVisibleLogicalRange(view.current);else c.timeScale().setVisibleLogicalRange({from:Math.max(0,initialRows.length-150),to:initialRows.length+6});}
+    // A rebuilt series has no settled logical range until the next paint.
+    // Carry the previous range through the data and study effects in this commit.
+    rebuiltRange.current=initialRows.length&&preserve?view.current:null;
+    if(initialRows.length)c.timeScale().setVisibleLogicalRange(rebuiltRange.current??{from:Math.max(0,initialRows.length-150),to:initialRows.length+6});
     const scaleFrame=requestAnimationFrame(()=>{if(chart.current!==c)return;const vr=c.priceScale('right').getVisibleRange();c.priceScale('right').setAutoScale(scaleRef.current.auto);if(container.current){container.current.dataset.autoScale=String(c.priceScale('right').options().autoScale);if(vr){container.current.dataset.priceRangeFrom=String(vr.from);container.current.dataset.priceRangeTo=String(vr.to);}}});
     // O(1) crosshair lookup even with decades of history.
 
@@ -362,10 +397,10 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
       if(container.current)container.current.dataset.crosshairTime=String(selected?.time??rowsRef.current.at(-1)?.time??'');
       if(syncRef.current.active&&syncRef.current.syncCrosshair)window.dispatchEvent(new CustomEvent('terminal-sync',{detail:{id:pane.id,time:p.time||null}}));
     });
-    return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);if(showVolume&&c.panes()[1])paneHeights.current.set('volume',c.panes()[1].getStretchFactor());for(const [id,index] of indicatorRender.current.slots)paneHeights.current.set(id,c.panes()[index].getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
+    return()=>{const visible=c.timeScale().getVisibleLogicalRange();if(visible&&initialRows.length)view.current={from:visible.from,to:visible.to};cancelAnimationFrame(scaleFrame);for(const [id,nativePane] of indicatorRender.current.slots)paneHeights.current.set(id,nativePane.getStretchFactor());// Stop owned primitive timers/listeners before LWC disposes its canvases.
       detachIndicatorPrimitives(indicatorRender.current);main.detachPrimitive(drawingsPrimitive);
       if(container.current){delete (container.current as any).__chart;delete (container.current as any).__mainSeries;}
-      c.remove();chart.current=null;primitive.current=null;mainSeries.current=null;volumeSeries.current=null;};
+      c.remove();chart.current=null;primitive.current=null;mainSeries.current=null;volumeSeries.current=null;renderedVolume.current=null;indicatorRender.current={slots:new Map(),handles:[],primitives:[],owners:[]};};
   },[!!data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
   useEffect(()=>{
     const c=chart.current;
@@ -387,22 +422,24 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     const crosshairBg=isLight?LIGHT_THEME.crosshairLabel:DARK_THEME.crosshairLabel;
     const candleColors=getCandleColors(a,theme);
     c.applyOptions({layout:{background:{type:ColorType.Solid,color:bg},textColor},grid:{vertLines:{visible:a.grid_visible,color:grid},horzLines:{visible:a.grid_visible,color:grid}},rightPriceScale:{borderColor,scaleMargins:{top:a.margin_top,bottom:a.margin_bottom}},timeScale:{borderColor,visible:a.dates_visible,timeVisible:a.time_visible&&!['1d','1w','1M','1Y'].includes(pane.timeframe),barSpacing:a.bar_spacing},crosshair:{vertLine:{visible:a.crosshair,labelVisible:a.crosshair,color:crosshairColor,labelBackgroundColor:crosshairBg},horzLine:{visible:a.crosshair,labelVisible:a.crosshair,color:crosshairColor,labelBackgroundColor:crosshairBg}}});
-    m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...(pane.chart_type==='candles'?{upColor:candleColors.upColor,downColor:candleColors.downColor,wickUpColor:candleColors.wickUpColor,wickDownColor:candleColors.wickDownColor,borderUpColor:candleColors.borderUpColor,borderDownColor:candleColors.borderDownColor,borderVisible:candleColors.borders}:pane.chart_type==='area'?{lineColor:candleColors.upColor,topColor:candleColors.upColor+'30',bottomColor:candleColors.upColor+'00'}:{color:candleColors.upColor})});
+    m.applyOptions({priceLineVisible:a.price_line,lastValueVisible:a.last_value,...styleColors(pane.chart_type,candleColors)});
     const mark=createTextWatermark(c.panes()[0],{visible:a.watermark,horzAlign:'center',vertAlign:'center',lines:[{text:pane.kind==='index'?pane.name:symbolLabel(pane.symbol),color:theme==='dark'?'#ffffff0d':'#0000000d',fontSize:48,fontStyle:'bold'}]});
     return()=>{if(chart.current===c)mark.detach();};
   },[pane.appearance,!!data,pane.chart_type,pane.timeframe,pane.symbol,theme]);
   useEffect(()=>{
     const c=chart.current,m=mainSeries.current;if(!c||!m)return;
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;if(dataFor.current!==identity)return;
-    const previousRange=c.timeScale().getVisibleLogicalRange(),previousPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
+    const restoredRange=rebuiltRange.current;
+    rebuiltRange.current=null;
+    const previousRange=restoredRange??c.timeScale().getVisibleLogicalRange(),previousPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
     const nextView=data?.stream_received_at?streamView(previousRange,renderedRows.current,rows,pane.auto_follow):updatedView(previousRange,renderedLength.current,rows.length,pane.auto_follow);renderedLength.current=rows.length;pendingStudyView.current=replay!==null?{from:Math.max(0,rows.length-100),to:rows.length+6}:replayRestore.current??nextView;replayRestore.current=null;
     const tail=rows.at(-1),oldTail=renderedRows.current.at(-1),incremental=!!data?.stream_update_only&&replay===null&&!!tail&&!!oldTail&&renderedRows.current[0]?.time===rows[0]?.time&&(tail.time===oldTail.time||rows.at(-2)?.time===oldTail.time);
-    // A shorter replay prefix removes the hovered histogram's first visible value.
-    // Clear that obsolete hover before LWC synchronously re-hit-tests old series.
+    // Clear obsolete hover before the chart re-hit-tests a shorter replay prefix.
     if(rows.length<renderedRows.current.length)c.clearCrosshairPosition();
-    const volColors=getVolumeColors(theme);
-    if(incremental){m.update({...tail,time:tail.time as UTCTimestamp,value:tail.close});volumeSeries.current?.update(tail.volume===null?{time:tail.time as UTCTimestamp}:{time:tail.time as UTCTimestamp,value:tail.volume,color:tail.close>=tail.open?volColors.bullish:volColors.bearish});}
-    else{m.setData(rows.map(r=>({...r,time:r.time as UTCTimestamp,value:r.close})));volumeSeries.current?.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));}
+    const candleColors=getCandleColors(pane.appearance,theme);
+    if(pane.chart_type==='baseline'&&rows.length)m.applyOptions({baseValue:{type:'price',price:rows[0].close}});
+    if(incremental&&pane.chart_type!=='heikin-ashi'&&pane.chart_type!=='line-break')m.update(chartPoint(tail,pane.chart_type,candleColors));
+    else m.setData(chartPoints(rows,pane.chart_type,candleColors));
     incrementalStudies.current=incremental;renderedRows.current=rows;
     if(container.current)container.current.dataset.streamUpdate=incremental?'incremental':'reset';
     if(pendingStudyView.current&&replay===null)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
@@ -418,8 +455,8 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   useEffect(()=>{
     const c=chart.current;if(!c)return;
     const previous=pendingStudyView.current??c.timeScale().getVisibleLogicalRange(),manualPrice=!scaleRef.current.auto?c.priceScale('right').getVisibleRange():null;
-    for(const [id,index] of indicatorRender.current.slots)if(c.panes()[index])paneHeights.current.set(id,c.panes()[index].getStretchFactor());
-    const layout=JSON.stringify([pane.indicators,pane.indicators_hidden,showVolume,pane.chart_type,theme]);
+    for(const [id,nativePane] of indicatorRender.current.slots)paneHeights.current.set(id,nativePane.getStretchFactor());
+    const layout=JSON.stringify([pane.indicators,pane.local_studies,pineScripts?.filter(script=>pane.local_studies?.some(item=>'script_id' in item&&item.script_id===script.id)).map(script=>script.revisions.at(-1)?.number),pane.indicators_hidden,pane.chart_type,theme]);
     if(incrementalStudies.current&&studyLayout.current===layout&&data?.stream_update_only&&replay===null&&indicatorRender.current.handles.length===computed.series.length&&computed.series.length&&renderedRows.current[0]?.time===rows[0]?.time){
       updateIndicatorPanes(indicatorRender.current,computed.series);if(pendingStudyView.current)c.timeScale().setVisibleLogicalRange(pendingStudyView.current);
       return;
@@ -427,13 +464,59 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     studyLayout.current=layout;
     detachIndicatorPrimitives(indicatorRender.current);
     for(const series of [...indicatorRender.current.handles].reverse())c.removeSeries(series);
-    const volColors=getVolumeColors(theme);
-    if(showVolume&&!volumeSeries.current){volumeSeries.current=c.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},1);volumeSeries.current.setData(rows.map(r=>r.volume===null?{time:r.time as UTCTimestamp}:{time:r.time as UTCTimestamp,value:r.volume,color:r.close>=r.open?volColors.bullish:volColors.bearish}));}
-    else if(!showVolume&&volumeSeries.current){c.removeSeries(volumeSeries.current);volumeSeries.current=null;}
     const identity=`${instrumentKey}/${pane.timeframe}/${requested.start}/${requested.end}/${source}/${adjusted}`;
-    indicatorRender.current=renderIndicatorPanes(c,dataFor.current===identity?computed.series:[],showVolume,paneHeights.current,mainSeries.current??undefined);setStudyEpoch(v=>v+1);
+    const matchesHistory=dataFor.current===identity;
+    const studies=matchesHistory?computed.series:[];
+    indicatorRender.current=renderIndicatorPanes(c,studies,paneHeights.current,mainSeries.current??undefined);
+    setStudyEpoch(v=>v+1);
     if(previous)c.timeScale().setVisibleLogicalRange(previous);if(manualPrice)setPriceScaleRange(c.priceScale('right'),manualPrice.from,manualPrice.to);
-  },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,pane.volume,pane.indicators_hidden,theme]);
+  },[computed,data,pane.symbol,pane.timeframe,pane.chart_type,theme]);
+
+  // Volume owns one series on the existing price pane and never rebuilds other studies.
+  useEffect(()=>{
+    const c=chart.current;
+    if(!c)return;
+    let histogram=volumeSeries.current;
+    const range=c.timeScale().getVisibleLogicalRange();
+    let topologyChanged=false;
+    if(histogram&&!pane.volume){
+      c.removeSeries(histogram);
+      histogram=null;
+      renderedVolume.current=null;
+      topologyChanged=true;
+    }
+    if(pane.volume&&!histogram){
+      histogram=c.addSeries(HistogramSeries,{
+        priceScaleId:VOLUME_SCALE_ID,
+        priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false,
+      },0);
+      histogram.priceScale().applyOptions({scaleMargins:VOLUME_OVERLAY_MARGINS,autoScale:true});
+      histogram.setSeriesOrder(0);
+      topologyChanged=true;
+    }
+    volumeSeries.current=histogram;
+    if(histogram&&dataFor.current!==liveIdentity){
+      if(renderedVolume.current)histogram.setData([]);
+      renderedVolume.current=null;
+    }else if(histogram){
+      const rendered=renderedVolume.current;
+      const sameStyle=rendered?.colors===volumeStyle&&rendered.zeroIsMissing===volumeZeroIsMissing;
+      if(rendered?.rows!==rows||!sameStyle){
+        const tail=rows.at(-1);
+        if(tail&&sameStyle&&incrementalStudies.current&&rendered.rows[0]?.time===rows[0]?.time
+          &&(rendered.rows.at(-1)?.time===tail.time||rendered.rows.at(-1)?.time===rows.at(-2)?.time)){
+          histogram.update(volumePoint(tail,volumeZeroIsMissing,volumeStyle));
+        }else{
+          histogram.setData(rows.map(row=>volumePoint(row,volumeZeroIsMissing,volumeStyle)));
+        }
+        renderedVolume.current={rows,colors:volumeStyle,zeroIsMissing:volumeZeroIsMissing};
+      }
+    }
+    if(topologyChanged){
+      if(range)c.timeScale().setVisibleLogicalRange(range);
+      setStudyEpoch(v=>v+1);
+    }
+  },[chartEpoch,computed,rows,liveIdentity,pane.volume,volumeStyle,volumeZeroIsMissing]);
   useLayoutEffect(()=>{
     const c=chart.current;if(!c)return;const range=c.timeScale().getVisibleLogicalRange(),price=c.priceScale('right').getVisibleRange(),wasHidden=previousHidden.current;previousHidden.current=hidden;layoutResizing.current=true;
     if(hidden){layoutSnapshot.current={range,price};return;}
@@ -472,8 +555,13 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
   const selectRange=(value:string)=>{setRange(value);setRangeNotice('');if(value==='MAX'||value==='ALL'){setRequested({});return;}const end=new Date(),start=value==='YTD'?new Date(marketMidnight(marketDay(end.getTime()/1000,chartZone).slice(0,4)+'-01-01',chartZone)*1000):new Date(end.getTime()-rangeDays[value]*86400000);setRequested({start:start.toLocaleDateString('en-CA',{timeZone:chartZone}),end:end.toLocaleDateString('en-CA',{timeZone:chartZone})});};
   const applyCustom=()=>{if(!dates.start||!dates.end||dates.start>dates.end){setRangeNotice('Choose a start date on or before the end date.');return;}setRequested(dates);setRange('CUSTOM');setCustom(false);};
   const importNSE=async()=>{setLoading(true);setError('');try{const result=await window.terminal.selectFiles('history',pane.symbol);if(result){setSource('nse');setAdjusted(false);setRefresh(r=>r+1);}}catch(e){setError((e as Error).message);}finally{setLoading(false);}};
-  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane]),showVolume]),onChange);
+  const workspace=useStudyWorkspace(chart,container,viewport,indicatorRender,pane,computed.series,JSON.stringify([chartEpoch,studyEpoch,!!data,pane.symbol,pane.timeframe,pane.chart_type,theme,computed.series.map(s=>[s.id,s.name,s.pane])]),onChange);
   const displayed=(crosshairTime === null ? null : indexed.get(crosshairTime)) ?? (!loading ? rows.at(-1) ?? null : null);
+  const legendCandle=dataFor.current===liveIdentity?displayed:null;
+  const displayedVolume=volumeValue(legendCandle,volumeZeroIsMissing);
+  const volumeColor=legendCandle&&(legendCandle.close>=legendCandle.open?volumeStyle.bullish:volumeStyle.bearish);
+  const overlayVolume=volumeInstance(pane);
+  const volumeStale=!!data?.stale||!!refreshError;
   const displayedIndex=displayed?candleIndexMap.get(displayed.time):undefined;
   const legendValues=useMemo(()=>studyLegendValues(computed.series,rows,displayedIndex),[computed.series,rows,displayedIndex]);
   const lastCandle=rows.at(-1);
@@ -482,6 +570,27 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
     ? countdownBounds(data,lastCandle,streamEnabled ? streamFrame?.state : undefined) : undefined;
   const openTimeZone=useCallback(()=>setTimeZoneOpen(true),[]);
   const prevCandle=displayedIndex!==undefined&&displayedIndex>0?rows[displayedIndex-1]:null;
+  const dividends=useMemo(()=>chartDividends(rows,data,replay!==null),[rows,data,replay!==null]);
+  useEffect(()=>{
+    const series=mainSeries.current,c=chart.current;
+    if(!c||!series||!dividends.length)return;
+    const plugin=createSeriesMarkers(series,dividends.map(event=>({time:event.time as UTCTimestamp,
+      position:'belowBar',shape:'circle',color:'#7a9fe0',text:'D',id:'dividend-'+event.date})),{autoScale:false});
+    return()=>{if(chart.current===c)plugin.detach();};
+  },[dividends,chartEpoch]);
+  useEffect(()=>{
+    if(!inspect)return;
+    const send=()=>window.dispatchEvent(new CustomEvent<CandleInspection>('gmt-inspect-candle',{detail:{
+      pane:pane.id,instrument:instrumentKey,interval:pane.timeframe,zone:displayZone,precision:data?.precision??precision,
+      currency:data?.currency||pane.currency||'',candle:displayed,previous:prevCandle,source:data?.source||'',
+      stale:!!data?.stale||!!refreshError,hovered:crosshairTime!==null,replay:replay!==null,
+      dividend:displayed?dividends.filter(event=>event.time===displayed.time):[],
+    }}));
+    const requestInspection=(event:Event)=>{if((event as CustomEvent).detail===pane.id)send();};
+    window.addEventListener('gmt-request-inspection',requestInspection);
+    send();
+    return()=>window.removeEventListener('gmt-request-inspection',requestInspection);
+  },[inspect,pane.id,instrumentKey,pane.timeframe,displayZone,data?.precision,data?.currency,data?.source,data?.stale,pane.currency,precision,displayed,prevCandle,refreshError,crosshairTime,replay,dividends]);
   const ohlcChange=useMemo(()=>{
     if(!displayed||!prevCandle||typeof prevCandle.close!=='number'||!Number.isFinite(prevCandle.close)||prevCandle.close<=0)return null;
     const diff=displayed.close-prevCandle.close;
@@ -505,19 +614,23 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
       if(syncCrosshair&&active)window.dispatchEvent(new CustomEvent('terminal-sync',{detail:{id:pane.id,time:null}}));
       if(priceAlertButton.current)priceAlertButton.current.hidden=true;
     }}>
-    <div className="chart-legend"><div className="legend-title"><CandlestickChart className="legend-symbol" size={13}/><strong className="legend-symbol">{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong><span><span className="legend-timeframe">{pane.timeframe} · </span>{pane.exchange} · {data?.currency||pane.currency||"Currency unconfirmed"}</span><span className="demo-mini" title={pane.contract||undefined}>{replay!==null?'REPLAY':data?.source?.includes('FIXTURE')?data.source:providerLabel(pane)}</span>{pane.kind==='future'&&<span className="demo-mini" title={data?.contract||pane.contract}>{(data?.contract||pane.contract||'').startsWith('continuous')?'CONTINUOUS · NOT AN EXPIRY':'EXPIRING FUTURE'}</span>}</div><div className="ohlc">{displayed?<>{['open','high','low','close'].map((key,i)=><span key={key}>{['O','H','L','C'][i]} <b className={displayed.close>=displayed.open?'positive':'negative'}>{formatActualPrice(displayed[key as 'open'])}</b></span>)}{ohlcChange&&<span className={`ohlc-change-metric ${ohlcChange.positive?'positive':ohlcChange.negative?'negative':'neutral'}`} data-testid={`ohlc-change-${pane.id}`}>{ohlcChange.text}</span>}</>:<span>{loading?'Fetching history…':'No candles'}</span>}</div><div className="studies-legend">
+    <div className="chart-legend"><div className="legend-title"><CandlestickChart className="legend-symbol" size={13}/><strong className="legend-symbol">{pane.kind==='index'?pane.name:symbolLabel(pane.symbol)}</strong><span><span className="legend-timeframe">{pane.timeframe} · </span>{marketIdentity(pane)} · {data?.currency||pane.currency||"Currency unconfirmed"}</span>{(pane.chart_type==='heikin-ashi'||pane.chart_type==='line-break')&&<span className="demo-mini" title="Chart shape is calculated. Header, drawings and indicators use provider candles.">Calculated chart</span>}{replay!==null&&<span className="demo-mini">Replay</span>}{(data?.stale||refreshError)&&<span className="chart-stale" title={refreshError||data?.provider_error?.message||data?.notice}>Stale</span>}{pane.kind==='future'&&<span className="demo-mini" title={data?.contract||pane.contract}>{(data?.contract||pane.contract||'').startsWith('continuous')?'CONTINUOUS · NOT AN EXPIRY':'EXPIRING FUTURE'}</span>}</div><div className="ohlc">{displayed?<>{['open','high','low','close'].map((key,i)=><span key={key}>{['O','H','L','C'][i]} <b className={displayed.close>=displayed.open?'positive':'negative'}>{formatActualPrice(displayed[key as 'open'])}</b></span>)}{ohlcChange&&<span className={`ohlc-change-metric ${ohlcChange.positive?'positive':ohlcChange.negative?'negative':'neutral'}`} data-testid={`ohlc-change-${pane.id}`}>{ohlcChange.text}</span>}</>:<span>{loading?'Fetching history…':'No candles'}</span>}</div><div className="studies-legend">
       <StudyLegend id={pane.id} indicators={pane.indicators} values={legendValues}
         volumeInfo={volumeInfo} referenceLabels={referenceLabels} globallyHidden={!!pane.indicators_hidden}
+        paneStudyIds={workspace.headers.map(header=>header.id)} localStudies={pane.local_studies}
+        onLocalVisibility={id=>onChange({local_studies:pane.local_studies?.map(item=>item.id===id?{...item,visible:!item.visible}:item)})}
+        onLocalRemove={id=>onChange({local_studies:pane.local_studies?.filter(item=>item.id!==id)})}
+        onLocalSettings={openLocalStudy}
+        volume={overlayVolume?{instance:overlayVolume,value:displayedVolume,color:volumeColor?.slice(0,7),stale:volumeStale,
+          onChange:instance=>onChange(volumeInstancePatch(instance)),onSettings:()=>setEditVolume(true)}:undefined}
         onVisibility={id=>onChange({indicators:pane.indicators.map(i=>i.id===id?{...i,visible:!i.visible}:i)})}
         onSettings={setEditIndicator} onRemove={id=>onChange({indicators:pane.indicators.filter(i=>i.id!==id)})}/>
       <div className="study-legend-meta">
         {pane.indicators.some(i=>i.visible&&isVolume(i.kind))&&!pane.indicators_hidden&&
           <small data-testid={`volume-source-units-${pane.id}`}>Volume input · {volumeInfo.volume_unit}</small>}
-        {showVolume&&<span>{data?.volume_available===false?'Volume unavailable':'Volume · historical'}</span>}
-        {displayed&&<span>{timeFormatter.format(new Date(displayed.time*1000))}</span>}
       </div>
     </div></div>
-    <div className="chart-canvas" data-history-symbol={data?.canonical_id} data-history-interval={data?.interval} data-history-stale={!!data?.stale||!!refreshError} ref={container} data-chart-instance={chartIdentity.current} data-study-ms={studyTiming.current.toFixed(3)} data-study-count={computed.series.length} data-study-series={JSON.stringify(computed.series.map(s=>({id:s.id,name:s.name,pane:s.pane,...(s.units?{units:s.units}:{}),offset:s.offset??0,cloud:!!s.cloud,provisional:!!s.provisional,valid:s.points.filter(p=>p.value!==null).length,last:s.points.at(-1)?.value??null})))}/>
+    <div className="chart-canvas" data-history-symbol={data?.canonical_id} data-history-interval={data?.interval} data-history-stale={!!data?.stale||!!refreshError} ref={container} data-chart-instance={chartIdentity.current} data-study-ms={studyTiming.current.toFixed(3)} data-study-count={computed.series.length} data-study-series={JSON.stringify(computed.series.map(s=>({id:s.id,name:s.name,pane:s.pane,...(s.units?{units:s.units}:{}),offset:s.offset??0,cloud:!!s.cloud,...(s.scripted?{scripted:true,fill_colors:[...new Set(s.scriptedFills?.flatMap(fill=>fill.colors.filter(Boolean))??[])]}:{}),provisional:!!s.provisional,valid:s.points.filter(p=>p.value!==null).length,last:s.points.at(-1)?.value??null})))}/>
     {active&&tool==='cursor'&&pane.appearance.crosshair&&replay===null&&
       <button ref={priceAlertButton} hidden className="crosshair-alert" aria-label={`Create alert at cursor price pane ${pane.id}`}
         title="Create a local alert at the chart cursor price" onClick={()=>{
@@ -525,13 +638,17 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
         }}><BellPlus size={14}/></button>}
     {countdown&&lastCandle&&<CandleCountdown id={pane.id} chart={chart} series={mainSeries}
       generation={chartEpoch} price={lastCandle.close} bounds={countdown}/>}
-    <StudyPaneControls values={legendValues} volume={displayed?.volume ?? null} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>setEditIndicator(pane.indicators.find(i=>i.id===id)??null)}/></div></div>{loading&&<div className="chart-overlay chart-loading" role="status" data-testid={`chart-loading-${pane.id}`}><RefreshCw size={14} className="spin"/> {waiting?'Waiting for provider…':'Loading chart…'}</div>}{error&&<div className={`chart-overlay error ${data?'chart-cached-error':''}`} role="status" data-testid={legacyCrypto(pane)?`legacy-migration-${pane.id}`:`chart-error-${pane.id}`}><strong>{legacyCrypto(pane)?'Migration required':data?'Showing cached data':failure?failureTitle(failure):'Unsupported instrument'}</strong><p>{legacyCrypto(pane)?legacyMessage:error}</p><div className="connection-actions">{legacyCrypto(pane)?<><button onClick={()=>onMigration(true)}>Choose Hyperliquid Market</button><button onClick={()=>onMigration(false)}>Open Migration</button></>:<>{(!failure||failure.retryable)&&<button disabled={loading||retryClock<retryUntil} onClick={doRefresh}>Retry{retryClock<retryUntil?` (${Math.ceil((retryUntil-retryClock)/1000)}s)`:null}</button>}<button onClick={onSearch}>Change Symbol</button></>}{pane.kind==='equity'&&pane.exchange==='NSE'&&<button onClick={importNSE}><Upload size={13}/> Select official NSE files</button>}</div></div>}
-    {stream.enabled&&pane.provider==='hyperliquid'&&<div className="stream-status" data-testid={`stream-status-${pane.id}`} data-state={replay!==null?'replay':!streamEnabled?'paused':streamFrame?.state||stream.state}>{replay!==null?'Live isolated · replay':!streamEnabled?'Public WS paused':`Public WS · ${streamFrame?.state||stream.state}`}{streamFrame?.received_at?` · received ${new Date(streamFrame.received_at*1000).toLocaleTimeString()}`:''}{streamFrame?.error||stream.error?` · ${streamFrame?.error||stream.error}`:''}</div>}
+    <StudyPaneControls values={legendValues} volumeInfo={volumeInfo} referenceLabels={referenceLabels} layer={workspace.headerLayer} rows={workspace.headers} pane={pane} onChange={onChange} onSettings={id=>{
+      const script=pane.local_studies?.find(item=>item.id===id);
+      if(script)openLocalStudy(script);
+      else setEditIndicator(pane.indicators.find(i=>i.id===id)??null);
+    }}/></div></div>{loading&&<div className="chart-overlay chart-loading" role="status" data-testid={`chart-loading-${pane.id}`}><RefreshCw size={14} className="spin"/> {waiting?'Waiting for provider…':'Loading chart…'}</div>}{error&&<div className={`chart-overlay error ${data?'chart-cached-error':''}`} role="status" data-testid={legacyCrypto(pane)?`legacy-migration-${pane.id}`:`chart-error-${pane.id}`}><strong>{legacyCrypto(pane)?'Migration required':data?'Showing cached data':failure?failureTitle(failure):'Unsupported instrument'}</strong><p>{legacyCrypto(pane)?legacyMessage:error}</p><div className="connection-actions">{legacyCrypto(pane)?<><button onClick={()=>onMigration(true)}>Choose Hyperliquid Market</button><button onClick={()=>onMigration(false)}>Open Migration</button></>:<>{(!failure||failure.retryable)&&<button disabled={loading||retryClock<retryUntil} onClick={doRefresh}>Retry{retryClock<retryUntil?` (${Math.ceil((retryUntil-retryClock)/1000)}s)`:null}</button>}<button onClick={onSearch}>Change Symbol</button></>}{pane.kind==='equity'&&pane.exchange==='NSE'&&<button onClick={importNSE}><Upload size={13}/> Select official NSE files</button>}</div></div>}
+    {stream.enabled&&pane.provider==='hyperliquid'&&<div className="stream-status" data-testid={`stream-status-${pane.id}`} data-state={replay!==null?'replay':!streamEnabled?'paused':streamFrame?.state||stream.state}>{replay!==null?'Live updates paused during replay':!streamEnabled?'Live updates paused':streamLabel(streamFrame?.state||stream.state)}{streamEnabled&&replay===null&&streamFrame?.received_at?` · ${new Date(streamFrame.received_at*1000).toLocaleTimeString()}`:''}</div>}
     <div className="history-meta" style={{display:'none'}} aria-hidden="true" title={data?`${data.source} · ${data.first_available} to ${data.last_available} · ${data.returned} bars · ${data.notice}`:undefined}>{data?`${data.source} · ${data.first_available} → ${data.last_available} · ${data.returned.toLocaleString()} bars · ${data.stale?'Cached / stale · Showing cached data':data.cached?'memory cache':'retrieved'} · Updated at ${new Date(data.fetched_at*1000).toLocaleTimeString('en-IN',{timeZone:chartZone})} ${chartZone}${data.actions.length?' · '+data.actions.length+' corporate actions':''}`:'History stored in memory only'}{data&&!data.candles.length&&<b> · No candles in this range</b>}{data&&<span data-testid={`chart-update-status-${pane.id}`} className={refreshError?'chart-refresh-error':''}> · {replay!==null?'Refresh paused in replay':refreshPaused||!refreshVisible?'Refresh paused · last candle '+new Date((rows.at(-1)?.time||0)*1000).toLocaleString('en-IN',{timeZone:displayZone}):refreshError?'Stale · Showing cached data · '+refreshError:refreshing?`Checking ${data.source}…`:'Last candle '+new Date((rows.at(-1)?.time||0)*1000).toLocaleString('en-IN',{timeZone:displayZone})}</span>}{data&&(data.stale||refreshError)&&<button disabled={refreshing||retryClock<retryUntil} onClick={doRefresh}>Retry chart</button>}</div>
     {replay!==null&&data&&<ReplayControls timezone={calendarZone} rows={replayRows.current||[]} position={replay} playing={playing} speed={speed} onPosition={setReplay} onPlaying={setPlaying} onSpeed={setSpeed} onClose={exitReplay}/>}
     <footer className="bottom-chart-toolbar"><div className="range-toolbar">{['1D','5D','1M','3M','6M','YTD','1Y','5Y','ALL'].map(r=><button key={r} aria-label={`Range ${r} pane ${pane.id}`} className={range===r||r==='ALL'&&range==='MAX'?'selected':''} disabled={replay!==null} onClick={()=>selectRange(r)}>{r}</button>)}<button aria-label={`Custom range pane ${pane.id}`} className={custom?'selected':''} disabled={replay!==null} onClick={()=>setCustom(!custom)}>Custom</button><details className="go-date"><summary title="Go to a date in fetched candles">Go to</summary><div><input aria-label={`Go to date pane ${pane.id}`} type="date" value={goDate} onChange={e=>setGoDate(e.target.value)}/><button onClick={goTo}>Go</button></div></details></div><span className="grow"/>{refreshVisible&&!hidden&&<ChartClock id={pane.id} zone={preferredZone} onOpen={openTimeZone}/>}
     <PriceScaleControls expanded={expanded} id={pane.id} scale={pane.scale} onChange={scale=>onChange({scale})} onReset={resetChart} onFit={()=>chart.current?.timeScale().fitContent()} onFullscreen={onExpand} onScreenshot={screenshot}/><button aria-label={`Data controls pane ${pane.id}`} aria-pressed={dataOpen} title="Source, corporate actions, adjustment and official NSE files" onClick={()=>setDataOpen(!dataOpen)}>Data</button></footer>
-    <div className={`history-controls ${dataOpen?'open':''}`} hidden={!dataOpen}><select aria-label={`History source pane ${pane.id}`} value={source} onChange={e=>{setSource(e.target.value as 'yahoo'|'nse'|'hyperliquid');setAdjusted(false);}}>{pane.provider==='hyperliquid'?<option value="hyperliquid">Hyperliquid historical REST</option>:<option value="yahoo">Yahoo Finance</option>}{pane.kind==='equity'&&pane.exchange==='NSE'&&<option value="nse">Official NSE files</option>}</select><label><input type="checkbox" aria-label={`Auto-follow latest pane ${pane.id}`} checked={pane.auto_follow} onChange={e=>onChange({auto_follow:e.target.checked})}/> Follow latest edge</label><label title="Adjust OHLC by Yahoo Adj Close / Close; dividends and splits may affect historical comparisons"><input aria-label={`Adjusted prices pane ${pane.id}`} type="checkbox" checked={adjusted} disabled={source!=='yahoo'} onChange={e=>setAdjusted(e.target.checked)}/> Adjusted</label>{pane.kind==='equity'&&pane.exchange==='NSE'&&<button aria-label={`Import NSE history pane ${pane.id}`} onClick={importNSE}><Upload size={12}/> NSE files</button>}{data&&<details><summary>Data details</summary><p>{stream.enabled&&pane.provider==='hyperliquid'?'REST baseline notice; live WebSocket state is shown separately. ':''}{data.contract&&data.contract+". "}{data.notice}{computed.warnings.length>0&&' '+computed.warnings.join(' ')}</p><p>{data.actions.filter(a=>a.split!==0).map(a=>`${a.date}: split ${a.split}`).join(' · ')||'No split events supplied.'}</p></details>}</div>
+    <div className={`history-controls ${dataOpen?'open':''}`} hidden={!dataOpen}><select aria-label={`History source pane ${pane.id}`} value={source} onChange={e=>{setSource(e.target.value as 'yahoo'|'nse'|'hyperliquid');setAdjusted(false);}}>{pane.provider==='hyperliquid'?<option value="hyperliquid">Hyperliquid historical REST</option>:<option value="yahoo">Yahoo Finance</option>}{pane.kind==='equity'&&pane.exchange==='NSE'&&<option value="nse">Official NSE files</option>}</select><label><input type="checkbox" aria-label={`Auto-follow latest pane ${pane.id}`} checked={pane.auto_follow} onChange={e=>onChange({auto_follow:e.target.checked})}/> Follow latest edge</label><label title="Adjust OHLC by Yahoo Adj Close / Close; dividends and splits may affect historical comparisons"><input aria-label={`Adjusted prices pane ${pane.id}`} type="checkbox" checked={adjusted} disabled={source!=='yahoo'} onChange={e=>setAdjusted(e.target.checked)}/> Adjusted</label>{pane.kind==='equity'&&pane.exchange==='NSE'&&<button aria-label={`Import NSE history pane ${pane.id}`} onClick={importNSE}><Upload size={12}/> NSE files</button>}{data&&<details><summary>Data details</summary><div className="chart-source-detail"><p data-testid={`chart-provenance-${pane.id}`}>Source · {data.source} · {data.returned.toLocaleString()} bars · Retrieved {new Date(data.fetched_at*1000).toLocaleString('en-IN',{timeZone:displayZone})}{data.stale||refreshError?' · Stale':''}</p><p>{pane.provider==='hyperliquid'?'Historical candles and live updates have separate timestamps. ':'Historical data can be delayed. '}{streamFrame?.error||stream.error?((streamFrame?.error||stream.error)+'. '):''}{data.contract&&data.contract+". "}{data.notice}{computed.warnings.length>0&&' '+computed.warnings.join(' ')}</p><p>{data.actions.filter(a=>a.split!==0).map(a=>`${a.date}: split ${a.split}`).join(' · ')||'No split events supplied.'}</p></div></details>}</div>
     {data?.notice&&<div className="data-notice" style={{display:'none'}} aria-hidden="true" title={data.notice}>{data.lookback_days?`Yahoo intraday request period: ${data.lookback_days}d. `:''}{data.notice.includes('Requested dates extend')?'Selected dates exceed available history. ':''}{data.candles.some(r=>r.partial)?'Some session bars are partial. ':''}</div>}
     {computed.warnings.length>0&&<div className="indicator-warning" title={computed.warnings.join(' ')}>{computed.warnings[0]}</div>}
     {drawing.selected&&(pane.drawing_sets[drawingStorageKey(pane)]||[]).find(d=>d.id===drawing.selected)?.kind==='horizontal'&&<button className="alert-from-line" aria-label={`Create alert from horizontal line pane ${pane.id}`} onClick={()=>onAlert((pane.drawing_sets[drawingStorageKey(pane)]||[]).find(d=>d.id===drawing.selected)?.anchors[0].price)}>Alert from selected price line</button>}{drawing.selected&&!pane.drawings_locked&&<div className="selected-drawing-controls"><button aria-label={`Edit selected drawing pane ${pane.id}`} onClick={drawing.edit}>Edit drawing</button><button aria-label={`Delete selected drawing pane ${pane.id}`} onClick={()=>drawing.command('delete')}>Delete</button></div>}{drawing.editor}{drawing.library}{drawing.confirmation}{drawing.placement&&<div className="drawing-placement-notice">{drawing.placement}{drawing.variable&&<button onClick={drawing.finish}>{tool==='polyline'?'Finish polyline':'Finish drawing'}</button>}</div>}{drawing.notice&&<div className="range-notice">{drawing.notice}<button onClick={drawing.clearNotice}>Dismiss</button></div>}
@@ -541,6 +658,13 @@ export const ChartPane=memo(function ChartPane({singleChart,refreshPaused=false,
         setTimeZoneOpen(false);
       }}/>}
     {appearanceOpen&&<ChartSettings pane={pane} theme={theme} onChange={onChange} onClose={()=>setAppearanceOpen(false)}/>}
+    {pendingRecipe&&'recipe' in pendingRecipe&&<RecipeSettingsDialog name={pendingRecipe.name} recipe={pendingRecipe.recipe}
+      onClose={()=>setRecipeId(null)} onSave={recipe=>{
+        onChange({local_studies:pane.local_studies?.map(item=>item.id===pendingRecipe.id?{...pendingRecipe,recipe}:item)});
+        setRecipeId(null);
+      }}/>}
+    {editVolume&&<VolumeSettingsDialog value={volumeConfig} theme={theme}
+      onClose={()=>setEditVolume(false)} onSave={volume_settings=>onChange({volume_settings})}/>}
     {editIndicator&&<IndicatorSettingsDialog value={editIndicator} onClose={()=>setEditIndicator(null)} onSave={i=>onChange({indicators:pane.indicators.map(old=>old.id===i.id?i:old)})}/>}
     {custom&&<div className="custom-range"><input type="date" aria-label="Range start" value={dates.start} onChange={e=>setDates({...dates,start:e.target.value})}/><span>to</span><input type="date" aria-label="Range end" value={dates.end} onChange={e=>setDates({...dates,end:e.target.value})}/><button onClick={applyCustom}>Apply</button><button onClick={()=>setCustom(false)}><X size={13}/></button></div>}
     {rangeNotice&&<div className="range-notice">{rangeNotice}<button aria-label="Dismiss range notice" onClick={()=>setRangeNotice('')}><X size={12}/></button></div>}

@@ -1,3 +1,4 @@
+import { selectChartStyle } from './chart-menu-controls.mjs';
 import { openWatchlistOptions } from './watchlist-controls.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -19,7 +20,7 @@ try {
   const page = await app.firstWindow();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', { name: 'Chart layout', exact: true })).toBeVisible({ timeout: 45000 });
   const display = await page.context().newCDPSession(page);
   await display.send('Emulation.setDeviceMetricsOverride', {
     width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
@@ -49,9 +50,10 @@ try {
   await expect(indicatorsButton.locator('svg')).toBeVisible();
   await expect(indicatorsButton).toHaveText('');
   const inline = pane.locator('.pane-toolbar');
-  await expect(inline.getByRole('button')).toHaveCount(4);
+  await expect(inline.getByRole('button')).toHaveCount(3);
+  await expect(inline.getByLabel('Volume pane 0',{exact:true})).toHaveCount(0);
   await expect(inline.locator('.pane-symbol, select')).toHaveCount(0);
-  for (const name of ['Auto Refresh pane 0', 'Refresh pane 0', 'Volume pane 0', 'Maximize chart 0']) {
+  for (const name of ['Auto Refresh pane 0', 'Refresh pane 0', 'Maximize chart 0']) {
     await expect(inline.getByRole('button', { name, exact: true })).toBeVisible();
   }
   await expect(pane.locator('#tv-attr-logo')).toHaveCount(0);
@@ -61,8 +63,11 @@ try {
     globalThis.originalTradingViewOpenExternal = shell.openExternal;
     shell.openExternal = async url => { globalThis.openedTradingViewUrl = url; };
   });
-  await page.locator('.statusbar').getByRole('button', { name: 'Charts by TradingView', exact: true }).click();
+  await page.getByLabel('More chart options').click();
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  await page.getByRole('region',{name:'About and licenses'}).getByRole('link',{name:'TradingView'}).click();
   await expect.poll(() => app.evaluate(() => globalThis.openedTradingViewUrl)).toBe('https://www.tradingview.com/');
+  await page.getByRole('button',{name:'Close settings',exact:true}).click();
   await app.evaluate(({ shell }) => { shell.openExternal = globalThis.originalTradingViewOpenExternal; });
 
   await display.send('Emulation.setDeviceMetricsOverride', {
@@ -77,8 +82,9 @@ try {
     width: 1470, height: 804, deviceScaleFactor: 2, mobile: false,
   });
 
+  await page.getByLabel('More chart options').click();
   await page.getByRole('button',{name:'Save workspace',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Save workspace',exact:true})).toHaveAttribute('data-saved','true');
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   const more = page.getByLabel('More chart options',{exact:true});
   await more.click();
   await expect(page.getByRole('button',{name:'Chart data and source'})).toBeVisible();
@@ -151,11 +157,10 @@ try {
   await expect(secondPane.getByLabel('Indicators pane 1')).toBeVisible();
   await expect(secondPane.getByLabel('Create alert pane 1')).toBeVisible();
   await expect(page.locator('.chart-grid #tv-attr-logo')).toHaveCount(0);
-  const activeType = page.getByLabel('Active chart type', { exact: true });
-  await activeType.selectOption('line');
+  await selectChartStyle(page, 'line');
   await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('line');
-  await expect(secondPane.getByLabel('Chart type pane 1')).toHaveValue('line');
-  await activeType.selectOption('candles');
+  await expect(secondPane.getByRole('button', { name: 'Chart type pane 1', exact: true })).toHaveAttribute('data-chart-style', 'line');
+  await selectChartStyle(page, 'candles');
   await expect.poll(async () => (await workspace()).panes[1].chart_type).toBe('candles');
   await page.mouse.move(4,4);
   await capture('two-charts');
@@ -189,9 +194,9 @@ try {
   await page.getByLabel('Active timeframe 1d', { exact: true }).click();
   await expect(canvas).toHaveAttribute('data-history-interval', '1d');
   await ready();
-  await page.getByLabel('Active chart type').selectOption('line');
+  await selectChartStyle(page, 'line');
   await expect.poll(async () => (await workspace()).panes[0].chart_type).toBe('line');
-  await page.getByLabel('Active chart type').selectOption('candles');
+  await selectChartStyle(page, 'candles');
   await ready();
 
   const providerCount = (await historyStatus()).provider_requests;

@@ -7,7 +7,7 @@ import type {CanvasRenderingTarget2D} from 'fancy-canvas';
 import type {Study} from './indicators';
 export class StudyPrimitive implements ISeriesPrimitive {
  private chart:IChartApi|null=null;private series:ISeriesApi<SeriesType>|null=null;private update=()=>{};
- private views:IPrimitivePaneView[]=[{zOrder:()=>this.study.cloud?'bottom':'normal',renderer:()=>({draw:(target:CanvasRenderingTarget2D)=>target.useMediaCoordinateSpace(({context,mediaSize})=>this.paint(context,mediaSize.width,mediaSize.height))})}];
+ private views:IPrimitivePaneView[]=[{zOrder:()=>this.study.cloud||this.study.scriptedFills?.length?'bottom':'normal',renderer:()=>({draw:(target:CanvasRenderingTarget2D)=>target.useMediaCoordinateSpace(({context,mediaSize})=>this.paint(context,mediaSize.width,mediaSize.height))})}];
  constructor(public study:Study){}
  attached(p:SeriesAttachedParameter){this.chart=p.chart as IChartApi;this.series=p.series;this.update=p.requestUpdate;}
  detached(){this.chart=null;this.series=null;this.update=()=>{};}
@@ -35,6 +35,18 @@ export class StudyPrimitive implements ISeriesPrimitive {
    const fill=(points:{x:number;y:number}[],color:string)=>{ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.fill();};
    for(let i=Math.max(1,from);i<=to;i++){const a=xy(s.points[i-1]),b=xy(s.points[i]),c=cloud.peer[i]&&xy(cloud.peer[i]),d=cloud.peer[i-1]&&xy(cloud.peer[i-1]);if(!a||!b||!c||!d||b.x<0||a.x>width)continue;
     const left=a.y-d.y,right=b.y-c.y;if(left*right<0){const t=left/(left-right),cross={x:a.x+t*(b.x-a.x),y:a.y+t*(b.y-a.y)};fill([a,cross,d],left<0?cloud.up:cloud.down);fill([cross,b,c],right<0?cloud.up:cloud.down);}else fill([a,b,c,d],left<=0?cloud.up:cloud.down);
+   }
+  }
+  if(s.scriptedFills?.length){
+   for(const fill of s.scriptedFills){
+    for(let i=Math.max(1,from);i<=to;i++){
+     const color=fill.colors[i];
+     if(!color)continue;
+     const a=xy(s.points[i-1]),b=xy(s.points[i]),c=xy(fill.peer[i]),d=xy(fill.peer[i-1]);
+     if(!a||!b||!c||!d||b.x<0||a.x>width)continue;
+     ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+     ctx.lineTo(c.x,c.y);ctx.lineTo(d.x,d.y);ctx.closePath();ctx.fill();
+    }
    }
   }
   ctx.strokeStyle=s.color;ctx.fillStyle=s.color;ctx.lineWidth=s.width;ctx.globalAlpha=s.opacity??1;ctx.setLineDash(s.style===0?[]:s.style===1?[1,3]:s.style===2?[6,4]:s.style===3?[10,5]:[1,7]);

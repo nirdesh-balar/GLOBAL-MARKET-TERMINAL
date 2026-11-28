@@ -4,6 +4,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
 from pydantic import BaseModel,Field,ConfigDict,model_validator
 from .models import Timeframe
+from .study_recipes import StudyRule
 from .screener_conditions import ConditionGroup,Condition,ScreenConfig
 
 class AlertDefinition(BaseModel):
@@ -20,9 +21,12 @@ class AlertDefinition(BaseModel):
     completed:bool=True
     adjusted:bool=False
     evaluation:Literal['candles','live_price']='candles'
+    study_rule:StudyRule|None=None
     @model_validator(mode='after')
     def bounded(self):
         ScreenConfig(conditions=self.conditions)
+        if self.study_rule and (self.evaluation!='candles' or not self.completed or self.interval=='1Y'):
+            raise ValueError('Local study alerts require supported completed candle intervals')
         if self.evaluation=='live_price':
             def leaves(n):return [n.kind] if n.type=='condition' else [k for c in n.children for k in leaves(c)]
             if any(k not in ('close_above','close_below','price_cross_up','price_cross_down') for k in leaves(self.conditions)):raise ValueError('Live-price mode supports price threshold/crossing conditions only; indicators use candle mode')

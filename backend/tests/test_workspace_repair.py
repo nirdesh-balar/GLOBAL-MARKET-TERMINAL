@@ -121,3 +121,35 @@ def test_chart_grid_hydrates_exact_identity_and_repairs_legacy(tmp_path):
     assert repaired['chart_grid'] == legacy['chart_grid']
     assert repaired['panes'] == legacy['panes']
     assert repaired['watchlists'] == legacy['watchlists']
+
+
+def test_volume_placement_migrates_without_adding_to_new_or_removed_panes():
+    base = {'id': '0', 'symbol': 'TCS-EQ', 'token': '0'}
+    assert Pane.model_validate(base).volume_settings is None
+    assert Pane.model_validate(base).volume is False
+    assert Pane.model_validate({**base, 'volume': False}).volume_settings is None
+
+    legacy = Pane.model_validate({**base, 'volume': True, 'study_layout': {
+        'volume': {'height': 124, 'collapsed': False},
+    }})
+    assert legacy.volume is True
+    assert legacy.volume_settings.placement == 'pane'
+    assert legacy.study_layout['volume'].height == 124
+
+    hidden = Pane.model_validate({**base, 'volume': False, 'volume_settings': {
+        'position': 'last', 'up_color': '#12ab34',
+    }})
+    assert hidden.volume is False
+    assert hidden.volume_settings.model_dump() == {
+        'version': 2, 'placement': 'pane', 'position': 'last',
+        'up_color': '#12ab34', 'down_color': None, 'legend_position': None,
+    }
+    assert Pane.model_validate(hidden.model_dump()) == hidden
+
+
+@pytest.mark.parametrize('position', [-1, 24, True, 'middle'])
+def test_volume_rejects_invalid_pane_positions(position):
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError, match='Volume pane position'):
+        Pane.model_validate({'id': '0', 'symbol': 'TCS-EQ', 'token': '0',
+                             'volume_settings': {'version': 2, 'position': position}})

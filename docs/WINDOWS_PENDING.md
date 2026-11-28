@@ -17,6 +17,10 @@ The local Phase 3 Order Flow branch uses the same public stream and process life
 
 Watchlist quote refresh ownership shares the Electron and Python lifecycle on Windows. At the accepted shared SHA, verify rapid list and timeframe changes, cached prices, manual and automatic refresh overlap, sidebar close/reopen, renderer reload, suspend/resume, and clean shutdown in a disposable x64 profile. Windows native testing remains pending.
 
+The reference analysis workspace adds keyboard-managed dialogs, an analysis dock, typed study persistence and completed-candle alerts through shared source. On Windows x64, verify these paths with a disposable profile, including Escape and focus return, different DPI settings, chart and workspace restoration, index chart selection through Symbol Search, and local study revision and alert compatibility. The themed chart type menu also needs native Windows checks for keyboard focus, scrolling, and right/bottom edge collision at each DPI setting. Existing `WIN-CHARTGRID` and `WIN-ELECTRON44` validation remains pending.
+
+Chart readability and footer cleanup share renderer code. At 100%, 125%, 150% and 200% scaling, verify the larger chart labels, the compact Watchlist refresh line at minimum width, attribution in Charts and Chart Grid, and saved study heights after native resize and restart.
+
 ## Native commands
 
 1. Verify the source SHA and use native Node 22.19.0 or a compatible version with npm and Python 3.11 x64. Run `npm ci`, create `backend\.venv`, and install `backend\requirements-lock.txt` with the venv Python. Prepare test directory resources through the documented official-source path.
@@ -26,3 +30,9 @@ Watchlist quote refresh ownership shares the Electron and Python lifecycle on Wi
 5. For the rc.6 portable package, place the native `win-unpacked` output at `release-candidate-rc6/win-unpacked` inside a disposable `GMT_WORKSPACE`. Run `python scripts/create-portable-release-rc6.py` there, inspect its archive, then run the portable acceptance script on a separate extraction.
 
 For future changes, record the ID, source SHA and files, shared-source status, expected Windows impact, implementation and test commands, and blockers. Use **Windows review pending**, **Windows implementation pending**, **Windows native testing pending**, and **Windows verified** as applicable. Record the native machine class, exact candidate, date and results before marking a row verified.
+
+Pine-compatible Editor native Windows validation remains pending. Run the shared numerical and UI scripts with a temporary profile, then verify keyboard editing, source scrolling, side-dock resizing, script revisions, fill rendering, pane resizing and fullscreen/Escape at normal and scaled DPI.
+
+Chart toolbar and Volume indicator native Windows validation remains pending. Run `node scripts/volume-indicator-ui.mjs` with the native launcher adapted to Windows, then verify Technicals search, hide/show, above/below pane order, resize, profile restart and keyboard access to About and licenses.
+
+For the Volume placement redesign, include the transparent legends, plot-colored values, keyboard-accessible Volume controls, separate study order after restart, and independent price scaling at each native DPI. WIN-CHARTGRID and WIN-ELECTRON44 remain pending.

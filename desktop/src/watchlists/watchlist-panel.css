@@ -209,9 +209,6 @@
 .terminal-shell .watchlist-flag-popover .color-chip-btn i { width: 8px; height: 8px; border-radius: 2px; }
 .terminal-shell .watchlist-flag-popover .color-chip-btn svg { margin-left: auto; }
 .terminal-shell .professional-watchlist .watchlist-bottom { padding: 5px 8px; }
-.terminal-shell .watchlist-instrument-summary { font-size: 10px; margin-bottom: 3px; }
-.terminal-shell .watchlist-instrument-summary summary { color: var(--muted); cursor: pointer; }
-.terminal-shell .watchlist-instrument-summary > div { display: grid; gap: 4px; padding: 5px 0; }
 .terminal-shell .watchlist-symbol-search { width: min(550px, calc(100vw - 28px)); }
 .terminal-shell .watchlist-search-title { padding: 11px 12px 2px; font-weight: 650; }
 .terminal-shell .watchlist-symbol-search .search-input:focus-within { box-shadow: inset 0 -1px var(--workspace-accent); }

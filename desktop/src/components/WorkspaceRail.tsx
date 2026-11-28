@@ -1,4 +1,4 @@
-import { Bell, ChartNoAxesCombined, Layers3, LayoutGrid, List, ScanSearch } from 'lucide-react';
+import { Bell, ChartNoAxesCombined, TableProperties, Layers3, LayoutGrid, List, ScanSearch } from 'lucide-react';
 import type { Ref } from 'react';
 
 interface WorkspaceRailProps {
@@ -10,10 +10,12 @@ interface WorkspaceRailProps {
   onAlerts: () => void;
   onGrid: () => void;
   onData: () => void;
+  onInspect: () => void;
+  dataOpen: boolean;
   onOrderFlow: () => void;
 }
 
-export function WorkspaceRail({ watchlistOpen, orderFlowOpen, orderFlowButton, onWatchlist, onScanner, onAlerts, onGrid, onData, onOrderFlow }: WorkspaceRailProps) {
+export function WorkspaceRail({ watchlistOpen, orderFlowOpen, orderFlowButton, onWatchlist, onScanner, onAlerts, onGrid, onData, onInspect, dataOpen, onOrderFlow }: WorkspaceRailProps) {
   return (
     <nav className="analysis-rail" aria-label="Chart analysis">
       <button type="button" title="Show or hide watchlist" aria-label="Toggle sidebar" aria-expanded={watchlistOpen} onClick={onWatchlist}>
@@ -30,6 +32,9 @@ export function WorkspaceRail({ watchlistOpen, orderFlowOpen, orderFlowButton, o
       </button>
       <button ref={orderFlowButton} type="button" title="Public Order Flow" aria-label="Order Flow" aria-expanded={orderFlowOpen} onClick={onOrderFlow}>
         <Layers3 size={18} />
+      </button>
+      <button type="button" title="Crosshair candle and provider data" aria-label="Data Window" aria-expanded={dataOpen} onClick={onInspect}>
+        <TableProperties size={18} />
       </button>
       <div className="analysis-rail-spacer" />
       <button type="button" title="Chart data" aria-label="Inspect active chart data" onClick={onData}>

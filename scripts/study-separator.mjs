@@ -24,7 +24,7 @@ export async function dragStudySeparator(page, canvas, studyId, pixels, onStep) 
     if (onStep) {
       for (const fraction of [0.33, 0.67, 1]) {
         await page.mouse.move(x, y + pixels * fraction, { steps: 4 });
-        await onStep(fraction);
+        await onStep(fraction, { x, y });
       }
     } else {
       await page.mouse.move(x, y + pixels, { steps: 10 });

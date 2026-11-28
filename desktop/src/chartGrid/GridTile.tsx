@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowUpRight, CandlestickChart, Maximize2, Minimize2, RefreshCw, Search } from 'lucide-react';
+import {marketIdentity} from '../providers/label';
 import { price, symbolLabel } from '../services/api';
 import type { HistoryResult, Timeframe } from '../types';
 import { GridChart, gridDateFormatter } from './GridChart';
@@ -47,7 +48,7 @@ export const GridTile = memo(function GridTile({ card, theme, maximized, openSym
   const precision = data?.precision ?? instrument?.precision ?? 2;
   const currency = data?.currency || instrument?.currency;
   const symbol = instrument ? symbolLabel(instrument.symbol) : id.split(':')[1];
-  const exchange = instrument?.exchange || (id.startsWith('hyperliquid:') ? 'Hyperliquid' : 'Yahoo Finance');
+  const market = instrument ? marketIdentity(instrument) : '';
   const timeframeDate = useMemo(() => gridDateFormatter(timeframe, data?.timezone), [timeframe, data?.timezone]);
   const update = (patch: Parameters<Props['onChange']>[1]) => onChange(id, patch);
 
@@ -58,8 +59,8 @@ export const GridTile = memo(function GridTile({ card, theme, maximized, openSym
         <button className="grid-symbol" title="Change instrument" onClick={() => openSymbol(id)} aria-label={'Change symbol for ' + symbol}>
           {symbol}<Search size={12} aria-hidden="true" />
         </button>
-        <span className="grid-market">{exchange}{instrument?.market_type ? ' · ' + instrument.market_type : ''}</span>
-        <small title={instrument?.name}>{instrument?.name || id}</small>
+        {market&&<span className="grid-market">{market}</span>}
+        {instrument?.name&&<small title={instrument.name}>{instrument.name}</small>}
       </div>
       <div className="grid-tile-actions">
         <button className="grid-icon" aria-label={'Open ' + symbol + ' in Charts'} title="Open in Charts" disabled={!instrument} onClick={() => openNormal(card)}>
@@ -88,7 +89,7 @@ export const GridTile = memo(function GridTile({ card, theme, maximized, openSym
       </select>
       <button className="grid-overlay-sma" aria-pressed={card.sma} title="20-candle simple moving average" onClick={() => update({ sma: !card.sma })}>SMA</button>
       <button className="grid-overlay-ema" aria-pressed={card.ema} title="20-candle exponential moving average" onClick={() => update({ ema: !card.ema })}>EMA</button>
-      <small className={data?.stale ? 'grid-stale' : ''} title={data?.provider_error?.message || data?.notice}>
+      <small className={data?.stale ? 'grid-stale' : ''} title={data&&[data.source,data.provider_error?.message||data.notice].filter(Boolean).join(' · ')}>
         {last && ((data?.stale ? 'Stale · ' : last.partial ? 'Partial · ' : '') + timeframeDate.format(last.time * 1000))}
       </small>
     </footer>

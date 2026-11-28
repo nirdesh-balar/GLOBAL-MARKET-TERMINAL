@@ -1,3 +1,4 @@
+import {openDataProvenance} from './chart-menu-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
@@ -23,7 +24,7 @@ const launch = async () => {
   });
   page = await app.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 60000 });
+  await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({ timeout: 60000 });
 };
 const request = (path, method = 'GET', body) =>
   page.evaluate(([p, m, b]) => window.terminal.request(p, m, b), [path, method, body]);
@@ -37,12 +38,13 @@ const wait = live ? 90000 : 30000;
 
 async function activate(row) {
   await page.getByLabel('Search stocks and indices', { exact: true }).click();
-  await page.getByLabel('Search market').selectOption(row.market_type === 'spot' ? 'crypto_spot' : 'crypto_perpetual');
-  await expect(page.locator('.search-caption')).toContainText('verified spot / perpetual catalogue', { timeout: wait });
+  await page.locator('[data-market-category=crypto]').click();
   const query = page.getByPlaceholder('Search symbol, company, index or ISIN');
   await query.pressSequentially(row.native_id);
   await expect(query).toHaveValue(row.native_id);
-  await page.getByTestId('search-result-' + row.canonical_id).click({ timeout: wait });
+  const result=page.getByTestId('search-result-' + row.canonical_id);
+  await expect(result).toContainText('Crypto · '+(row.market_type==='spot'?'Spot':'Perpetual'),{timeout:wait});
+  await result.click({ timeout: wait });
   await expect(canvas()).toHaveAttribute('data-history-symbol', row.canonical_id, { timeout: wait });
   await expect(canvas()).toHaveAttribute('data-rendered-bars', /^[1-9]/, { timeout: wait });
 }
@@ -111,7 +113,8 @@ try {
   await expect(canvas()).toHaveAttribute('data-rendered-bars', /^[1-9]/, { timeout: wait });
   await expect(page.getByTestId('pane-0').locator('.chart-overlay')).toHaveCount(0, { timeout: wait });
   if (live) {
-    await expect(page.getByTestId('pane-0').locator('.demo-mini').first()).toContainText('Yahoo Finance');
+    await expect(await openDataProvenance(page)).toContainText(/Yahoo Finance/i);
+    await page.getByRole('button',{name:'Data controls pane 0',exact:true}).click();
     assert.ok((await request('/api/history/status')).provider_requests > 0);
     report.yahooHistory = true;
   }
@@ -129,7 +132,7 @@ try {
   assert.ok(perpetual?.native_mapping, `Verified BTC perpetual missing: ${perpetuals.warning}`);
   assert.ok(spot?.native_mapping, `Verified spot market missing: ${spots.warning}`);
   if (!live) {
-    await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+    await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
     const workspace = await request('/workspace');
     const created = await request('/api/watchlists/mutate', 'POST', {
       action: 'create', name: 'Order Flow test', revision: workspace.watchlist_revision,
@@ -177,7 +180,7 @@ try {
   report.watchlistRestored = true;
   assert.deepEqual(errors, []);
   if (!live) {
-    await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+    await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
     const saved = await request('/workspace');
     await close();
     await launch();

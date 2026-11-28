@@ -47,6 +47,9 @@ class UIFixture(FixtureProvider):
     for minute in range(0,length,minutes):
      value=100+minute*.01;rows.append(dict(time=int((opening+timedelta(minutes=minute)).timestamp()),open=value,high=value+2,low=value-1,close=value+1,volume=100.,adj_close=value+1))
   if security.get('kind') in ('index','forex'):rows=[dict(r,volume=None) for r in rows]
+  if os.environ.get('IMT_VOLUME_REDESIGN_UI')=='1' and security['base_symbol']=='ICICIBANK' and interval in ('15m','30m'):
+   rows=[dict(row,close=row['open']-.5 if i%2 else row['close'],
+              volume=None if i==1 else 0 if i==2 else 1000+50*i) for i,row in enumerate(rows)]
   periods={'regular':[periods]} if periods else None
   return History(rows,self.name,notice='Synthetic fixture for offline UI tests only.',interval=interval,metadata=dict(timezone=security.get('timezone','Asia/Kolkata'),currency=security.get('currency','INR'),precision=security.get('precision',2)),trading_periods=periods)
 
@@ -65,16 +68,19 @@ if __name__=='__main__':
  sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM);sock.bind(('127.0.0.1',0));sock.listen(128)
  print(json.dumps({'ready':True,'port':sock.getsockname()[1]}),flush=True)
  start=time.monotonic();base=time.time();clock=lambda:base+(time.monotonic()-start)*30
+ # Replay needs more than 100 bars independently of minute rollover. Keep the
+ # forming snapshot and WebSocket revision on the same fixture sequence.
+ candle_count=120 if os.environ.get('IMT_REPLAY_SERIES_UI')=='1' else 100
  hyper_client=None
  if os.environ.get('IMT_HYPERLIQUID_UI')=='1':
   from app.providers.hyperliquid import HyperliquidClient
   from app.request_budget import RequestBudget
   from hyperliquid_fixtures import PublicFixture
-  hyper_client=HyperliquidClient(RequestBudget(2),PublicFixture(),min_interval=0,weight_limit=100000)
+  hyper_client=HyperliquidClient(RequestBudget(2),PublicFixture(candle_count),min_interval=0,weight_limit=100000)
  stream_connector=None
  if os.environ.get('IMT_STREAM_UI')=='1':
   from stream_fixtures import FixtureConnector
-  stream_connector=FixtureConnector()
+  stream_connector=FixtureConnector(candle_count)
  app=create_app(stream_connector=stream_connector,hyperliquid_client=hyper_client,provider=AlertUIFixture(clock) if os.environ.get('IMT_ALERT_UI')=='1' else UIFixture(count=8000))
  if os.environ.get('IMT_ALERT_UI')=='1':
   app.state.alerts.clock=clock;app.state.alerts.started=clock();app.state.history.config['min_interval']=0

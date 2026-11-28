@@ -1,5 +1,5 @@
-import { ChevronDown, SlidersHorizontal, RefreshCw, Volume2, Maximize2, Minimize2 } from 'lucide-react';
-import { providerLabel } from '../providers/label';
+import {ChartTypeMenu} from './ChartTypeMenu';
+import { ChevronDown, SlidersHorizontal, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import type { Pane } from '../types';
 import { TimeframeSelector } from './TimeframeSelector';
 import { symbolLabel } from '../services/api';
@@ -28,13 +28,10 @@ export function ChartToolbar({
         <button className="pane-symbol" title="Change this chart’s instrument" onClick={onSearch}>
           <span>{pane.kind === 'index' ? pane.name : symbolLabel(pane.symbol)}</span><ChevronDown size={13} />
         </button>
-        <span className="nse-tag" title={providerLabel(pane)}>{providerLabel(pane)}</span>
         <div className="divider" />
         <TimeframeSelector paneId={pane.id} value={pane.timeframe} onChange={timeframe => onChange({ timeframe })} />
-        <select aria-label={`Chart type pane ${pane.id}`} className="chart-type" value={pane.chart_type}
-          onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
-          <option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option>
-        </select>
+        <ChartTypeMenu label={`Chart type pane ${pane.id}`} scope={pane.id} value={pane.chart_type}
+          onChange={chart_type=>onChange({chart_type})}/>
         <div className="grow" />
         <button aria-label={`Create alert pane ${pane.id}`} onClick={onAlert}>Alert</button>
         <button aria-label={`Indicators pane ${pane.id}`} onClick={onIndicators}>
@@ -46,9 +43,6 @@ export function ChartToolbar({
         onClick={() => onChange({ auto_refresh: !pane.auto_refresh })}>A</button>
       <button aria-label={`Refresh pane ${pane.id}`} title="Refresh historical candles now" disabled={loading || replay} onClick={onRefresh}>
         <RefreshCw size={15} className={loading ? 'spin' : ''} />
-      </button>
-      <button aria-label={`Volume pane ${pane.id}`} className={pane.volume ? 'selected' : ''} onClick={() => onChange({ volume: !pane.volume })}>
-        <Volume2 size={15} />
       </button>
       <button data-testid={`pane-maximize-${pane.id}`} aria-label={`${expanded ? 'Restore' : 'Maximize'} chart ${pane.id}`}
         title={expanded ? 'Restore all chart panes' : 'Maximize chart pane'} aria-pressed={expanded} onClick={onExpand}>

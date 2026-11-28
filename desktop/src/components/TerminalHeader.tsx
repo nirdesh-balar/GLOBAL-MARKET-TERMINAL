@@ -1,9 +1,9 @@
+import {ChartTypeMenu} from '../charts/ChartTypeMenu';
 import { Activity, Search, Settings2, LayoutGrid, ChevronDown, Check, Sun, Moon, Undo2, Redo2,
   Play, Maximize2, Expand, Shrink, Camera, SlidersHorizontal,
-  Minimize2, Scan, Save, Ellipsis, Database } from 'lucide-react';
+  Minimize2, Scan, Ellipsis, Database } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { OS_NAME, PRIMARY_KEY, FULLSCREEN_HINT, UNDO_HINT, REDO_HINT } from '../platform';
-import { providerLabel } from '../providers/label';
 import type { Pane, Workspace } from '../types';
 import { useFlags } from '../flags/useFlags';
 import { FlagIcon } from './FlagIcon';
@@ -19,6 +19,7 @@ interface HeaderProps {
   pane: Pane;
   layoutMenu: boolean;
   onSearch: () => void;
+  onDiagnostics: () => void;
   onChange: (value: Partial<Pane>) => void;
   onIndicators: () => void;
   onLayoutMenu: () => void;
@@ -26,7 +27,7 @@ interface HeaderProps {
   onTheme: () => void;
   onSettings: () => void;
   onSave: () => void;
-  saved: boolean;
+  saveStatus: string;
   onData: () => void;
   onChartSettings: () => void;
   onSync: (key: 'sync_time' | 'sync_crosshair') => void;
@@ -38,9 +39,9 @@ interface HeaderProps {
 }
 
 export function TerminalHeader({
-  workspace, pane, layoutMenu, onSearch, onChange, onIndicators, onLayoutMenu,
+  workspace, pane, layoutMenu, onSearch, onDiagnostics, onChange, onIndicators, onLayoutMenu,
   onLayout, onTheme, onSettings, onChartSettings, onSync, focused,
-  expanded, nativeState, onNativeFullscreen, onFocus, onSave, saved, onData,
+  expanded, nativeState, onNativeFullscreen, onFocus, onSave, saveStatus, onData,
 }: HeaderProps) {
   const { flags, assignFlag, removeFlag } = useFlags();
   const [headerPicker, setHeaderPicker] = useState<{ x: number; y: number } | null>(null);
@@ -84,16 +85,13 @@ export function TerminalHeader({
       ><FlagIcon color={flagColor} filled={Boolean(flagColor)} size={15} /></button>
       {headerPicker && <ColorFlagPicker symbolName={pane.symbol} currentColor={flagColor} position={headerPicker}
         onSelectColor={col => void assignFlag(pane, col)} onRemoveFlag={() => void removeFlag(cid)} onClose={() => setHeaderPicker(null)} />}
-      <span className="header-exchange header-provider" title={providerLabel(pane)}>{providerLabel(pane)}</span>
       <div className="toolbar-divider" />
       <div className="timeframe-toolbar">
         {frames.map(interval => <button key={interval} aria-label={`Active timeframe ${interval}`}
           aria-pressed={pane.timeframe === interval} className={pane.timeframe === interval ? 'selected' : ''}
           onClick={() => onChange({ timeframe: interval })}>{timeframeLabel(interval)}</button>)}
       </div>
-      <select aria-label="Active chart type" value={pane.chart_type} onChange={e => onChange({ chart_type: e.target.value as Pane['chart_type'] })}>
-        <option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option>
-      </select>
+      <ChartTypeMenu label="Active chart type" scope={pane.id} value={pane.chart_type} onChange={chart_type=>onChange({chart_type})}/>
       <button className="header-indicators" aria-label="Indicators" title="Indicators" onClick={onIndicators}>
         <SlidersHorizontal size={15} />
       </button>
@@ -131,7 +129,6 @@ export function TerminalHeader({
         {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
       </button>
       <button aria-label={focused ? 'Exit focus mode' : 'Enter focus mode'} aria-pressed={focused} title="Focus mode · Escape exits" onClick={onFocus}><Scan size={15} /></button>
-      <button className="workspace-save" aria-label="Save workspace" title={saved ? 'Workspace saved locally' : 'Save workspace locally'} data-saved={saved} onClick={onSave}><Save size={15} /></button>
       <button aria-label="Toggle theme" title="Dark / light appearance" onClick={onTheme}>{workspace.theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>
       <button aria-label="Export active chart" title="Export chart PNG" onClick={() => command(pane.id, 'screenshot')}><Camera size={17} /></button>
       <details className="tool-more" ref={more} onKeyDown={event => {
@@ -143,8 +140,16 @@ export function TerminalHeader({
       }}>
         <summary aria-label="More chart options" title="More chart options"><Ellipsis size={17} /></summary>
         <div className="tool-more-panel">
-          <button aria-label="Settings" onClick={() => { if (more.current) more.current.open = false; onSettings(); }}><Settings2 size={14} /> Application settings</button>
+          <button aria-description={saveStatus} onClick={() => {
+            if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); }
+            onSave();
+          }}>Save workspace</button>
+          <button aria-label="Settings" onClick={() => {
+            if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); }
+            onSettings();
+          }}><Settings2 size={14} /> Application settings</button>
           <button onClick={() => { if (more.current) more.current.open = false; onData(); }}><Database size={14} /> Chart data and source</button>
+          <button data-testid="provider-status" onClick={() => { if (more.current) { more.current.open = false; more.current.querySelector('summary')?.focus(); } onDiagnostics(); }}><Database size={14} /> Market data diagnostics</button>
         </div>
       </details>
       <button data-testid="macos-fullscreen" aria-label={nativeState.fullscreen ? `Exit ${OS_NAME} Fullscreen` : `Enter ${OS_NAME} Fullscreen`}

@@ -3,7 +3,7 @@ import {_electron as electron,expect} from './isolated-electron.mjs';import asse
 const profile=await mkdtemp(join(tmpdir(),'imt-stage65-ui-')),errors=[],csv=join(profile,'mixed.csv'),exported=join(profile,'export.csv');let app,page;
 const launch=()=>electron.launch({executablePath:resolve('node_modules/electron/dist/Electron.app/Contents/MacOS/Electron'),args:['.'],env:{...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1',IMT_OFFLINE:'1'},timeout:60000});const request=(p,m='GET',b)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[p,m,b]);
 const load=async()=>{page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByTestId('watchlist-sidebar')).toBeVisible({timeout:60000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:45000});};
-const saved=async()=>expect(page.getByText('Saved locally',{exact:true})).toBeVisible();
+const saved=async()=>expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
 const create=async name=>{await (await watchlistManagement(page, 'Create watchlist')).click();await page.getByLabel('Watchlist name',{exact:true}).fill(name);await page.getByRole('button',{name:'Save watchlist',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.getByTestId('watchlist-dropdown')).toHaveText(name);};
 const row=canonical=>page.locator('.watch-row').filter({has:page.locator(`[data-identity="${canonical}"]`)});
 try{app=await launch();await load();await create('Research');let w=await request('/workspace');const research=w.active_watchlist;await saved();

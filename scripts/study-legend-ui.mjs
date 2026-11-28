@@ -44,12 +44,12 @@ const snap = async name => {
   evidence.frames.push(file);
 };
 const ready = async () => {
-  await expect(page.getByText('DIRECT FETCH', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({ timeout: 45000 });
   await expect(page.locator('.chart-overlay')).toHaveCount(0, { timeout: 30000 });
   await expect(canvas(0)).toHaveAttribute('data-rendered-bars', /^[1-9]/);
 };
 const saveState = async () => {
-  await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+  await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
   return (await workspace()).panes[0];
 };
 const zone = async (search, name) => {
@@ -85,17 +85,15 @@ try {
   const originalCanvas = await canvas(0).getAttribute('data-chart-creations');
   const count = () => page.getByTestId('study-legend-count-0');
   const legend = id => button(`Indicator legend pane ${id}`, pane(id));
-  await expect(count()).toHaveText('4');
+  await expect(count()).toHaveText('5');
   await expect(row('ema20')).toContainText('EMA 20');
   await expect(row('ema9')).toContainText('EMA 9');
   assert.ok(await row('ema20').evaluate(element => {
     const row = element.getBoundingClientRect();
-    const list = element.parentElement.getBoundingClientRect();
-    if (list.right - row.right < 8) return false;
-    const target = document.elementFromPoint((list.right + row.right) / 2, row.top + row.height / 2);
+    const target = document.elementFromPoint(row.right + 12, row.top + row.height / 2);
     return !!target?.closest('.chart-canvas');
   }), 'Blank legend space leaves the chart available for drawing and zooming');
-  await expect(pane(0).locator('.study-pane-controls')).toHaveCount(3);
+  await expect(pane(0).locator('.study-pane-controls')).toHaveCount(2);
   await expect(pane(0).locator('.study-pane-controls').getByText('Height', { exact: true })).toHaveCount(0);
 
   if (process.env.GMT_LEGEND_RECORD === '1') {
@@ -108,22 +106,29 @@ try {
   }
 
   const outputs = row('ema20').locator('[data-study-output]');
-  const exactPoint = await canvas(0).evaluate(el => {
-    const data = el.__mainSeries.data();
-    const index = data.length - 36;
-    const r = el.getBoundingClientRect();
-    return { closes: data.map(bar => bar.close), index, x: r.left + el.__chart.timeScale().timeToCoordinate(data[index].time),
-      y: r.top + Math.min(el.__chart.paneSize(0).height - 20, 160) };
-  });
-  const expected = ema(exactPoint.closes, 20);
   const numericValue = async () => Number(await outputs.getAttribute('data-value'));
+  const expected = ema(await canvas(0).evaluate(el => el.__mainSeries.data().map(bar => bar.close)), 20);
   await page.mouse.move(6, 9);
   await expect.poll(numericValue).toBeCloseTo(expected.at(-1), 8);
   await snap('expanded');
-  await page.mouse.move(exactPoint.x, exactPoint.y);
+  const exactPoint = await canvas(0).evaluate(el => {
+    const data = el.__mainSeries.data();
+    const index = data.length - 36;
+    const time = data[index].time;
+    const x = el.__chart.timeScale().timeToCoordinate(time);
+    const r = el.getBoundingClientRect();
+    const height = el.__chart.paneSize(0).height;
+    // Larger indicator legends can cover the top of the plot.
+    const y = [0.65, 0.8, 0.5].map(fraction => Math.round(fraction * height))
+      .find(row => document.elementFromPoint(r.left + x, r.top + row)?.closest('.chart-canvas') === el);
+    return { index, time, x, y };
+  });
+  assert.ok(exactPoint.x !== null && exactPoint.y !== undefined);
+  await canvas(0).hover({ position: { x: exactPoint.x, y: exactPoint.y } });
+  await expect(canvas(0)).toHaveAttribute('data-crosshair-time',String(exactPoint.time));
   await expect.poll(numericValue).toBeCloseTo(expected[exactPoint.index], 8);
-  await expect(row('stoch').locator('[data-study-output]')).toHaveCount(2);
-  const colors = await row('stoch').locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => node.style.color));
+  await expect(pane(0).getByTestId('study-controls-0-stoch').locator('[data-study-output]')).toHaveCount(2);
+  const colors = await pane(0).getByTestId('study-controls-0-stoch').locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => node.style.color));
   assert.equal(new Set(colors).size, 2);
   await page.mouse.move(6, 9);
   await expect.poll(numericValue).toBeCloseTo(expected.at(-1), 8);
@@ -186,7 +191,7 @@ try {
   await legend(0).click();
   await expect(legend(0)).toHaveAttribute('aria-expanded', 'false');
   await expect(row('ema20')).toBeHidden();
-  await expect(count()).toHaveText('4');
+  await expect(count()).toHaveText('5');
   await expect(canvas(0)).toHaveAttribute('data-study-series', beforeCollapse);
   await snap('collapsed');
   await button('Chart layout').click();
@@ -198,7 +203,8 @@ try {
   await button('Layout 1').click();
   await button('Visibility menu').click();
   await button('Hide indicators').click();
-  await expect(legend(0)).toHaveCount(0);
+  await expect(count()).toHaveText('1');
+  await expect(row('ema20')).toHaveCount(0);
   await expect.poll(async () => (await studies()).length).toBe(0);
   await button('Visibility menu').click();
   await expect(button('Hide indicators')).toHaveText('Show indicators');
@@ -208,7 +214,7 @@ try {
   await legend(0).click();
 
   await button('Remove EMA 10', row('ema9')).click();
-  await expect(count()).toHaveText('3');
+  await expect(count()).toHaveText('4');
   await expect(row('ema9')).toHaveCount(0);
   await expect.poll(async () => plot(await studies(), 'ema9')).toBe(false);
   assert.deepEqual((await saveState()).indicators.map(i => i.id), ['ema20', 'rsi', 'stoch']);
@@ -216,7 +222,7 @@ try {
   const manager = page.getByRole('dialog', { name: 'Indicator manager' });
   await manager.getByLabel('Add EMA', { exact: true }).click();
   await manager.getByLabel('Close indicators', { exact: true }).click();
-  await expect(count()).toHaveText('4');
+  await expect(count()).toHaveText('5');
 
   await zone('Kolkata', /^Asia\/Kolkata/);
   await expect(clock()).toHaveText(/^\d\d:\d\d:\d\d UTC\+5:30$/);

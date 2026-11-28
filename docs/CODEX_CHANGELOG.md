@@ -1,5 +1,73 @@
 # Codex development log
 
+## 2026-11-28 · Step 0 index scope correction
+
+- Remove Index Details, constituent CSV import, and the associated renderer, IPC and backend storage paths. Older profiles can retain their unused membership records without a cleanup migration.
+- Keep normal Symbol Search and Yahoo Finance index history for NIFTY 50, NIFTY BANK, NIFTY 500 and other supported indices. The G14 large-universe scope excludes the withdrawn constituent workflow.
+
+## 2026-11-28 · Native pane drag and fullscreen stability
+
+- Ignore mouse moves without the primary button during a native separator drag. Lightweight Charts 5 processes these moves as drag input once a separator is held. A controlled replay sent the feature RSI pane from 181 px to 30 px and the equivalent first separator on official main sent its dedicated Volume pane from 156 px to 30 px without resizing the chart container.
+- Native regression assertions check pane direction, pointer displacement and header alignment before release. They also cover a native window resize, MACD, RSI near the 104 px saved minimum, and restart with retained study settings and a seeded drawing.
+- Capture historical and latest legend readings from the same renderer commit as the intended mouse move. The first complete fix run saw all three overlays select a different valid candle after a second native pointer event. Keep exact timestamp, numeric and plot-color assertions, including latest-value fallback.
+- The unchanged Stage 6.7-F test reproduced native fullscreen cancellation on official main `f443413b9f7741854b0eece57c7606dff1a11fc1` using macOS 27.2.1 and Electron 44.11.5. The request reached Electron while focused. The window resized into fullscreen and reverted before any `enter-full-screen` event. Focus was lost afterwards. The original 15-second fullscreen and Escape assertions remain in use.
+
+## 2026-11-28 · Historical indicator readings after viewport changes
+
+- Native crosshair checks now target a named historical candle using the settled price canvas and time scale. The previous percentage-based coordinate can hit blank chart space after panning and legitimately leave the legend at its latest-values fallback. Restore the original viewport and pixel ratio explicitly in the same emulation session. The regression checks the exact timestamp in the restored viewport and with a large right margin.
+- Confirm native plot values and colors for EMA, VWMA, VWAP, RSI, each MACD output and Volume. Cover the latest reading, a historical candle and fallback across restart, resize, timeframe, symbol and active chart changes.
+
+## 2026-11-27 · Transparent study legends and Volume controls
+
+- Use neutral study names, muted input parameters, and plot-colored candle readings in transparent chart legends and study headers. Hover or keyboard focus exposes direct visibility, settings, and removal actions.
+- Keep Volume on the main pane’s independent bottom scale. Preserve legacy pane preferences in stored data while using the current chart layout. RSI, MACD and other pane studies retain their independent scales and resize behavior.
+
+## 2026-11-27 · Volume controls in the chart legend
+
+- Place the main-chart Volume name, candle value, and controls in the upper-left study legend. Keep the bars on their existing scale at the bottom of the price pane. A dedicated Volume pane retains its own header.
+- Preserve overlay legend order with a backward-compatible optional setting. Collapse hides the legend rows, hide keeps the Volume instance available to show again, and removal persists across restarts.
+- Local Apple Silicon verification passed 2,507 Python tests with one optional database-copy skip and 22 numerical scripts. The complete native run passed 44 of 47 UI scripts. Same-source diagnostic checks passed the original Watchlist resize, Stage 1 drawing and streaming fullscreen assertions. The documented intermittent fullscreen and focus issue remains open.
+- Normal eight-chart warm restore took 404 ms. Six Grid warm restores took 47.8–156.9 ms. Warm restores issued zero additional provider requests, and Grid peaked at eight charts and two concurrent new history requests. Native ICICIBANK 15m captures at 1440 × 834 matched across all 61,685 compared histogram pixels.
+
+## 2026-11-27 · Volume placement and single legend
+
+- Add Volume from the indicator library only. Use a dedicated overlay scale at the bottom of the price pane by default, or move the instance to a resizable study pane. Native pane swaps preserve unrelated series and saved heights.
+- Remove the chart toolbar Volume toggle and the duplicate upper Volume readout. Keep one Volume label and its controls with the rendered series. Keep Watchlist refresh feedback.
+- Migrate saved Volume settings to version 2 with backward-compatible dedicated placement. New charts begin without Volume. Hidden and removed instances retain their distinct behavior after restart.
+- On the same macOS arm64 application source, 2,507 Python tests passed with one optional database-copy skip, and 22 numerical scripts passed. The full native run and focused follow-ups verified all 46 UI scripts and the supplemental workspace check. Normal eight-chart warm restore took 350 ms. Six Grid warm restorations took 67.4–191.2 ms with zero provider requests, up to eight charts and two concurrent new histories.
+- The first fullscreen assertion saw focus loss and no native enter event. The lifecycle follow-up passed fullscreen and Escape with the original 15-second assertion. The intermittent Electron/macOS focus issue remains open.
+
+## 2026-11-27 · Volume indicator and chart toolbar
+
+- Move workspace saving to the chart overflow and TradingView attribution to Application settings → About and licenses. The existing NOTICE, automatic local saving, and Watchlist quote timestamp remain in use.
+- Manage the existing native Volume histogram through Technicals and Active indicators. Store visibility, colors and pane position per chart. Preserve the legacy volume flag and pane dimensions, and retain an explicit removal across restarts.
+- Show the active Volume value without the timestamp in the ordinary legend. The Data Window and crosshair retain the timestamp, and Volume changes reuse loaded candles.
+- Local macOS arm64 verification passed 2,502 Python tests with one optional database-copy skip, 22 numerical scripts, 45 UI scripts across the complete run and focused checks, and the supplemental workspace test. Normal eight-chart warm restore took 400 ms. Six Chart Grid warm restores took 47.3–158.0 ms with zero provider requests, at most eight charts and two concurrent new histories.
+- The initial fullscreen check recorded a show/hide cycle and focus loss during the existing 15-second assertion. A focused follow-up passed fullscreen and Escape with the original assertions. The documented intermittent Electron/macOS focus issue remains open.
+
+## 2026-11-27 · Chart readability and footer cleanup
+
+- Remove the application status bar and the Watchlist symbol summary and directory count. Keep the Watchlist quote timestamp and interval on its compact refresh line. Save feedback remains on the toolbar control and save errors remain visible.
+- Place the TradingView link in the chart toolbar and the application header for other workspaces. Preserve the repository attribution notice.
+- Use 13 px OHLC, symbol, timeframe, and canvas axis labels on the main chart. Indicator values and chart controls use 12 px at normal widths. Keep saved study heights consistent with the chart widget’s even-pixel geometry.
+
+## 2026-11-27 · Chart menu, index access and data labels
+
+- Share a themed, grouped chart style menu between the main toolbar and chart panes. All 13 existing styles retain their stored identities and render from already loaded candles.
+- Open index constituents from the selected chart's Data controls. Symbol Search continues to find Indian and global indices through its normal categories.
+- Keep source names, retrieval timestamps and freshness disclosures in Data details and diagnostics. Keep the footer focused on save status and TradingView attribution. [Reference workflow](REFERENCE_ANALYSIS_WORKSPACE.md)
+
+## 2026-11-27 · Reference UI corrections and index membership
+
+- Compact Symbol Search and Index Search into single-row category strips. Give Indicators full-width single-line navigation while retaining the existing categories, presets and typed study editor.
+- Remove Chart Compare and the duplicate main-toolbar timeframe selector. Preserve the independent percentage-price scale, chart settings and layout state when opening older profiles.
+- Open NIFTY 50 by its canonical Yahoo Finance index identity. Add a searchable, locally imported constituent table with separate membership and cached quote provenance. [Reference workflow](REFERENCE_ANALYSIS_WORKSPACE.md)
+
+## 2026-11-26 · Reference analysis workspace
+
+- Reuse canonical symbol search for index lookup and bounded percent comparisons. Add grouped intervals, 13 genuine chart presentations, a crosshair Data Window and verified daily Yahoo dividend badges.
+- Extend the indicator manager with Favorites, Recently Used and typed local study revisions. Reuse the existing local alerts engine for completed-candle crossings. [Video audit and review scope](REFERENCE_ANALYSIS_WORKSPACE.md)
+
 ## 2026-11-26 · Watchlist quote refresh ownership
 
 - Fence each Watchlist refresh by client, selection generation and request sequence. The backend accepts a snapshot only after the corresponding list and timeframe have been registered. Polls also carry the expected job ID. Closing or replacing a selection retires its generation and cancels only its work.
@@ -109,3 +177,9 @@ In prior matched Apple Silicon tests, Phase 0 measured 760, 782 and 800 ms, and 
 - After the fail-fast run, the other 30 listed scripts ran individually on macOS. The first pass returned 20 passes and 10 unsuccessful runs. Serial retries with display idle sleep inhibited recovered the paused crypto fixtures and the volume, layout and drawing-gesture scenarios. The longer drawing test completed all 46 tools in 259 seconds. Across all 31 scripts, 29 passed and 2 failed. The remaining trend test reproduced a missing persisted Ichimoku record when it read the workspace immediately after the chart calculation. The supplemental F3.2 theme check passed when rerun with a fresh temporary root after a fixed-profile lock collision.
 - The first GitHub PR workflow stopped at `actions/setup-python` because the pinned Python 3.11.13 arm64 build was unavailable for its macOS 15.8.2 runner. The build and tests were skipped there. Local Python 3.11.17 matched the dependency constraints. GitHub integration remains pending CI. [GitHub Actions run](https://github.com/nirdesh-balar/GLOBAL-MARKET-TERMINAL/actions/runs/44999219104)
 - Built and inspected a new ad-hoc ARM64 candidate from the audited SHA. Native permissions resolved a sandbox-only DMG creation failure. Recorded distinct source/packaged and bounded live market evidence in [Mac release status](MAC_RELEASE_STATUS.md). Tracked exact-SHA Windows native checks in [Windows pending](WINDOWS_PENDING.md).
+
+### Symbol Search and Pine-compatible editor · 2026-11-27
+
+- Simplified Symbol Search to compact rows with favorites and searchable market tabs. Index Details remains available from Search indices. Colored flags continue through the chart header and Watchlists.
+- Rebuilt Indicator Library navigation with Technicals, Favorites, Recently Used and My Scripts. Existing study settings and presets are available under Active indicators.
+- Added the bounded Pine-compatible source editor, chart plots and conditional fills, with local source revisions and legacy typed study recovery. See [supported syntax and native verification](PINE_COMPATIBLE_EDITOR.md).

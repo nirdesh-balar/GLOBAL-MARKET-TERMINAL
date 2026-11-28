@@ -16,7 +16,7 @@ const workspace=()=>page.evaluate(()=>window.terminal.request('/workspace'));
 const status=()=>page.evaluate(()=>window.terminal.request('/api/history/status'));
 try{
  app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));
- await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
+ await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
  const w=await workspace();assert.equal(w.watchlists.length,10);assert.equal((await status()).provider_requests,2);
  await page.getByLabel('Chart layout',{exact:true}).click();await page.getByLabel('Layout 4',{exact:true}).click();await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:30000});
  for(const [pane,symbol] of ['AAPL','MSFT','GC=F','EURUSD=X'].entries()){
@@ -29,7 +29,10 @@ try{
  }
  const ready=await workspace();assert.deepEqual(ready.panes.slice(0,4).map(p=>p.currency),['USD','USD','USD','']);
  await expect(page.getByTestId('pane-2').locator('.legend-title')).toContainText('CONTINUOUS · NOT AN EXPIRY');
- await expect(page.getByTestId('pane-3').locator('.studies-legend')).toContainText('Volume unavailable');
+ await page.getByLabel('Indicators pane 3',{exact:true}).click();
+ await page.getByLabel('Add Volume',{exact:true}).click();
+ await page.getByLabel('Close indicators',{exact:true}).click();
+ await expect(page.getByTestId('volume-legend-3')).toHaveText('Volume unavailable');
  await expect(page.getByTestId('pane-3').locator('.ohlc')).toContainText(/\d+\.\d{5}/);
  for(let pane=0;pane<4;pane++){
   await page.getByLabel(`Timeframe pane ${pane}`,{exact:true}).selectOption('4h');
@@ -41,15 +44,15 @@ try{
  assert.equal((await status()).provider_requests,count,'Indicators and scale reuse data');
  await chooseWatchlist(page, 'crypto');await expect(page.locator('.watch-row')).toHaveCount(4);
  await expect(page.getByTestId('watchlist-symbol-BTC-USD')).toContainText('BTC-USD');
- await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.getByLabel('Search market').selectOption('crypto');
+ await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();await page.locator('[data-market-category="' + ('crypto') + '"]').click();
  await expect(page.locator('.search-result')).toHaveCount(0);await expect(page.locator('.watch-row')).toHaveCount(4);await page.getByLabel('Close search',{exact:true}).click();
  assert.equal(await page.locator('[data-testid="stock-details"],.symbol-details').count(),0);
  await page.setViewportSize({width:1440,height:900});
  const geometry=await page.getByTestId('watchlist-rows').evaluate(el=>({rows:el.getBoundingClientRect().height,aside:el.closest('aside').getBoundingClientRect().height,scroll:getComputedStyle(el).overflowY}));
  assert.ok(geometry.rows/geometry.aside>.65);assert.equal(geometry.scroll,'auto');
  await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/global-four-markets-fixture.png'});
- await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();const saved=await workspace();
- await app.close();app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByText('DIRECT FETCH',{exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:45000});
+ await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');const saved=await workspace();
+ await app.close();app=await launch();page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({timeout:45000});await expect(page.locator('.chart-overlay')).toHaveCount(0,{timeout:45000});
  assert.deepEqual(await workspace(),saved);assert.equal((await status()).provider_requests,4,'Restart loads only four visible markets');assert.deepEqual(errors,[]);
  console.log('PASS: global search/categories, mixed-market layout, IANA/DST dates, FX precision/no volume, four session-aware markets, indicator reuse, intact watchlist/no details card, and restart persistence.');
 }finally{await app?.close();}

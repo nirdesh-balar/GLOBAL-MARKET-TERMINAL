@@ -1,3 +1,4 @@
+from .study_recipes import LocalStudy, PineScript, StudyRecipe
 from typing import Literal
 from pydantic import BaseModel,Field,model_validator,field_validator,ConfigDict,ValidationError
 Timeframe=Literal['1m','5m','15m','30m','1h','4h','1d','1w','1M','1Y']
@@ -374,8 +375,48 @@ class SidebarPreferences(BaseModel):
 class StudyLayout(BaseModel):
     height:int=Field(default=104,ge=48,le=600)
     collapsed:bool=False
+class AppliedStudy(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    id:str=Field(pattern=r'^[0-9a-f-]{36}$')
+    name:str=Field(min_length=1,max_length=64)
+    recipe:StudyRecipe
+    visible:bool=True
+
+class AppliedPineScript(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    id: str = Field(pattern=r'^[0-9a-f-]{36}$')
+    name: str = Field(min_length=1, max_length=64)
+    script_id: str = Field(pattern=r'^[0-9a-f-]{36}$')
+    visible: bool = True
+
+class VolumeSettings(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    @model_validator(mode='before')
+    @classmethod
+    def migrate_placement(cls, value):
+        if isinstance(value, dict) and 'version' not in value:
+            return {'version': 2, 'placement': 'pane', **value}
+        return value
+
+    version: Literal[2] = 2
+    placement: Literal['chart', 'pane'] = 'chart'
+    up_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
+    down_color: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
+    position: Literal['first', 'last'] | int = 'first'
+    legend_position: int | None = Field(default=None, strict=True, ge=0, le=20)
+
+    @field_validator('position', mode='before')
+    @classmethod
+    def valid_position(cls, value):
+        if value not in ('first', 'last') and (type(value) is not int or not 0 <= value <= 23):
+            raise ValueError('Volume pane position must be first, last, or a valid pane index')
+        return value
+
+
 class Pane(SymbolEntry):
-    study_layout:dict[str,StudyLayout]=Field(default_factory=dict,max_length=21)
+    local_studies:list[AppliedStudy | AppliedPineScript]=Field(default_factory=list,max_length=3)
+    study_layout:dict[str,StudyLayout]=Field(default_factory=dict,max_length=24)
     @field_validator("study_layout")
     @classmethod
     def bounded_study_layout(cls,value):
@@ -385,9 +426,17 @@ class Pane(SymbolEntry):
     auto_follow:bool=True
     id:str=Field(max_length=40)
     timeframe:Timeframe='1d'
-    chart_type:Literal['candles','line','area']='candles'
+    chart_type:Literal['candles','line','area','bars','hlc-bars','hollow','high-low','markers','steps','baseline','columns','heikin-ashi','line-break']='candles'
+    @field_validator('local_studies')
+    @classmethod
+    def distinct_applied_studies(cls,value):
+        if len({item.id for item in value}) != len(value):
+            raise ValueError('Applied study IDs must be unique')
+        return value
+
     indicators:list[IndicatorConfig]=Field(default_factory=lambda:[IndicatorConfig(id='default-ema',kind='EMA')],max_length=20)
-    volume:bool=True
+    volume:bool=False
+    volume_settings:VolumeSettings|None=None
     scale:ScaleSettings=Field(default_factory=ScaleSettings)
     appearance:ChartAppearance=Field(default_factory=ChartAppearance)
     display_timezone:str|None=Field(default=None,max_length=80)
@@ -416,7 +465,12 @@ class Pane(SymbolEntry):
     def migration(cls,value):return [migrate_indicator(v,i) for i,v in enumerate(value)]
     @model_validator(mode='after')
     def unique_indicators(self):
+        if self.volume and self.volume_settings is None:
+            self.volume_settings = VolumeSettings(placement='pane')
         if len({r.id for r in self.indicators})!=len(self.indicators):raise ValueError('Indicator IDs must be unique within a pane')
+        local_ids = {study.id for study in self.local_studies}
+        if len(self.study_layout.keys() - local_ids) > 21:
+            raise ValueError('At most 21 ordinary study pane preferences are supported')
         return self
 class Watchlist(BaseModel):
     market:str|None=None
@@ -470,7 +524,14 @@ class GridPreferences(BaseModel):
         return self
 
 
+class StudyLibrary(BaseModel):
+    favorites:list[IndicatorKind | Literal['VOLUME']]=Field(default_factory=list,max_length=70)
+    recent:list[IndicatorKind | Literal['VOLUME']]=Field(default_factory=list,max_length=20)
+
 class Workspace(BaseModel):
+    local_studies:list[LocalStudy]=Field(default_factory=list,max_length=20)
+    pine_scripts: list[PineScript] = Field(default_factory=list, max_length=20)
+    study_library:StudyLibrary=Field(default_factory=StudyLibrary)
     chart_grid: GridPreferences = Field(default_factory=GridPreferences)
     unsupported_indicator_archive:list[dict]=Field(default_factory=list,max_length=1024)
     @model_validator(mode='before')
@@ -506,7 +567,7 @@ class Workspace(BaseModel):
             if not has_all_8_ids:
                 defaults = [
                     dict(id=str(i), symbol=s, token='0', timeframe='1d', chart_type='candles',
-                         indicators=[dict(kind='EMA', period=20, visible=True, id=f'legacy-{i}-EMA20')], volume=True)
+                         indicators=[dict(kind='EMA', period=20, visible=True, id=f'legacy-{i}-EMA20')], volume=False)
                     for i, s in enumerate(DEFAULT_SYMBOLS)
                 ]
                 existing = {}
@@ -548,6 +609,13 @@ class Workspace(BaseModel):
     hidden_symbols:dict[str,list[str]]=Field(default_factory=dict)
     @model_validator(mode='after')
     def validate_ids(self):
+        script_ids = {script.id for script in self.pine_scripts}
+        if len(script_ids) != len(self.pine_scripts):
+            raise ValueError('Script IDs must be unique')
+        if any(isinstance(item, AppliedPineScript) and item.script_id not in script_ids
+               for pane in self.panes for item in pane.local_studies):
+            raise ValueError('Applied scripts must refer to a saved script')
+        if len({item.id for item in self.local_studies})!=len(self.local_studies):raise ValueError('Local study IDs must be unique')
         if len({p.id for p in self.panes})!=8:raise ValueError('Pane identifiers must be unique')
         if len({w.id for w in self.watchlists})!=len(self.watchlists):raise ValueError('Watchlist IDs must be unique')
         if len({p.id for p in self.presets})!=len(self.presets):raise ValueError('Preset IDs must be unique')

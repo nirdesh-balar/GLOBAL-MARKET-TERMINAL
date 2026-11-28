@@ -32,7 +32,7 @@ const list = id => page.getByTestId('watchlist-choice-' + id);
 const group = name => button(name);
 const rows = () => page.locator('.watch-row');
 const save = async () => {
-    await expect(page.getByText('Saved locally', { exact: true })).toBeVisible();
+    await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state','Saved locally');
     return request('/workspace');
 };
 const shot = name => page.screenshot({ path: join(output, 'watchlist-' + name + '.png') });
@@ -74,7 +74,7 @@ try {
     await expect(list('color:yellow')).toBeVisible();
     await expect(list('color:orange')).toBeVisible();
     await shot('list-selector');
-    await page.locator('.statusbar').click({ position: { x: 10, y: 5 } });
+    await page.getByTestId('product-brand').click();
     await expect(active()).toHaveAttribute('aria-expanded', 'false');
 
     await openWatchlistOptions(page);

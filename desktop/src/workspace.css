@@ -213,15 +213,17 @@
   min-height: 19px;
   padding: 0 3px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--canvas) 86%, transparent);
+  background: transparent;
   white-space: nowrap;
 }
-.study-legend-row:is(:hover, :focus-within) { background: var(--surface); }
+.study-legend-row:is(:hover, :focus-within) { background: color-mix(in srgb, var(--canvas) 38%, transparent); }
 .study-legend-name, .study-legend-row > small { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.study-legend-row[data-visible="false"] .study-legend-name { opacity: .64; }
+.study-legend-name { color: var(--text); }
+.study-legend-parameters, .study-values > [data-study-output]:not([data-value]) { color: var(--muted); }
+.study-legend-row[data-visible="false"] .study-legend-name { color: var(--muted); }
 .study-legend-actions { display: inline-flex; flex: none; opacity: 0; }
 .study-legend-row:is(:hover, :focus-within) .study-legend-actions { opacity: 1; }
-.terminal-shell .studies-legend .study-legend-actions > button {
+.terminal-shell .study-legend-row .study-legend-actions > button {
   width: 20px;
   height: 19px;
   padding: 0;
@@ -229,7 +231,7 @@
   color: var(--muted);
   opacity: 1;
 }
-.terminal-shell .studies-legend .study-legend-actions > button:is(:hover, :focus-visible) { color: var(--text); }
+.terminal-shell .study-legend-row .study-legend-actions > button:is(:hover, :focus-visible) { color: var(--text); }
 /* A selected drawing tool must reach the chart even under a legend row. */
 .terminal-shell .chart-pane[data-drawing-active="true"] .study-legend-row,
 .terminal-shell .chart-pane[data-drawing-active="true"] .study-legend-actions > button {
@@ -248,20 +250,21 @@
 }
 .terminal-shell .study-pane-controls {
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0 0 7px 0;
   right: auto;
-  max-width: calc(100% - 86px);
+  max-width: calc(100% - 82px);
+  gap: 5px;
 }
-.terminal-shell .study-pane-controls > button:first-child { max-width: clamp(76px, 24cqw, 160px); }
-.terminal-shell .study-pane-controls > button:first-child > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.terminal-shell .study-pane-controls .study-pane-collapse {
+  padding: 0;
+  min-width: 16px;
+  min-height: 19px;
+  justify-content: center;
 }
-.terminal-shell .study-pane-controls button:hover { background: var(--hover); }
+.study-pane-collapse[aria-expanded="true"] { opacity: 0; }
+.study-legend-row:is(:hover, :focus-within) .study-pane-collapse { opacity: 1; }
+@media (hover: none) {
+  .study-pane-collapse[aria-expanded="true"] { opacity: 1; }
+}
 .terminal-shell .bottom-chart-toolbar { height: 32px; min-height: 32px; background: var(--surface); }
 .terminal-shell .bottom-chart-toolbar :is(.range-toolbar, .price-controls) { font-variant-numeric: tabular-nums; }
 .terminal-shell .range-toolbar .go-date { padding-inline-start: 3px; border-inline-start: 1px solid var(--border); }
@@ -275,7 +278,7 @@
   padding: 4px;
   color: var(--muted);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: var(--chart-control-font);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -402,12 +405,6 @@
   padding-inline: 7px;
 }
 .terminal-shell .terminal-header .header-symbol strong { font-weight: 590; }
-.terminal-shell .terminal-header .header-provider {
-  max-width: 92px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--muted);
-}
 .terminal-shell .terminal-header .header-indicators {
   background: transparent;
   color: var(--muted);
@@ -415,8 +412,6 @@
 .terminal-shell .terminal-header .toolbar-divider { margin-inline: 1px; opacity: .75; }
 .terminal-shell .terminal-header .header-symbol,
 .terminal-shell .terminal-header .header-indicators { min-height: 30px; }
-.terminal-shell .terminal-header .workspace-save { color: var(--muted); }
-.terminal-shell .terminal-header .workspace-save[data-saved="true"] svg { color: var(--workspace-accent); }
 .terminal-shell .terminal-header .tool-more { position: relative; flex-shrink: 0; }
 .terminal-shell .terminal-header .tool-more summary {
   display: grid;
@@ -454,11 +449,33 @@
 .terminal-shell .pane-toolbar button,
 .terminal-shell .pane-toolbar select { font-size: 10px; font-weight: 500; }
 .terminal-shell .chart-surface > .chart-legend { top: 6px; left: 8px; }
+.terminal-shell .chart-pane {
+  --chart-header-font: 13px;
+  --chart-value-font: 12px;
+  --chart-control-font: 12px;
+}
 .terminal-shell .legend-title strong,
-.terminal-shell .ohlc b { font-size: 11px; font-weight: 560; }
+.terminal-shell .ohlc b { font-size: var(--chart-header-font); font-weight: 560; }
 .terminal-shell .legend-title,
 .terminal-shell .ohlc,
-.terminal-shell .studies-legend { font-size: 10px; }
+.terminal-shell .study-legend-name { font-size: var(--chart-header-font); }
+.terminal-shell .ohlc-change-metric,
+.terminal-shell .studies-legend,
+.terminal-shell .study-values,
+.terminal-shell .study-pane-controls .study-values,
+.terminal-shell .study-pane-controls > small { font-size: var(--chart-value-font); }
+@container (max-width: 560px) {
+  .terminal-shell .chart-surface {
+    --chart-header-font: 12px;
+    --chart-value-font: 11px;
+  }
+}
+@container (max-width: 360px) {
+  .terminal-shell .chart-surface {
+    --chart-header-font: 11px;
+    --chart-value-font: 10px;
+  }
+}
 .terminal-shell .legend-title .demo-mini { font-size: 9px; }
 .terminal-shell .chart-legend .ohlc { gap: 2px 7px; }
 .terminal-shell .chart-grid:not([data-count="1"]) .legend-timeframe { display: none; }
@@ -466,11 +483,18 @@
   .terminal-shell .chart-grid:not([data-count="1"]) .legend-symbol { display: none; }
 }
 .terminal-shell .range-toolbar button,
-.terminal-shell .price-controls button { font-size: 10px; padding-block: 3px; }
+.terminal-shell .range-toolbar .go-date,
+.terminal-shell .price-controls button,
+.terminal-shell .bottom-chart-toolbar > button:last-child { font-size: var(--chart-control-font); }
+@container (max-width: 750px) {
+  .terminal-shell .bottom-chart-toolbar { --chart-control-font: 11px; }
+}
+@container (max-width: 420px) {
+  .terminal-shell .bottom-chart-toolbar { --chart-control-font: 9px; }
+}
 .terminal-shell .history-controls.open,
 .terminal-shell .custom-range,
 .terminal-shell .range-notice { bottom: 32px; }
-.terminal-shell .statusbar { height: 21px; min-height: 21px; font-size: 9px; }
 .terminal-shell.theme-dark .positive { color: #37bca5; }
 .terminal-shell.theme-dark .negative { color: #f26c76; }
 .terminal-shell .professional-watchlist > header {
@@ -527,11 +551,51 @@
   }
   .terminal-shell .chart-grid[data-count="1"] .chart-surface > .chart-legend { max-width: calc(100% - 190px); }
 }
-.terminal-shell .statusbar > .workspace-switch {
-  padding: 0 5px;
-  min-height: 17px;
-  font-size: 9px;
-  border-color: var(--border);
-  color: var(--text);
+
+.terminal-shell .chart-type-anchor {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+  min-width: 32px; height: 30px; padding: 0 5px; gap: 2px; border-radius: 5px;
+  color: var(--muted);
 }
-.terminal-shell .statusbar > .workspace-switch:hover { color: var(--workspace-accent); }
+.terminal-shell .chart-type-anchor[aria-expanded=true] {
+  color: var(--workspace-accent); background: var(--hover);
+}
+.chart-type-menu {
+  position: fixed; z-index: 92; overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin;
+  padding: 4px; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); background: var(--panel); box-shadow: 0 8px 24px #0006;
+}
+.chart-type-group + .chart-type-group {
+  border-top: 1px solid var(--border); margin-top: 3px; padding-top: 3px;
+}
+.chart-type-menu button {
+  width: 100%; min-height: 29px; justify-content: flex-start; gap: 9px;
+  padding: 4px 7px; border-radius: 4px; text-align: left; white-space: nowrap;
+}
+.chart-type-menu button > svg { flex: 0 0 auto; }
+.chart-type-menu button:hover, .chart-type-menu button:focus-visible {
+  color: var(--text); background: var(--hover);
+}
+.terminal-shell .chart-type-menu button:focus-visible {
+  outline-offset: -2px;
+}
+.chart-type-menu button[aria-checked=true] {
+  color: var(--workspace-accent); background: var(--hover);
+}
+.chart-type-check { margin-left: auto; }
+.chart-stale { color: var(--workspace-accent); }
+@container (max-width: 380px) {
+  .terminal-shell .pane-toolbar .chart-type-anchor { order: 2; min-width: 30px; }
+}
+
+.chart-pane .history-controls details{position:static}
+.chart-source-detail{position:absolute;right:10px;bottom:calc(100% + 4px);box-sizing:border-box;width:min(350px,calc(100% - 20px));max-height:min(200px,40vh);overflow:auto;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);z-index:5;line-height:1.5;font-size:12px}
+.chart-source-detail p{margin:0}
+.chart-source-detail p+p{margin-top:6px}
+
+/* Crosshair values can change on pointer down. Keep the Volume buttons in place. */
+.study-legend-row.volume-legend-row { width: 215px; }
+.volume-legend-readout { display: inline-flex; flex: 1; min-width: 0; align-items: baseline; gap: 5px; }
+.volume-legend-readout [data-study-output] { overflow: hidden; text-overflow: ellipsis; }
+.volume-legend-readout .study-legend-name { flex-shrink: 0; }

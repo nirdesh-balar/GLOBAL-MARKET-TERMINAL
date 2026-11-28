@@ -1,10 +1,11 @@
+import {marketIdentity,providerLabel} from '../providers/label';
 import {legacyCrypto} from '../providers/legacy';
 import {QuoteCells} from '../refresh/QuoteCells';
 import type {QuoteSnapshot,QuoteRow,RefreshPreferences} from '../refresh/hooks';
 import React, {useEffect,useLayoutEffect,useRef,useState,useCallback} from 'react';
 import {Plus,X,ArrowUp,ArrowDown,MoreHorizontal,Upload,Download,RefreshCw,Check,LayoutGrid,ChevronDown,Search as SearchIcon,ListFilter} from 'lucide-react';
-import type {Workspace,SymbolEntry,ChartQuote,Health,Instrument,Watchlist,Timeframe} from '../types';
-import {symbolLabel,price,api} from '../services/api';
+import type {Workspace,SymbolEntry,Instrument,Watchlist,Timeframe} from '../types';
+import {symbolLabel,api} from '../services/api';
 import type {ExcelWatchlistRow,ExcelExportPayload} from '../export/excelWorkbook';
 import {WatchlistPopover} from '../watchlists/WatchlistPopover';
 import {MARKET_SECTIONS,marketSection,type MarketSection} from '../watchlists/marketSections';
@@ -99,7 +100,7 @@ export function compareSymbolEntries(
     return 0;
 }
 
-export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, health, indices, active, quotes, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe, onGrid, onClose }: { onClose: () => void; onGrid: (rows: SymbolEntry[], source: string) => void; onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; health: Health; indices: Instrument[]; active: string; quotes: Record<string, ChartQuote>; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
+export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRefresh, refreshPreferences, onRefreshPreferences, refreshPaused, workspace, indices, active, onChange, onOpen, onSearch, onAlert, onMutate, onImport, activeTimeframe, onGrid, onClose }: { onClose: () => void; onGrid: (rows: SymbolEntry[], source: string) => void; onMigration: (row: SymbolEntry) => void; snapshots: QuoteSnapshot | null; quoteError: string; onQuoteRefresh: () => void; refreshPreferences: RefreshPreferences | null; onRefreshPreferences: (value: RefreshPreferences) => void; refreshPaused: boolean; workspace: Workspace; indices: Instrument[]; active: string; onChange: (w: Workspace) => void; onOpen: (row: SymbolEntry, paneId: string) => void; onSearch: () => void; onAlert: (row: SymbolEntry) => void; onMutate: (op: WatchlistMutation) => Promise<WatchlistResult>; onImport: (value: ImportCommit) => Promise<WatchlistResult>; activeTimeframe?: Timeframe }) {
     const [query, setQuery] = useState(''), [manage, setManage] = useState(false), [name, setName] = useState(''), [action, setAction] = useState<'create' | 'rename' | 'duplicate'>('create'), [drag, setDrag] = useState<string | null>(null), [target, setTarget] = useState('active'), [width, setWidth] = useState(Math.round(workspace.sidebar.width || 320)), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState(''), [removeList, setRemoveList] = useState<Watchlist | null>(null), [clearConfirm, setClearConfirm] = useState(false), [importing, setImporting] = useState(false), [menu, setMenu] = useState<{ row: SymbolEntry; x: number; y: number } | null>(null), [destination, setDestination] = useState('');
     const [rowPicker, setRowPicker] = useState<{ row: SymbolEntry; x: number; y: number; trigger: HTMLButtonElement } | null>(null);
     const [aliasInput, setAliasInput] = useState('');
@@ -601,9 +602,6 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
  </>;
  const choosingGrid=gridSelection?.list===current.id;
  const selectedForGrid=choosingGrid?gridItems.filter(({row})=>gridSelection.ids.has(identity(row))).map(({row})=>row):[];
- const selectedItem=items.find(({row})=>identity(row)===activePaneSymbol)?.row;
- const selectedQuote=selectedItem ? snapshots?.rows[identity(selectedItem)] : undefined;
- const selectedDay=selectedItem ? quotes[identity(selectedItem)] : undefined;
  const boundedWidth=(value:number)=>Math.round(Math.max(220,Math.min(480,value)));
  const persistWidth=(value:number)=>{
   setWidth(value);
@@ -611,8 +609,8 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
  };
  const instrumentDetails = (row: SymbolEntry) => {
     const index = row.kind === 'index' ? indices.find(item=>item.symbol===row.symbol) : undefined;
-    return [row.name, row.exchange, row.provider === 'hyperliquid' ? 'Hyperliquid' : 'Yahoo Finance',
-        row.market_type || row.kind, row.currency, index?.status === 'verified' ? 'Yahoo daily history checked' : index?.error]
+    return [row.name, marketIdentity(row), row.currency, providerLabel(row),
+        index?.status === 'verified' ? 'Daily history checked' : index?.error]
         .filter(Boolean).join(' · ');
  };
   const staleBefore = Date.now()/1000 - Math.max(120,(refreshPreferences?.watchlist_interval||300)*2);
@@ -633,8 +631,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
     <button data-testid={`watchlist-symbol-${row.symbol}`} className="watch-select" title={`Click opens chart. ArrowUp / ArrowDown navigates and updates chart immediately. Shift+F10 opens actions.`} onClick={()=>openRow(row)} onKeyDown={e=>handleKeyDown(e,position,n)}>
      <span title={instrumentDetails(row)}>
       <strong>{row.kind==='index'?row.name:symbolLabel(row.symbol)}</strong>
-
-     </span>
+      {row.kind==='crypto'&&row.market_type&&<small>{marketIdentity(row)}</small>}     </span>
      <QuoteCells row={quoteRow} showVolume={workspace.sidebar.volume} migrationRequired={legacyCrypto(row)}
        paused={refreshPaused} expired={!!quoteRow?.value&&quoteRow.value.fetched_at<staleBefore}/>
     </button>
@@ -793,20 +790,7 @@ export function WatchlistSidebar({ onMigration, snapshots, quoteError, onQuoteRe
   {hasCurrent&&!items.length&&<p className="empty">{current.items.length?(hasHidden&&!showHidden?`All matching symbols hidden in this list. Use Watchlist options to show hidden symbols.`:'No symbols match your search.'):isColored?`No symbols in this flagged list. Assign a flag in Search or another watchlist.`:'Add a symbol or import a CSV.'}</p>}
  </div>
  <div className="watchlist-bottom">
-  {selectedItem&&<details className="watchlist-instrument-summary">
-   <summary title={instrumentDetails(selectedItem)}>{symbolLabel(selectedItem.symbol)} details</summary>
-   <div><strong>{selectedItem.name || selectedItem.symbol}</strong>
-    {selectedQuote?.value&&<span>{price(selectedQuote.value.price,selectedQuote.value.precision)} {selectedQuote.value.currency}
-      {selectedQuote.value.change!=null&&` · ${selectedQuote.value.change.toFixed(2)}%`}
-      {selectedQuote.value.absolute_change!=null&&` (${price(selectedQuote.value.absolute_change,selectedQuote.value.precision)})`}
-      {selectedQuote.stale&&' · Stale'}
-    </span>}
-    {selectedQuote?.value?.session.reliable&&<span>Session {selectedQuote.value.session.state}</span>}
-    {selectedDay?.interval==='1d'&&<span>Daily candle · High {price(selectedDay.candle.high,selectedQuote?.value?.precision)} · Low {price(selectedDay.candle.low,selectedQuote?.value?.precision)}</span>}
-    {selectedQuote?.value?.timeframe==='1d'&&selectedQuote.value.volume!=null&&<span>Daily volume {selectedQuote.value.volume.toLocaleString()}</span>}
-   </div>
-  </details>}
-  <strong>{health.instruments.toLocaleString()} <span>NSE equities · Global search</span></strong><details className="quote-preferences"><summary data-testid="quote-refresh-status" title={quoteError||snapshots?.provider.error||`Historical snapshots, not a live quote feed. Updated at is the last successful provider retrieval; each row shows its own data/retrieval times. Last check completed: ${snapshots?.completed_at?new Date(snapshots.completed_at*1000).toLocaleTimeString():'pending'}`}>{refreshPaused?'Refresh paused':quoteError?'Provider unavailable':snapshots?.pending?`Loading ${snapshots.pending} prices…`:lastFetched?`Updated at ${new Date(lastFetched*1000).toLocaleTimeString()}`:'Historical prices'} · {refreshPreferences?.watchlist_interval?`Auto ${refreshPreferences.watchlist_interval}s`:'Manual'}</summary><div><label><input type="checkbox" aria-label="Fetch watchlist prices on startup" checked={!!refreshPreferences?.startup_quotes} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,startup_quotes:e.target.checked})}/> Fetch prices on startup</label><label>Watchlist refresh<select aria-label="Watchlist auto refresh" value={refreshPreferences?.watchlist_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,watchlist_interval:Number(e.target.value) as RefreshPreferences['watchlist_interval']})}><option value={0}>Manual only</option><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><label>Chart checks<select aria-label="Chart refresh interval" value={refreshPreferences?.chart_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,chart_interval:Number(e.target.value) as RefreshPreferences['chart_interval']})}><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><small>Yahoo historical data for non-crypto; verified crypto uses public streaming when available. Daily, weekly and monthly checks use at least 300 seconds; reliably closed markets reduce requests.</small>{(quoteError||snapshots?.provider.error)&&<small role="status">{quoteError||snapshots?.provider.error}</small>}</div></details></div>
+  <details className="quote-preferences"><summary data-testid="quote-refresh-status" title={quoteError||snapshots?.provider.error||`Historical snapshots, not a live quote feed. Updated at is the last successful provider retrieval; each row shows its own data/retrieval times. Last check completed: ${snapshots?.completed_at?new Date(snapshots.completed_at*1000).toLocaleTimeString():'pending'}`}>{refreshPaused?'Refresh paused':quoteError?'Provider unavailable':snapshots?.pending?`Loading ${snapshots.pending} prices…`:lastFetched?`Updated at ${new Date(lastFetched*1000).toLocaleTimeString()}`:'Historical prices'} · {refreshPreferences?.watchlist_interval?`Auto ${refreshPreferences.watchlist_interval}s`:'Manual'}</summary><div><label><input type="checkbox" aria-label="Fetch watchlist prices on startup" checked={!!refreshPreferences?.startup_quotes} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,startup_quotes:e.target.checked})}/> Fetch prices on startup</label><label>Watchlist refresh<select aria-label="Watchlist auto refresh" value={refreshPreferences?.watchlist_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,watchlist_interval:Number(e.target.value) as RefreshPreferences['watchlist_interval']})}><option value={0}>Manual only</option><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><label>Chart checks<select aria-label="Chart refresh interval" value={refreshPreferences?.chart_interval??300} onChange={e=>refreshPreferences&&onRefreshPreferences({...refreshPreferences,chart_interval:Number(e.target.value) as RefreshPreferences['chart_interval']})}><option value={60}>60 seconds</option><option value={300}>300 seconds</option><option value={900}>900 seconds</option></select></label><small>Yahoo historical data for non-crypto; verified crypto uses public streaming when available. Daily, weekly and monthly checks use at least 300 seconds; reliably closed markets reduce requests.</small>{(quoteError||snapshots?.provider.error)&&<small role="status">{quoteError||snapshots?.provider.error}</small>}</div></details></div>
 
         {manage && isColored && activeColor && action === 'rename' && <WatchlistDialog title={`Manage ${FLAG_COLORS[activeColor].name} List`} onClose={() => { if (!busy) setManage(false); }}>
             <div className="watchlist-dialog-body">
