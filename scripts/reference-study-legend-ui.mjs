@@ -41,8 +41,8 @@ async function setColor(row, names, colors) {
   await button('Apply settings', settings()).click();
 }
 
-async function readStudyMove(time, point, groups) {
-  await canvas().evaluate((node, { time, point, groups }) => {
+async function readStudyMove(time, point, groups, initial) {
+  await canvas().evaluate((node, { time, point, groups, initial }) => {
     const root = node.closest('.chart-pane');
     const controller = new AbortController();
     let handledMove = false;
@@ -57,13 +57,19 @@ async function readStudyMove(time, point, groups) {
       }));
 
     const check = () => {
-      if (!handledMove || node.dataset.crosshairTime !== String(time) || capture.result) return;
+      if (!handledMove || capture.result) return;
+      // A freshly created chart already displays its latest candle before
+      // Lightweight Charts has emitted its first crosshair event.
+      const displayedTime = initial && node.dataset.crosshairTime === undefined
+        ? node.__mainSeries.data().at(-1)?.time
+        : Number(node.dataset.crosshairTime);
+      if (displayedTime !== time) return;
       const readings = groups.map(({ selector }) => [...root.querySelectorAll(selector)].map(output => ({
         name: output.dataset.studyOutput, value: Number(output.dataset.value), color: getComputedStyle(output).color,
       })));
       const matches = expected.every((plots, index) => plots.length > 0 && plots.length === readings[index].length &&
         plots.every(({ value, color }, i) => Number.isFinite(value) && readings[index][i].value === value && readings[index][i].color === color));
-      capture.last = { time: Number(node.dataset.crosshairTime), readings, expected };
+      capture.last = { time: displayedTime, readings, expected };
       if (matches) capture.result = capture.last;
     };
     const observer = new MutationObserver(check);
@@ -79,7 +85,7 @@ async function readStudyMove(time, point, groups) {
         queueMicrotask(check);
       }
     }, { capture: true, signal: controller.signal });
-  }, { time, point, groups });
+  }, { time, point, groups, initial });
 
   try {
     await page.mouse.move(point.x, point.y);
@@ -169,8 +175,8 @@ try {
     { selector: '[data-testid="study-legend-0-volume"] [data-study-output]', index: 0, kind: 'volume' },
   ];
   const outside = { x: 6, y: 8 };
-  const readStudies = async (time, point) => {
-    const [[EMA, VWMA, VWAP], [RSI], MACD, [Volume]] = await readStudyMove(time, point, groups);
+  const readStudies = async (time, point, initial = false) => {
+    const [[EMA, VWMA, VWAP], [RSI], MACD, [Volume]] = await readStudyMove(time, point, groups, initial);
     return { EMA, VWMA, VWAP, RSI, MACD, Volume };
   };
   const measurements = {};
@@ -198,7 +204,7 @@ try {
     }, { opposite, constantVolume });
     assert.ok(selection.historical && selection.historical < selection.latest,
       `${label} has an on-screen historical candle with independently varying readings`);
-    const latestValues = await readStudies(selection.latest, outside);
+    const latestValues = await readStudies(selection.latest, outside, true);
     if (screenshots) await shot('crosshair-latest');
     const target = await candlePointerTarget(canvas(),selection.historical);
     const historicalValues = await readStudies(selection.historical, target);
