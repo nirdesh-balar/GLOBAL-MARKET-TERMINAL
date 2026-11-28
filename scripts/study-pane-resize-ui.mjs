@@ -19,12 +19,15 @@ const initialLayout = Object.fromEntries([['resize-ROC', 124], ['resize-RSI', 14
 const studyIds = Object.keys(initialLayout);
 const legacyVolumeLayout = { height: 124, collapsed: false };
 const evidence = { profile, samples: [], persisted: {}, rendererErrors: [] };
+const dpi = process.env.GMT_STUDY_RESIZE_DPI;
 let app, page;
 const launch = async () => {
-  app = await electron.launch({ executablePath: sourceElectron, args: ['.'], timeout: 60000,
+  app = await electron.launch({ executablePath: sourceElectron, args: dpi ? [`--force-device-scale-factor=${dpi}`, '.'] : ['.'], timeout: 60000,
     env: { ...process.env, IMT_TEST_DATA_DIR: profile, IMT_UI_FIXTURE: '1', IMT_OFFLINE: '1' } });
   page = await app.firstWindow();
   page.on('pageerror', error => evidence.rendererErrors.push(error.message));
+  evidence.dpi = await page.evaluate(() => devicePixelRatio);
+  if (dpi) assert.equal(evidence.dpi, Number(dpi));
   await expect(page.getByRole('button', {name:'Chart layout',exact:true})).toBeVisible({ timeout: 45000 });
 };
 const pane = () => page.getByTestId('pane-0');
@@ -49,6 +52,8 @@ const geometry = () => canvas().evaluate((element, ids) => {
       label: header && header.top - home.top, labelHeight: header?.height };
   });
 }, studyIds);
+const afterChartFrame = () => page.evaluate(() => new Promise(resolve =>
+  requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const aligned = rows => rows.every(row => Number.isFinite(row.top) && Number.isFinite(row.label) &&
   Math.abs(row.top - row.label) <= 1 && row.labelHeight > 0 && row.labelHeight < row.height);
 const row = (rows, id) => rows.find(value => value.id === id);
@@ -58,15 +63,34 @@ async function ready() {
 }
 async function resize(id, pixels, name) {
   const before = await geometry();
-  const oldTop = row(before, id).top;
-  let lastTop = oldTop;
-  await dragStudySeparator(page, canvas(), id, pixels, async fraction => {
-    await expect.poll(async () => Math.abs(row(await geometry(), id).top - lastTop)).toBeGreaterThan(3);
+  const original = row(before, id);
+  let previous = original;
+  await dragStudySeparator(page, canvas(), id, pixels, async (fraction, point) => {
+    await afterChartFrame();
     const held = await geometry();
-    lastTop = row(held, id).top;
-    evidence.samples.push({ name, fraction, held: true, rows: held });
-    if (fraction === 0.67 && name === 'first-study-expand') await screenshot('while-held');
+    const current = row(held, id);
+    const offset = pixels * fraction;
+    assert.ok(Math.sign(current.height - previous.height) === -Math.sign(pixels),
+      `${id} reverses before mouse release in ${name} at ${fraction}: ${previous.height} -> ${current.height}`);
+    assert.ok(Math.abs(current.top - original.top - offset) <= 2, `Separator tracks the pointer in ${name} at ${fraction}`);
+    assert.ok(Math.abs(current.height - original.height + offset) <= 2, `Pane tracks the pointer in ${name} at ${fraction}`);
     assert.ok(aligned(held), `Headers during ${name} before mouse release: ${JSON.stringify(held)}`);
+    evidence.samples.push({ name, fraction, held: true, point: { x: point.x, y: point.y + offset }, rows: held });
+    previous = current;
+    if (fraction === 0.67 && name === 'first-study-expand') {
+      const input = await page.context().newCDPSession(page);
+      try {
+        const hoverY = point.y + original.height;
+        await input.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x, y: hoverY, buttons: 0 });
+        await afterChartFrame();
+        const afterHover = await geometry();
+        evidence.ambient = { y: hoverY, before: current.height, after: row(afterHover, id).height };
+        assert.deepEqual(afterHover, held, 'A buttonless mouse move must leave all held panes and headers unchanged');
+      } finally {
+        await input.detach();
+      }
+      await screenshot('while-held');
+    }
   });
   await ready();
   const after = await geometry();
@@ -91,6 +115,11 @@ try {
   workspace.panes[0].volume = true;
   workspace.panes[0].indicators = indicators;
   workspace.panes[0].study_layout = { ...initialLayout, volume: legacyVolumeLayout };
+  const drawingKey = `${workspace.panes[0].canonical_id}/${workspace.panes[0].timeframe}`;
+  workspace.panes[0].drawing_sets = { [drawingKey]: [{
+    id: 'study-resize-line', kind: 'horizontal', version: 2, anchors: [{ time: 1700000000, price: 340 }],
+    color: '#86aaf9', width: 1, params: {},
+  }] };
   await request('/workspace', 'PUT', workspace);
   await page.reload();
   await ready();
@@ -101,6 +130,9 @@ try {
   await idleHistory();
   const creationCount = await canvas().getAttribute('data-chart-creations');
   const providerBefore = (await request('/api/history/status')).provider_requests;
+  const retainedDrawings = (await request('/workspace')).panes[0].drawing_sets;
+  assert.equal(retainedDrawings[drawingKey][0].id, 'study-resize-line');
+  const studySeries = await canvas().getAttribute('data-study-series');
   await resize('resize-RSI', -48, 'first-study-expand');
   await resize('resize-RSI', 26, 'first-study-shrink');
   await resize('resize-STOCHRSI', -32, 'stochastic-expand');
@@ -116,14 +148,14 @@ try {
   await idleHistory();
   assert.equal((await request('/api/history/status')).provider_requests, providerBefore, 'Resizing and collapse reuse cached data');
   await expect(canvas()).toHaveAttribute('data-chart-creations', creationCount);
-  const expected = await saved();
-  evidence.persisted.afterDrag = expected;
-  assert.deepEqual(expected.volume, legacyVolumeLayout);
+  const initialDrags = await saved();
+  assert.deepEqual(initialDrags.volume, legacyVolumeLayout);
   for (const id of ['resize-MACD', 'resize-ATR', 'resize-ADX', 'resize-ROC']) {
-    assert.deepEqual(expected[id], initialLayout[id], 'Unmoved studies keep their saved height');
+    assert.deepEqual(initialDrags[id], initialLayout[id], 'Unmoved studies keep their saved height');
   }
   await dragStudySeparator(page, canvas(), 'resize-RSI', 0);
-  assert.deepEqual(await saved(), expected, 'A separator click keeps saved heights');
+  assert.deepEqual(await saved(), initialDrags, 'A separator click keeps saved heights');
+  let expected = initialDrags;
   const retained = async label => {
     await ready();
     const layout = label === 'restart' ? (await request('/workspace')).panes[0].study_layout : await saved();
@@ -144,6 +176,19 @@ try {
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1100, 690));
   await expect.poll(() => page.evaluate(() => innerWidth)).toBe(1100);
   await retained('windowResized');
+  await resize('resize-MACD', -18, 'macd-expand-after-window-resize');
+  const rsiHeight = row(await geometry(), 'resize-RSI').height;
+  await resize('resize-RSI', rsiHeight - 108, 'rsi-shrink-near-minimum');
+  assert.ok(Math.abs(row(await geometry(), 'resize-RSI').height - 108) <= 2);
+  expected = await saved();
+  evidence.persisted.afterDrag = expected;
+  assert.deepEqual(expected.volume, legacyVolumeLayout);
+  assert.deepEqual((await request('/workspace')).panes[0].drawing_sets, retainedDrawings);
+  await expect(canvas()).toHaveAttribute('data-study-series', studySeries);
+  await idleHistory();
+  evidence.providerRequests = { before: providerBefore, after: (await request('/api/history/status')).provider_requests };
+  assert.equal(evidence.providerRequests.after, evidence.providerRequests.before, 'Resizing the window and panes reuses loaded history');
+  await expect(canvas()).toHaveAttribute('data-chart-creations', creationCount);
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 920));
   await expect.poll(() => page.evaluate(() => innerWidth)).toBe(1440);
   await retained('windowRestored');
@@ -169,6 +214,7 @@ try {
   await app.close();
   await launch();
   await retained('restart');
+  assert.deepEqual((await request('/workspace')).panes[0].drawing_sets, retainedDrawings);
   await expect(canvas()).toHaveAttribute('data-history-symbol', /SBIN/);
   await expect(canvas()).toHaveAttribute('data-history-interval', '1w');
   assert.deepEqual(evidence.rendererErrors, []);

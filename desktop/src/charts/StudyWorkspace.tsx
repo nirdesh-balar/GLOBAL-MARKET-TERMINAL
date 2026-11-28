@@ -141,6 +141,11 @@ export function useStudyWorkspace(
       drag = { pointer: event.pointerId, width: el.clientWidth, height: el.clientHeight,
         stretch: new Map([below - 1, below].map(index => [index, panes[index].getStretchFactor()])) };
     };
+    const ignoreUnpressedMouseMove = (event: MouseEvent) => {
+      // The native separator listens on the document after mousedown and
+      // otherwise treats a hover without the primary button as a drag.
+      if (drag && (event.buttons & 1) === 0) event.stopPropagation();
+    };
     const cancel = () => { drag = null; };
     const up = (event: PointerEvent) => {
       if (chart.current !== c || !drag || event.pointerId !== drag.pointer) return;
@@ -174,6 +179,7 @@ export function useStudyWorkspace(
       });
     };
     el.addEventListener('pointerdown', down);
+    window.addEventListener('mousemove', ignoreUnpressedMouseMove, true);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
     window.addEventListener('blur', cancel);
@@ -184,6 +190,7 @@ export function useStudyWorkspace(
       cancelAnimationFrame(measureFrame);
       cancelAnimationFrame(saveFrame);
       el.removeEventListener('pointerdown', down);
+      window.removeEventListener('mousemove', ignoreUnpressedMouseMove, true);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', cancel);
       window.removeEventListener('blur', cancel);
