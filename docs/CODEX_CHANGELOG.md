@@ -4,6 +4,7 @@
 
 - Ignore mouse moves without the primary button during a native separator drag. Lightweight Charts 5 processes these moves as drag input once a separator is held. A controlled replay sent the feature RSI pane from 181 px to 30 px and the equivalent first separator on official main sent its dedicated Volume pane from 156 px to 30 px without resizing the chart container.
 - Native regression assertions check pane direction, pointer displacement and header alignment before release. They also cover a native window resize, MACD, RSI near the 104 px saved minimum, and restart with retained study settings and a seeded drawing.
+- Capture historical and latest legend readings from the same renderer commit as the intended mouse move. The first complete fix run saw all three overlays select a different valid candle after a second native pointer event. Keep exact timestamp, numeric and plot-color assertions, including latest-value fallback.
 - The unchanged Stage 6.7-F test reproduced native fullscreen cancellation on official main `f443413b9f7741854b0eece57c7606dff1a11fc1` using macOS 27.2.1 and Electron 44.11.5. The request reached Electron while focused. The window resized into fullscreen and reverted before any `enter-full-screen` event. Focus was lost afterwards. The original 15-second fullscreen and Escape assertions remain in use.
 
 ## 2026-11-28 · Historical indicator readings after viewport changes

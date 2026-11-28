@@ -1,6 +1,6 @@
 import { expect } from './isolated-electron.mjs';
 
-export async function moveCrosshairToCandle(page, canvas, time) {
+export async function candlePointerTarget(canvas, time) {
   let target;
   await expect.poll(async () => {
     target = await canvas.evaluate((host, time) => {
@@ -36,6 +36,11 @@ export async function moveCrosshairToCandle(page, canvas, time) {
     }, time);
     return target !== null;
   }, { message: `Candle ${time} must map to a hittable price canvas after layout settles` }).toBe(true);
+  return target;
+}
+
+export async function moveCrosshairToCandle(page, canvas, time) {
+  const target = await candlePointerTarget(canvas, time);
   await page.mouse.move(target.x, target.y);
   await expect(canvas).toHaveAttribute('data-crosshair-time', String(time));
   return target;

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { _electron as electron, expect, sourceElectron } from './isolated-electron.mjs';
-import { moveCrosshairToCandle } from './chart-crosshair.mjs';
+import { candlePointerTarget } from './chart-crosshair.mjs';
 
 const output = 'test-results/crosshair-stability';
 const profile = await mkdtemp(join(tmpdir(), 'gmt-reference-legend-fixture-'));
@@ -41,37 +41,64 @@ async function setColor(row, names, colors) {
   await button('Apply settings', settings()).click();
 }
 
-async function comparePlots(row, index, time, kind = 'all') {
-  const readLegend = () => row.locator('[data-study-output]').evaluateAll(nodes => nodes.map(node => ({
-    value: Number(node.dataset.value), name: node.dataset.studyOutput, color: getComputedStyle(node).color,
-  })));
-  const plots = await canvas().evaluate((node, { index, time, kind }) => {
-    const series = node.__chart.panes()[index].getSeries()
-      .filter(item => kind === 'all' ||
-        (kind === 'overlays' && item.seriesType() === 'Line') ||
-        (kind === 'volume' && item.options().priceScaleId === 'gmt-volume'));
-    const sample = series.map(item => {
-      const point = item.data().find(point => point.time === time);
-      const color = point?.color ?? item.options().color;
-      const swatch = document.createElement('span');
-      swatch.style.color = color?.slice(0, 7) ?? '';
-      return { value: point?.value, color: swatch.style.color };
+async function readStudyMove(time, point, groups) {
+  await canvas().evaluate((node, { time, point, groups }) => {
+    const root = node.closest('.chart-pane');
+    const controller = new AbortController();
+    let handledMove = false;
+    const expected = groups.map(({ index, kind }) =>
+      node.__chart.panes()[index].getSeries().filter(series => kind === 'all' ||
+        (kind === 'overlays' && series.seriesType() === 'Line') ||
+        (kind === 'volume' && series.options().priceScaleId === 'gmt-volume')).map(series => {
+        const sample = series.data().find(point => point.time === time);
+        const swatch = document.createElement('span');
+        swatch.style.color = (sample?.color ?? series.options().color)?.slice(0, 7) ?? '';
+        return { value: sample?.value, color: swatch.style.color };
+      }));
+
+    const check = () => {
+      if (!handledMove || node.dataset.crosshairTime !== String(time) || capture.result) return;
+      const readings = groups.map(({ selector }) => [...root.querySelectorAll(selector)].map(output => ({
+        name: output.dataset.studyOutput, value: Number(output.dataset.value), color: getComputedStyle(output).color,
+      })));
+      const matches = expected.every((plots, index) => plots.length > 0 && plots.length === readings[index].length &&
+        plots.every(({ value, color }, i) => Number.isFinite(value) && readings[index][i].value === value && readings[index][i].color === color));
+      capture.last = { time: Number(node.dataset.crosshairTime), readings, expected };
+      if (matches) capture.result = capture.last;
+    };
+    const observer = new MutationObserver(check);
+    const capture = { stop: () => { controller.abort(); observer.disconnect(); } };
+    node.__studyMoveCapture = capture;
+    // Observe the exact DOM commit for the requested mouse event. Chromium can
+    // deliver another native hover between separate Playwright round trips.
+    observer.observe(root, { subtree: true, childList: true, attributes: true,
+      attributeFilter: ['data-crosshair-time', 'data-value', 'style'] });
+    window.addEventListener('pointermove', event => {
+      if (event.isTrusted && Math.abs(event.clientX - point.x) <= 1 && Math.abs(event.clientY - point.y) <= 1) {
+        handledMove = true;
+        queueMicrotask(check);
+      }
+    }, { capture: true, signal: controller.signal });
+  }, { time, point, groups });
+
+  try {
+    await page.mouse.move(point.x, point.y);
+    let capture;
+    await expect.poll(async () => {
+      capture = await canvas().evaluate(node => {
+        const capture = node.__studyMoveCapture;
+        return { result: capture?.result, last: capture?.last, currentTime: Number(node.dataset.crosshairTime) };
+      });
+      return { matched: !!capture.result, ...capture };
+    }, { message: `Mouse move must render the exact study values and colors at candle ${time}` })
+      .toEqual(expect.objectContaining({ matched: true }));
+    return capture.result.readings;
+  } finally {
+    await canvas().evaluate(node => {
+      node.__studyMoveCapture?.stop();
+      delete node.__studyMoveCapture;
     });
-    return sample;
-  }, { index, time, kind });
-  let readings;
-  await expect.poll(async () => {
-    readings = await readLegend();
-    return readings.map(({ value, color }) => ({ value, color }));
-  }, { message: `Legend values and plot colors must match the rendered series at ${time}` }).toEqual(plots);
-  assert.ok(readings.length);
-  assert.equal(readings.length, plots.length);
-  for (const [i, reading] of readings.entries()) {
-    assert.ok(Number.isFinite(reading.value), reading.name);
-    assert.ok(Math.abs(reading.value - plots[i].value) < 1e-10, reading.name);
-    assert.equal(reading.color, plots[i].color, reading.name);
   }
-  return readings;
 }
 
 try {
@@ -135,19 +162,19 @@ try {
   await setColor(macdRow,['Line color','Signal color','Positive histogram color','Negative histogram color'],
     ['#f39241','#58a4ff','#28b5a3','#df6379']);
 
-  const overlayReadings = () => top().locator('.study-legend-row:not(.volume-legend-row)');
-  const readStudies = async time => {
-    const overlays = await comparePlots(overlayReadings(),0,time,'overlays');
-    return {
-      EMA: overlays[0], VWMA: overlays[1], VWAP: overlays[2],
-      RSI: (await comparePlots(paneRow(rsi.id),1,time))[0],
-      MACD: await comparePlots(paneRow(macd.id),2,time),
-      Volume: (await comparePlots(topRow('volume'),0,time,'volume'))[0],
-    };
+  const groups = [
+    { selector: '.study-legend-list .study-legend-row:not(.volume-legend-row) [data-study-output]', index: 0, kind: 'overlays' },
+    { selector: `[data-study-header="${rsi.id}"] [data-study-output]`, index: 1, kind: 'all' },
+    { selector: `[data-study-header="${macd.id}"] [data-study-output]`, index: 2, kind: 'all' },
+    { selector: '[data-testid="study-legend-0-volume"] [data-study-output]', index: 0, kind: 'volume' },
+  ];
+  const outside = { x: 6, y: 8 };
+  const readStudies = async (time, point) => {
+    const [[EMA, VWMA, VWAP], [RSI], MACD, [Volume]] = await readStudyMove(time, point, groups);
+    return { EMA, VWMA, VWAP, RSI, MACD, Volume };
   };
   const measurements = {};
   async function verifyHistorical(label, { opposite = false, constantVolume = false, screenshots = false } = {}) {
-    await page.mouse.move(6,8);
     const selection = await canvas().evaluate((node, { opposite, constantVolume }) => {
       const chart = node.__chart, scale = chart.timeScale();
       const latest = node.__mainSeries.data().at(-1).time;
@@ -171,14 +198,13 @@ try {
     }, { opposite, constantVolume });
     assert.ok(selection.historical && selection.historical < selection.latest,
       `${label} has an on-screen historical candle with independently varying readings`);
-    const latestValues = await readStudies(selection.latest);
+    const latestValues = await readStudies(selection.latest, outside);
     if (screenshots) await shot('crosshair-latest');
-    const target = await moveCrosshairToCandle(page,canvas(),selection.historical);
-    const historicalValues = await readStudies(selection.historical);
+    const target = await candlePointerTarget(canvas(),selection.historical);
+    const historicalValues = await readStudies(selection.historical, target);
     if (opposite) assert.notEqual(historicalValues.MACD[2].color,latestValues.MACD[2].color);
     if (screenshots) await shot('crosshair-selected');
-    await page.mouse.move(6,8);
-    const fallback = await readStudies(selection.latest);
+    const fallback = await readStudies(selection.latest, outside);
     assert.deepEqual(fallback,latestValues);
     measurements[label] = { ...selection, target, latestValues, historicalValues, fallback };
     return latestValues;
