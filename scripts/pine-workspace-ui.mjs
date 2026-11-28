@@ -7,7 +7,10 @@ import {hilegaSource} from './pine-study-fixture.mjs';
 
 const output='test-results/pine-workspace';
 const profile=await mkdtemp(join(tmpdir(),'gmt-pine-ui-'));
-const env={...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1',IMT_HYPERLIQUID_UI:'1',IMT_E3B_UI:'1',IMT_OFFLINE:'1'};
+// This fixture tests search and Pine interactions. Use the existing unpaced synthetic provider
+// so concurrent startup quotes cannot consume the search assertion's time budget.
+const env={...process.env,IMT_TEST_DATA_DIR:profile,IMT_UI_FIXTURE:'1',IMT_HYPERLIQUID_UI:'1',IMT_E3B_UI:'1',
+  IMT_OFFLINE:'1',IMT_FAST_SCREENER_UI:'1'};
 let app,page;
 const rendererErrors=[];
 const call=(path,method='GET',body)=>page.evaluate(([p,m,b])=>window.terminal.request(p,m,b),[path,method,body]);
@@ -61,7 +64,8 @@ try{
   const stock=await call('/workspace');
   await button('Stocks',filters).click();
   await input.fill('AAPL');
-  await expect(search().getByTestId('search-result-AAPL')).toBeEnabled();
+  await expect(search().locator('.search-results[aria-busy="false"]').getByTestId('search-result-AAPL'))
+    .toBeEnabled();
   await expect(button('Favourite AAPL',search())).toHaveAttribute('aria-pressed','false');
   await button('Favourite AAPL',search()).click();
   await expect(button('Favourite AAPL',search())).toHaveAttribute('aria-pressed','true');

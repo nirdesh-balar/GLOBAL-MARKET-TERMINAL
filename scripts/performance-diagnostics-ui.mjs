@@ -12,6 +12,8 @@ await mkdir(output, { recursive: true });
 await mkdir('test-results', { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'gmt-performance-diagnostics-'));
 const baseline = process.argv.includes('--baseline');
+const expectedRevision = process.env.GITHUB_ACTIONS === 'true' ? process.env.GITHUB_SHA : null;
+if (process.env.GITHUB_ACTIONS === 'true') assert.match(expectedRevision ?? '', /^[a-f0-9]{40}$/);
 const report = { baseline, overhead: [], stream: [] };
 const errors = [];
 let app, page, cdp;
@@ -61,6 +63,21 @@ async function launch() {
       return handler(...args);
     });
   });
+}
+async function close() {
+  const parent = app.process().pid;
+  const children = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' })
+    .split('\n').flatMap(line => {
+      const row = /^(\d+)\s+(\d+)\s+(.+)$/.exec(line.trim());
+      return row && +row[2] === parent && row[3].includes('/backend/tests/fixture_launcher.py') ? [+row[1]] : [];
+    });
+  assert.equal(children.length, 1, 'The isolated Electron process owns one fixture backend');
+  await app.close();
+  app = undefined;
+  await expect.poll(() => {
+    try { process.kill(children[0], 0); return true; }
+    catch (error) { if (error.code === 'ESRCH') return false; throw error; }
+  }, { timeout: 15000 }).toBe(false);
 }
 async function resources() {
   const { metrics } = await cdp.send('Performance.getMetrics');
@@ -147,12 +164,17 @@ try {
         await expect(metric('Active Grid charts')).toHaveText('0');
         await expect(metric('Last Charts restore')).toContainText('ms');
         await expect(metric('GMT version')).toHaveText('1.1.0-rc.8');
-        await expect(metric('Source SHA')).toHaveText(/^(Unavailable|[a-f0-9]{40})$/);
-        await expect(metric('Backend')).toContainText('MiB');
+        await expect(metric('Source SHA')).toHaveText(expectedRevision ?? /^(Unavailable|[a-f0-9]{40})$/);
+        for (const name of ['Main', 'Renderer', 'Backend']) {
+          await expect(metric(name)).toHaveText(/^\d+\.\d MiB · CPU Unavailable$/);
+        }
       }
       await windowSample('expanded');
-      assert.equal(await sampledCalls() - calls, 2);
-      await expect(metric('CPU measurement window')).toContainText('s');
+      await expect.poll(async () => (await sampledCalls()) - calls, { timeout: 11000 }).toBeGreaterThanOrEqual(2);
+      await expect(metric('CPU measurement window')).toHaveText(/^\d+\.\d s$/);
+      for (const name of ['Main', 'Renderer', 'Backend']) {
+        await expect(metric(name)).toHaveText(/^\d+\.\d MiB · CPU \d+\.\d %$/);
+      }
       await screenshot('performance-diagnostics');
       await summary().click();
       await expect(readings()).toHaveCount(0);
@@ -252,13 +274,14 @@ try {
   await recordStream('chart switched');
 
   await expect(page.locator('.terminal-shell')).toHaveAttribute('data-workspace-save-state', 'Saved locally');
-  await app.close();
-  app = undefined;
+  await close();
   await launch();
   await expect(canvas()).toHaveAttribute('data-history-symbol', chartState.panes[0].canonical_id);
   await expect(canvas()).toHaveAttribute('data-history-interval', '15m');
+  await close();
   assert.deepEqual(errors, []);
   report.restart = true;
+  report.backendStopped = true;
   await writeFile(join(output, baseline ? 'before-stream.json' : 'after-diagnostics.json'), JSON.stringify(report, null, 2));
   console.log('PASS performance fixture, streaming lifecycle and restart' + (baseline ? ' (baseline)' : ' with local diagnostics'));
 } finally {
