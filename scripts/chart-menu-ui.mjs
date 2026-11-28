@@ -75,7 +75,7 @@ try{
   await expect(page.getByRole('region',{name:'About and licenses'}).getByRole('link',{name:'TradingView'})).toBeVisible();
   await button('Close settings').click();
   await expect(await openDataProvenance(page)).toContainText(/fixture.*Retrieved/i);
-  await expect(button('Index constituents')).toBeVisible();
+  await expect(button('Index constituents')).toHaveCount(0);
   await shot('data');
   await button('Data controls pane 0').click();
   await shot('chart');

@@ -7,12 +7,6 @@ export async function selectChartStyle(page,style,trigger='Active chart type'){
   await chartStylesMenu(page).locator(`[data-style="${style}"]`).click();
 }
 
-export async function openIndexConstituents(page,pane='0'){
-  const chartData=button(page,`Data controls pane ${pane}`);
-  if(await chartData.getAttribute('aria-pressed')!=='true')await chartData.click();
-  await button(page,'Index constituents').click();
-}
-
 export async function openDataProvenance(page,pane='0'){
   const chartData=button(page,`Data controls pane ${pane}`);
   if(await chartData.getAttribute('aria-pressed')!=='true')await chartData.click();

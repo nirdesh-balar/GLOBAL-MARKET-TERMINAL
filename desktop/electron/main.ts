@@ -5,7 +5,7 @@ import {stopOwnedBackend} from './backendLifecycle';
 import {PRODUCT_NAME,RELEASE_VERSION,STABLE_BUNDLE_ID,STABLE_MARKER} from '../src/brand';
 import {execFileSync} from 'node:child_process';
 import {previewTestGuard} from './previewTestGuard';
-import {importWatchlistCSV,selectLocalCSV,exportWatchlistCSV} from './watchlistFiles';
+import {importWatchlistCSV,exportWatchlistCSV} from './watchlistFiles';
 import {exportWatchlistExcel} from './excelExport';
 import {windowControls} from './windowControls';
 import {AlertNotifications} from './alertNotifications';
@@ -92,7 +92,7 @@ if(dev&&!process.env.IMT_TEST_DATA_DIR){const directory=join(app.getPath('appDat
 if(process.env.IMT_TEST_DATA_DIR){mkdirSync(process.env.IMT_TEST_DATA_DIR,{recursive:true,mode:0o700});app.setPath('userData',process.env.IMT_TEST_DATA_DIR);}
 const alertPath=(path:string)=>/^\/api\/alerts(?:\/(?:status|settings|history(?:\/clear)?|[a-f0-9]{32}(?:\/delete)?))?$/.test(path);
 const flagPath=(path:string)=>/^\/api\/flags(?:\/.*)?$/.test(path);
-const allowed=new Set([quoteClientPath,'/api/quotes/selection','/api/studies/context','/api/streams/status','/api/streams/consumers','/api/streams/events','/api/streams/lifecycle','/api/hyperliquid/catalogue','/api/crypto-migration/candidates','/api/providers/status','/api/crypto-migration/preview','/api/crypto-migration/postpone','/api/crypto-migration/commit','/api/crypto-migration/restore','/health','/workspace','/api/securities/search','/api/securities/refresh','/api/history','/api/history/refresh','/api/quotes/snapshot','/api/quotes/status','/api/quotes/cancel','/api/refresh/preferences','/api/history/status','/api/history/preferences','/api/cache/clear','/api/instruments/search','/api/instruments/discover','/api/markets','/api/indices','/api/indices/membership','/api/indicators/calculate','/api/provider/status','/api/watchlists/mutate','/api/watchlists/import/preview','/api/watchlists/import/commit','/api/flags','/api/flags/remove','/api/flags/clear','/api/flags/aliases']);
+const allowed=new Set([quoteClientPath,'/api/quotes/selection','/api/studies/context','/api/streams/status','/api/streams/consumers','/api/streams/events','/api/streams/lifecycle','/api/hyperliquid/catalogue','/api/crypto-migration/candidates','/api/providers/status','/api/crypto-migration/preview','/api/crypto-migration/postpone','/api/crypto-migration/commit','/api/crypto-migration/restore','/health','/workspace','/api/securities/search','/api/securities/refresh','/api/history','/api/history/refresh','/api/quotes/snapshot','/api/quotes/status','/api/quotes/cancel','/api/refresh/preferences','/api/history/status','/api/history/preferences','/api/cache/clear','/api/instruments/search','/api/instruments/discover','/api/markets','/api/indices','/api/indicators/calculate','/api/provider/status','/api/watchlists/mutate','/api/watchlists/import/preview','/api/watchlists/import/commit','/api/flags','/api/flags/remove','/api/flags/clear','/api/flags/aliases']);
 function python(){const candidate=backendExecutable(root,false);if(!existsSync(candidate))throw new Error('Run npm run setup to install the local Python backend.');return candidate;}
 async function startBackend(){
   const executable=app.isPackaged?backendExecutable(process.resourcesPath,true):python();
@@ -215,15 +215,6 @@ ipcMain.handle('application-updates',async(event,action:unknown,value?:unknown)=
  throw Error('Update operation not allowed');
 });
 ipcMain.handle('watchlist-file',async(event,action:unknown,id?:unknown,extra?:unknown)=>{trusted(event);if(!window)return null;if(action==='import')return importWatchlistCSV(window);if(action==='export'){await readiness;const [ws,flags]=await Promise.all([localFetch('/workspace','GET'),localFetch('/api/flags','GET')]);return exportWatchlistCSV(window,ws,id,flags);}if(action==='export-excel'){await readiness;return exportWatchlistExcel(window,id,extra);}throw Error('Invalid watchlist file operation');});
-ipcMain.handle('index-membership-file',async(event,index:unknown,asOf:unknown)=>{
-  trusted(event);
-  if(!window||typeof index!=='string'||index.length>150||
-    (asOf!==null&&(typeof asOf!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(asOf))))throw Error('Invalid index membership request');
-  const selected=await selectLocalCSV(window,'Import official index constituent CSV');
-  if(!selected)return null;
-  await readiness;
-  return localFetch('/api/indices/membership/import','POST',{...selected,index,as_of:asOf});
-});
 ipcMain.handle('alert-notifications',async(event,action:string,value?:unknown)=>{trusted(event);await readiness;if(!alertNotifications)throw Error('Native alert service is unavailable');if(action==='status')return alertNotifications.status();if(action==='request')return alertNotifications.status(true);if(action==='test')return alertNotifications.test(value);if(action==='navigation')return alertNotifications.navigation();if(action==='settings'){if(process.platform==='darwin')await shell.openExternal('x-apple.systempreferences:com.apple.Notifications-Settings.extension');else if(process.platform==='win32')await shell.openExternal('ms-settings:notifications');return null;}throw Error('Notification operation not allowed');});
 ipcMain.handle('screener-csv',async(event,data:CSVData)=>{trusted(event);if(!window)return null;const csv=formatCSV(data);const selected=await dialog.showSaveDialog(window,{title:'Export historical screener results',defaultPath:'Screener-results.csv',filters:[{name:'CSV results',extensions:['csv']}]});if(selected.canceled||!selected.filePath)return null;await writeFile(selected.filePath,csv,'utf8');return selected.filePath;});
 ipcMain.on('cancel', (event,id:string)=>{trusted(event);requests.get(id)?.abort();});
@@ -268,7 +259,7 @@ ipcMain.handle('drawing-file',async(event,action:string,data?:string)=>{
   const dataBytes=await readFile(selected.filePaths[0]);if(dataBytes.length>2_000_000)throw new Error('Drawing JSON exceeds the size limit');return serializeDrawings(deserializeDrawings(dataBytes.toString('utf8')));
 });
 ipcMain.handle('external',async(event,url:string)=>{
-  trusted(event);const links=new Set(['https://www.tradingview.com/','https://www.nseindia.com/all-reports','https://www.nseindia.com/static/market-data/securities-available-for-trading','https://ranaroussi.github.io/yfinance/','https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv','https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv']);
+  trusted(event);const links=new Set(['https://www.tradingview.com/','https://www.nseindia.com/all-reports','https://www.nseindia.com/static/market-data/securities-available-for-trading','https://ranaroussi.github.io/yfinance/']);
   if(links.has(url))await shell.openExternal(url);
 });
 function createWindow(){

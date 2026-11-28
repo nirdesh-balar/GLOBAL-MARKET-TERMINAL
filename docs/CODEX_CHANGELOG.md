@@ -1,5 +1,10 @@
 # Codex development log
 
+## 2026-11-28 · Step 0 index scope correction
+
+- Remove Index Details, constituent CSV import, and the associated renderer, IPC and backend storage paths. Older profiles can retain their unused membership records without a cleanup migration.
+- Keep normal Symbol Search and Yahoo Finance index history for NIFTY 50, NIFTY BANK, NIFTY 500 and other supported indices. The G14 large-universe scope excludes the withdrawn constituent workflow.
+
 ## 2026-11-28 · Native pane drag and fullscreen stability
 
 - Ignore mouse moves without the primary button during a native separator drag. Lightweight Charts 5 processes these moves as drag input once a separator is held. A controlled replay sent the feature RSI pane from 181 px to 30 px and the equivalent first separator on official main sent its dedicated Volume pane from 156 px to 30 px without resizing the chart container.

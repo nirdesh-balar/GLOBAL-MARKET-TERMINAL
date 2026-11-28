@@ -5,7 +5,7 @@ const interactions=['release-ui.mjs','replay-series-lifecycle-ui.mjs','providers
 interactions.push('watchlist-refresh-race-ui.mjs');
 calculations.push('reference-analysis-math.mjs');
 interactions.push('reference-analysis-ui.mjs');
-interactions.push('index-constituents-ui.mjs');
+interactions.push('index-chart-ui.mjs');
 calculations.push('pine-study-math.mjs');
 interactions.push('pine-workspace-ui.mjs');
 interactions.push('chart-menu-ui.mjs');

@@ -37,7 +37,7 @@ try{
   await button('Chart layout').click();
   await button('Layout 1').click();
   await expect(page.locator('.chart-pane:visible')).toHaveCount(1);
-  await expect(page.locator('.terminal-header button[aria-label="Search indices"],.terminal-header button[aria-label="Index constituents"]')).toHaveCount(0);
+  await expect(page.locator('.terminal-header button[aria-label="Search indices"]')).toHaveCount(0);
   await expect(button('Compare Symbol')).toHaveCount(0);
   await shot('toolbar');
   await page.keyboard.press('Meta+k');

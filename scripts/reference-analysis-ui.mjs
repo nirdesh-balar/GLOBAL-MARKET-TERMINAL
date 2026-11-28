@@ -1,4 +1,4 @@
-import {chartStylesMenu,openIndexConstituents,selectChartStyle} from './chart-menu-controls.mjs';
+import {chartStylesMenu,selectChartStyle} from './chart-menu-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -104,31 +104,6 @@ try{
   await expect(index).toBeEnabled({timeout:30000});
   await index.click();
   await expect(canvas()).toHaveAttribute('data-history-symbol',/^yahoo:%5ENSEI:/,{timeout:30000});
-  await openIndexConstituents(page);
-  const details=page.getByRole('dialog',{name:'Index details'});
-  await expect(details).toContainText('Yahoo Finance');
-  await expect(details).toContainText('Constituent membership and weights are unavailable');
-  await expect(details.getByRole('button',{name:'Add to Watchlist'})).toBeVisible();
-  await screenshot('0512-index-details');
-  const workspace=await request('/workspace');
-  const listId=workspace.active_watchlist;
-  const list=workspace.watchlists.find(item=>item.id===listId);
-  const indexIdentity=(await request('/api/instruments/discover?q=NIFTY&category=indices')).results.find(row=>row.yahoo_symbol==='^NSEI').canonical_id;
-  assert.ok(!list.items.some(row=>row.canonical_id===indexIdentity));
-  await details.getByRole('button',{name:'Add to Watchlist'}).click();
-  await expect(details).toHaveCount(0);
-  await expect.poll(async()=>(await request('/workspace')).watchlists.find(item=>item.id===listId).items.filter(row=>row.canonical_id===indexIdentity).length).toBe(1);
-  assert.equal((await request('/workspace')).panes[0].canonical_id,indexIdentity);
-  await page.getByRole('button',{name:'Search stocks and indices',exact:true}).click();
-  search=page.getByRole('dialog',{name:'Search stocks and indices'});
-  await search.getByPlaceholder('Search symbol, company, index or ISIN').fill('Nifty 50');
-  await expect(search.getByTestId('search-result-^NSEI')).toBeEnabled({timeout:30000});
-  await search.getByTestId('search-result-^NSEI').press('Enter');
-  await openIndexConstituents(page);
-  await expect(details).toContainText('NIFTY', {ignoreCase:true});
-  await details.getByRole('button',{name:'View Chart'}).click();
-  await expect(canvas()).toHaveAttribute('data-history-symbol',/^yahoo:%5ENSEI:/,{timeout:30000});
-  await page.getByRole('button',{name:'Data controls pane 0',exact:true}).click();
 
   await page.getByRole('button',{name:'Indicators',exact:true}).click();
   await manager().getByLabel('Search indicators').fill('RSI');
@@ -202,7 +177,7 @@ try{
     ['.terminal-header','.main-workspace','.analysis-rail','.professional-watchlist','.chart-legend','.indicator-manager']
       .map(key=>[key,document.querySelector(key)?.getBoundingClientRect().toJSON()])));
   await writeFile(join(results,'geometry.json'),JSON.stringify(geometry,null,2));
-  console.log('PASS reference workspace controls, chart styles, Data Window, index details, study revision/restart and local rule alert');
+  console.log('PASS reference workspace controls, chart styles, Data Window, NIFTY chart selection, study revision/restart and local rule alert');
 }finally{
   await app?.close();
 }

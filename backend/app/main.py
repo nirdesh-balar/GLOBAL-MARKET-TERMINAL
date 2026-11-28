@@ -180,8 +180,6 @@ def create_app(data_dir=None,token=None,provider=None,hyperliquid_client=None,st
 
     app.include_router(watchlist_routes(Watchlists(db,registry,restore_saved)))
     app.include_router(refresh_routes(quotes));app.state.quotes=quotes
-    from .index_constituents import routes as membership_routes
-    app.include_router(membership_routes(db,registry,quotes))
     migration=MigrationService(db,registry,service);app.include_router(migration_routes(migration));app.state.migration=migration
     app.state.db=db;app.state.history=service;app.state.registry=registry;app.state.discovery=discovery
     app.add_middleware(TrustedHostMiddleware,allowed_hosts=['127.0.0.1','localhost','testserver'])

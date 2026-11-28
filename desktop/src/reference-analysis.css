@@ -1,4 +1,4 @@
-.terminal-shell .modal-backdrop:has(> :is(.search-modal,.index-inspector,.indicator-manager)) {
+.terminal-shell .modal-backdrop:has(> :is(.search-modal,.indicator-manager)) {
   align-items: center; padding: 12px 0;
 }
 .terminal-shell .search-modal {
@@ -41,46 +41,22 @@
   border-left: 1px solid var(--border); background: var(--panel); color: var(--text);
 }
 .data-window-open > .professional-watchlist { display: none; }
-.chart-data-window header, .index-inspector header {
+.chart-data-window header {
   display: flex; align-items: center; justify-content: space-between;
   min-height: 40px; padding: 5px 12px; border-bottom: 1px solid var(--border);
 }
-.chart-data-window h2, .index-inspector h2 { font-size: 14px; margin: 0; }
-.chart-data-window header button, .index-inspector header button { display: grid; place-items: center; width: 25px; height: 25px; }
-.data-window-body, .index-inspector-body { padding: 14px; }
-.data-window-body dl, .index-inspector dl { margin: 12px 0; font-variant-numeric: tabular-nums; }
-.data-window-body dl div, .index-inspector dl div {
+.chart-data-window h2 { font-size: 14px; margin: 0; }
+.chart-data-window header button { display: grid; place-items: center; width: 25px; height: 25px; }
+.data-window-body { padding: 14px; }
+.data-window-body dl { margin: 12px 0; font-variant-numeric: tabular-nums; }
+.data-window-body dl div {
   display: flex; justify-content: space-between; gap: 12px; padding: 7px 0;
   border-bottom: 1px solid var(--border);
 }
-.data-window-body dt, .index-inspector dt { color: var(--muted); text-transform: capitalize; }
-.data-window-body dd, .index-inspector dd { margin: 0; text-align: right; }
-.data-window-time, .data-window-source, .index-inspector p { color: var(--muted); line-height: 1.5; }
+.data-window-body dt { color: var(--muted); text-transform: capitalize; }
+.data-window-body dd { margin: 0; text-align: right; }
+.data-window-time, .data-window-source { color: var(--muted); line-height: 1.5; }
 .data-window-events { padding-left: 16px; color: var(--text); }
-.index-inspector {
-  width: min(960px, calc(100vw - 36px)); max-height: 90dvh; display: flex; flex-direction: column;
-  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-}
-.index-inspector > header { flex: 0 0 auto; align-items: flex-start; padding: 12px 16px; }
-.index-inspector h3 { margin: 0; font-size: 16px; }
-.index-inspector header h3 { margin-top: 5px; font-size: 19px; }
-.index-inspector header p { margin: 4px 0 0; }
-.index-inspector-body { min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-.index-inspector-body p { margin: 0; }
-.index-inspector-actions, .index-import, .index-constituents-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.index-inspector-actions { border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-.index-inspector-actions select { max-width: min(250px, 42vw); }
-.index-constituents-heading { justify-content: space-between; }
-.index-constituents-heading input { width: min(270px, 100%); }
-.index-table-scroll { min-height: 120px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
-.index-table-scroll table { border-collapse: collapse; width: 100%; }
-.index-table-scroll :is(th, td) { padding: 7px 9px; border-bottom: 1px solid var(--border); }
-.index-table-scroll thead { position: sticky; top: 0; background: var(--panel); text-align: left; }
-.index-table-scroll tbody th { text-align: left; min-width: 135px; }
-.index-table-scroll tbody td { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.index-table-scroll small, .index-table-scroll tbody th span { display: block; margin-top: 3px; color: var(--muted); font-weight: 400; }
-.index-row-actions button { padding: 5px 7px; border-radius: 4px; white-space: nowrap; }
-.index-row-actions button + button { margin-left: 3px; }
 @media (max-width: 1150px) { .chart-data-window { width: 248px; flex-basis: 248px; } }
 .terminal-shell .indicator-manager { display: flex; flex-direction: column; width: min(780px, calc(100vw - 32px)); max-height: 91dvh; }
 .terminal-shell .indicator-manager > header { padding: 9px 16px; }
